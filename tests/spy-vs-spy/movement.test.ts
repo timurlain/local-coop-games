@@ -81,14 +81,9 @@ describe('doors', () => {
   });
 });
 
-// Entering-drop behaviour (spec §3) moved out of `updateMovement` (it now only returns whether
-// a door was passed) and is judged by `step` once both spies have moved this tick — see
+// Entering-drop behaviour (spec §3) moved out of `updateMovement` (it now only returns whether a
+// door was passed) and is judged by `step` once both spies have moved this tick — see
 // tests/spy-vs-spy/step.test.ts, describe('meeting: entering is judged at the end of the tick').
-// The unit tests that used to live here (drops a secret/remedy/kufřík/nothing on entering, clears
-// an armed trap, and the three "does not drop" cases for an empty/dead-opponent/out-opponent
-// room) are superseded by that describe block plus the existing movement-only "does not pass a
-// wall" / door-trap tests above; asserting them again via `updateMovement` alone no longer
-// exercises real behaviour, since `updateMovement` no longer drops anything by itself.
 
 describe('exit', () => {
   it('stays locked without the full kufrik and says so once per second', () => {
