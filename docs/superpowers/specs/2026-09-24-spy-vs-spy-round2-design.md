@@ -90,7 +90,7 @@ Distinct animations (render-side effects driven by logic events):
 | Search → nothing | `found` { null } | `searchDig`, then `shrug` + dust puff from the furniture + „?" over the head | short "womp" |
 | Hide (hold) | `hidden` | `hidePut`, item icon sinks into the furniture, hands dusted off | soft thud |
 | Swap (search with full hand, or hold onto an occupied piece) | `swapped` { gave, took } | `searchDig`, then the given icon sinks in and the taken icon rises out | swap whoosh |
-| Kufřík absorbs a secret | `found` + `stored` | `liftFind`, secret icon flies into the kufřík | jingle |
+| Kufřík absorbs a secret | `stored` { secret } (single event) | `liftFind`, secret icon flies into the kufřík | jingle |
 | Dropped on entering the opponent's room | `dropped` | item icon flies out of the hand into the furniture (or poofs for a remedy) | clatter |
 
 - Hold onto an **occupied** piece = swap (user decision), shown with the swap animation — not a silent search.
