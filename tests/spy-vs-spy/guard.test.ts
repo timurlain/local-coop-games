@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { kill } from '../../src/games/spy-vs-spy/logic/death';
+import { trySwing, updateSwing } from '../../src/games/spy-vs-spy/logic/fight';
 import { updateMovement } from '../../src/games/spy-vs-spy/logic/movement';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
@@ -125,6 +126,34 @@ describe('the airport guard (spec §9)', () => {
     const { s, push } = atExit('E');
     const ev = run(s, [push, IDLE], 2);
     expect(ev.some((e) => (e.type as string) === 'locked')).toBe(false);
+  });
+
+  it('is immune to strikes while tumbling from a guard kick (L5 review: no free hit off the guard)', () => {
+    const jab = atExit('E');
+    step(jab.s, [jab.push, IDLE], TICK);
+    const jabOpponent = place(jab.s, 1, 2, jab.spy.x - 10, jab.spy.z);
+    const jabEv: GameEvent[] = [];
+    trySwing(jab.s, jabOpponent, 'jab', jabEv);
+    updateSwing(jab.s, jabOpponent, RULES.swingWindup, jabEv);
+    expect(jab.spy.health).toBe(RULES.health);
+    expect(jabEv.some((e) => e.type === 'hit')).toBe(false);
+
+    const bash = atExit('E');
+    step(bash.s, [bash.push, IDLE], TICK);
+    const bashOpponent = place(bash.s, 1, 2, bash.spy.x - 10, bash.spy.z);
+    const bashEv: GameEvent[] = [];
+    trySwing(bash.s, bashOpponent, 'bash', bashEv);
+    updateSwing(bash.s, bashOpponent, RULES.bashWindup, bashEv);
+    expect(bash.spy.health).toBe(RULES.health);
+    expect(bashEv.some((e) => e.type === 'hit')).toBe(false);
+
+    // once the kick ends, a strike lands again
+    run(bash.s, [IDLE, IDLE], RULES.guardKickTime);
+    expect(bash.spy.kickTimer).toBe(0);
+    const afterEv: GameEvent[] = [];
+    trySwing(bash.s, bashOpponent, 'jab', afterEv);
+    updateSwing(bash.s, bashOpponent, RULES.swingWindup, afterEv);
+    expect(bash.spy.health).toBe(RULES.health - RULES.jabDamage);
   });
 
   it('never appears at a hidden airport: it is a wall', () => {

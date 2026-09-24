@@ -68,6 +68,9 @@ function strike(state: GameState, spy: Spy, kind: AttackKind, events: GameEvent[
   spy.swingCooldown = RULES.swingCooldown;
   const o = sameRoomOpponent(state, spy);
   if (spy.mode !== 'normal' || o === null || !inFightRange(spy, o)) return;
+  // A spy tumbling from the airport guard's kick (spec §9, L5 review) is immune to strikes: without
+  // this, luring the opponent into the guard would bait a free, undefendable hit.
+  if (o.kickTimer > 0) return;
   if (kind === 'jab' ? o.blocking : o.ducking) {
     events.push({ type: 'blocked', spy: o.id });
     return;

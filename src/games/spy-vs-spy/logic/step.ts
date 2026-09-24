@@ -112,6 +112,8 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
 /** Returns true when the spy passed through an internal door into a new room this tick. */
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
   // Kicked back by the airport guard (spec §9): tumbling, fully immobile — no movement, Akce or Trapulator.
+  // An already-armed trap (spy.armed) intentionally stays armed through the kick: stock isn't spent
+  // until the trap is placed, so there's nothing here to cancel.
   if (spy.kickTimer > 0) {
     spy.kickTimer = Math.max(0, spy.kickTimer - dt);
     spy.menuOpen = false;
