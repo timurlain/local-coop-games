@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, outwardDirs } from '../../src/games/spy-vs-spy/logic/generator';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
-import { DIRS, OPPOSITE, neighbor, type EmbassySize, type GameState } from '../../src/games/spy-vs-spy/logic/state';
+import {
+  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, OPPOSITE, neighbor, type EmbassySize, type GameState,
+} from '../../src/games/spy-vs-spy/logic/state';
 
 const SIZES: EmbassySize[] = ['mala', 'stredni', 'velka'];
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
@@ -73,10 +75,8 @@ describe('createGame', () => {
     });
   });
 
-  it('places 4 remedy sources, 4 secrets and the kufrik in distinct furniture', () => {
+  it('places 4 secrets and the kufrik in distinct furniture, none of them fixtures', () => {
     forAll((s) => {
-      const sources = s.furniture.filter((f) => f.source !== null);
-      expect(sources.map((f) => f.source).sort()).toEqual(['destnik', 'kleste', 'nuzky', 'voda']);
       const hidden = s.furniture.filter((f) => f.hidden !== null);
       expect(hidden).toHaveLength(5);
       const secrets = hidden.flatMap((f) => (f.hidden!.kind === 'secret' ? [f.hidden!.secret] : []));
@@ -105,5 +105,63 @@ describe('createGame', () => {
 
   it('uses the given clock', () => {
     expect(createGame(1, 'mala', 300).spies[1].clock).toBe(300);
+  });
+});
+
+describe('remedy fixtures', () => {
+  it('places max(2, ceil(rooms/5)) fixtures per kind', () => {
+    forAll((s) => {
+      const wanted = Math.max(2, Math.ceil(s.rooms.length / 5));
+      for (const kind of FIXTURE_KINDS) {
+        const count = s.furniture.filter((f) => f.kind === kind).length;
+        expect(count, `kind ${kind} seed ${s.seed} size`).toBe(wanted);
+      }
+    });
+  });
+
+  it('puts fixtures of one kind in distinct rooms when rooms >= count', () => {
+    forAll((s) => {
+      const wanted = Math.max(2, Math.ceil(s.rooms.length / 5));
+      if (s.rooms.length < wanted) return;
+      for (const kind of FIXTURE_KINDS) {
+        const rooms = s.furniture.filter((f) => f.kind === kind).map((f) => f.room);
+        expect(new Set(rooms).size).toBe(rooms.length);
+      }
+    });
+  });
+
+  it('gives every fixture its kind-defined remedy as source, and only fixtures a source', () => {
+    forAll((s) => {
+      for (const f of s.furniture) {
+        if ((FIXTURE_KINDS as readonly string[]).includes(f.kind)) {
+          expect(f.source).toBe(FIXTURE_REMEDY[f.kind as keyof typeof FIXTURE_REMEDY]);
+        } else {
+          expect(f.source).toBeNull();
+        }
+      }
+    });
+  });
+
+  it('never places a secret or the kufrik in a fixture', () => {
+    forAll((s) => {
+      for (const f of s.furniture) {
+        if (f.source !== null) expect(f.hidden).toBeNull();
+      }
+    });
+  });
+
+  it('keeps 2-4 furniture pieces per room including fixtures', () => {
+    forAll((s) => {
+      for (const r of s.rooms) {
+        expect(r.furniture.length).toBeGreaterThanOrEqual(2);
+        expect(r.furniture.length).toBeLessThanOrEqual(4);
+      }
+    });
+  });
+
+  it('is deterministic per seed', () => {
+    const a = createGame(55, 'stredni');
+    const b = createGame(55, 'stredni');
+    expect(a.furniture.map((f) => [f.kind, f.source])).toEqual(b.furniture.map((f) => [f.kind, f.source]));
   });
 });

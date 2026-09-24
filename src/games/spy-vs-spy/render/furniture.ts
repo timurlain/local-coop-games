@@ -63,13 +63,53 @@ export function drawFurniture(ctx: Ctx, f: Furniture, highlight: boolean, now: n
       r(ctx, x + 2, y - 17, 2, 2, '#e8c547');
       top = y - 32;
       break;
-    case 'vesak':
-      r(ctx, x - 1, y - 30, 2, 30, '#6b4220');
-      r(ctx, x - 5, y - 30, 10, 2, '#6b4220');
-      r(ctx, x - 6, y - 28, 5, 12, '#3a78d8');
+    case 'vesak': {
+      // coat rack: pole, hook bar, base, and a folded umbrella hanging from a hook
+      r(ctx, x - 1, y - 32, 2, 32, '#6b4220');
+      r(ctx, x - 7, y - 32, 14, 2, '#6b4220');
       r(ctx, x - 4, y - 2, 8, 2, '#6b4220');
-      top = y - 30;
+      const ux = x + 5;
+      r(ctx, ux - 3, y - 29, 6, 3, '#3a78d8');
+      r(ctx, ux - 2, y - 26, 4, 3, '#3a78d8');
+      r(ctx, ux - 1, y - 23, 2, 8, '#2a5aa8');
+      r(ctx, ux - 1, y - 15, 1, 3, '#c9a36b');
+      top = y - 32;
       break;
+    }
+    case 'hasicak': {
+      // hasičská skříňka: red wall box with a small glass window showing a bucket of water
+      r(ctx, x - 8, y - 22, 16, 16, '#a02020');
+      r(ctx, x - 7, y - 21, 14, 14, '#c23030');
+      r(ctx, x - 5, y - 18, 10, 8, '#274a66');
+      r(ctx, x - 4, y - 15, 8, 4, '#8a939c');
+      r(ctx, x - 3, y - 16, 6, 1, '#c9a36b');
+      r(ctx, x - 7, y - 8, 14, 2, '#701818');
+      top = y - 22;
+      break;
+    }
+    case 'naradi': {
+      // bedna na nářadí: grey-green toolbox with a handle and a pair of pliers on top
+      r(ctx, x - 9, y - 14, 18, 12, '#5e6e5a');
+      r(ctx, x - 9, y - 14, 18, 3, '#4a5a46');
+      r(ctx, x - 3, y - 19, 6, 1, '#3a3f3a');
+      r(ctx, x - 2, y - 18, 4, 4, '#3a3f3a');
+      line(ctx, x - 6, y - 15, x + 2, y - 20, '#9aa3ac');
+      line(ctx, x - 2, y - 20, x + 6, y - 15, '#9aa3ac');
+      r(ctx, x - 7, y - 16, 2, 2, '#c9a36b');
+      r(ctx, x + 5, y - 16, 2, 2, '#c9a36b');
+      top = y - 20;
+      break;
+    }
+    case 'lekarnicka': {
+      // lékárnička: white wall box with a red cross
+      r(ctx, x - 8, y - 22, 16, 16, '#d8d8d0');
+      r(ctx, x - 7, y - 21, 14, 14, '#f4f4ec');
+      r(ctx, x - 2, y - 18, 4, 10, '#d23c3c');
+      r(ctx, x - 5, y - 15, 10, 4, '#d23c3c');
+      r(ctx, x - 7, y - 8, 14, 2, '#b8b8b0');
+      top = y - 22;
+      break;
+    }
     case 'kartoteka':
       r(ctx, x - 8, y - 24, 16, 24, '#6e7780');
       for (let i = 0; i < 3; i++) {

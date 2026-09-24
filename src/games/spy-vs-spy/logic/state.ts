@@ -10,7 +10,10 @@ export type DoorTrapKind = 'elektrina' | 'pistole';
 export type TrapKind = FurnitureTrapKind | DoorTrapKind | 'casovana';
 export type FurnitureKind =
   | 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak'
-  | 'kartoteka' | 'televize' | 'globus' | 'lednice' | 'radio' | 'kvetina' | 'krb';
+  | 'kartoteka' | 'televize' | 'globus' | 'lednice' | 'radio' | 'kvetina' | 'krb'
+  | 'hasicak' | 'naradi' | 'lekarnicka';
+/** Furniture kinds that are always an infinite source of exactly one remedy (never ordinary theme pool pieces). */
+export type FixtureKind = 'vesak' | 'hasicak' | 'naradi' | 'lekarnicka';
 export type DeathCause = TrapKind | 'fight';
 /** Visual theme of a room: wall colour, floor style and the furniture pool. */
 export type RoomTheme =
@@ -23,7 +26,16 @@ export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pis
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
   'kartoteka', 'televize', 'globus', 'lednice', 'radio', 'kvetina', 'krb',
+  'hasicak', 'naradi', 'lekarnicka',
 ];
+export const FIXTURE_KINDS: readonly FixtureKind[] = ['vesak', 'hasicak', 'naradi', 'lekarnicka'];
+/** A fixture's kind always means its remedy; set on `Furniture.source` for every fixture and only for fixtures. */
+export const FIXTURE_REMEDY: Readonly<Record<FixtureKind, RemedyKind>> = {
+  vesak: 'destnik',
+  hasicak: 'voda',
+  naradi: 'kleste',
+  lekarnicka: 'nuzky',
+};
 /** Wall decorations: purely visual, never searchable. */
 export type DecorKind =
   | 'plakat_psst' | 'plakat_mapa' | 'plakat_tajne' | 'plakat_spion' | 'portret' | 'vlajka' | 'hodiny' | 'okno';

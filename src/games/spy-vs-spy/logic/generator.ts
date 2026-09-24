@@ -2,8 +2,8 @@ import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
 import { RULES } from './rules';
 import { THEME_FURNITURE, assignThemes, decorate } from './themes';
 import {
-  DIRS, NO_INPUT, OPPOSITE, REMEDIES, SECRETS, neighbor,
-  type Dir, type EmbassySize, type GameState, type PlayerId, type Room, type Spy,
+  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, NO_INPUT, OPPOSITE, SECRETS, neighbor,
+  type Dir, type EmbassySize, type FixtureKind, type Furniture, type GameState, type PlayerId, type Room, type Spy,
 } from './state';
 
 const LOOKS_SALT = 0x5eed7e3a;
@@ -36,9 +36,10 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
       });
     }
   }
-  // 4 remedy sources + 4 secrets + kufrik need 9 distinct furniture pieces.
-  if (rooms.length * RULES.furniturePerRoom.min < 9) {
-    throw new Error(`embassy ${size} too small: needs room for 9 hidden things`);
+  // Fixtures (4 kinds x fixtureCount) + 4 secrets + kufrik all need distinct furniture pieces.
+  const neededPieces = FIXTURE_KINDS.length * fixtureCount(rooms.length) + SECRETS.length + 1;
+  if (rooms.length * RULES.furniturePerRoom.min < neededPieces) {
+    throw new Error(`embassy ${size} too small: needs room for ${neededPieces} hidden things`);
   }
   const last = rooms.length - 1;
   const state: GameState = {
@@ -48,6 +49,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
   };
   carveDoors(state);
   placeFurniture(state);
+  placeFixtures(state);
   placeExit(state);
   placeThings(state);
   for (const room of rooms) decorate(room, room.furniture.map((id) => state.furniture[id]), looks);
@@ -110,6 +112,45 @@ function placeFurniture(state: GameState): void {
   }
 }
 
+/** Fixtures per kind: 2 for a small embassy, growing with the room count. */
+function fixtureCount(roomCount: number): number {
+  return Math.max(2, Math.ceil(roomCount / 5));
+}
+
+function isFixture(f: Furniture): boolean {
+  return f.source !== null;
+}
+
+/**
+ * Converts randomly chosen ordinary furniture pieces into fixtures: an infinite source of one
+ * remedy, distinct rooms per kind where possible. Runs on the gameplay RNG, after ordinary
+ * furniture is placed and before secrets/kufrik are hidden (so a fixture never gets one).
+ */
+function placeFixtures(state: GameState): void {
+  const count = fixtureCount(state.rooms.length);
+  for (const kind of FIXTURE_KINDS) placeFixtureKind(state, kind, count);
+}
+
+function placeFixtureKind(state: GameState, kind: FixtureKind, count: number): void {
+  const remedy = FIXTURE_REMEDY[kind];
+  const roomOrder = shuffle(state.rng, state.rooms.map((room) => room.id));
+  const usedRooms = new Set<number>();
+  let placed = 0;
+  for (const allowRepeat of [false, true]) {
+    for (const roomId of roomOrder) {
+      if (placed >= count) return;
+      if (!allowRepeat && usedRooms.has(roomId)) continue;
+      const candidates = state.rooms[roomId].furniture.filter((id) => !isFixture(state.furniture[id]));
+      if (candidates.length === 0) continue;
+      const f = state.furniture[pick(state.rng, candidates)];
+      f.kind = kind;
+      f.source = remedy;
+      usedRooms.add(roomId);
+      placed++;
+    }
+  }
+}
+
 function placeExit(state: GameState): void {
   const starts = [0, state.rooms.length - 1];
   const candidates = state.rooms.filter((r) => !starts.includes(r.id) && outwardDirs(state, r.id).length > 0);
@@ -118,12 +159,10 @@ function placeExit(state: GameState): void {
 }
 
 function placeThings(state: GameState): void {
-  const ids = shuffle(state.rng, state.furniture.map((f) => f.id));
-  REMEDIES.forEach((remedy, i) => {
-    state.furniture[ids[i]].source = remedy;
-  });
+  const eligible = state.furniture.filter((f) => !isFixture(f)).map((f) => f.id);
+  const ids = shuffle(state.rng, eligible);
   SECRETS.forEach((secret, i) => {
-    state.furniture[ids[4 + i]].hidden = { kind: 'secret', secret };
+    state.furniture[ids[i]].hidden = { kind: 'secret', secret };
   });
-  state.furniture[ids[8]].hidden = { kind: 'kufrik', contents: [] };
+  state.furniture[ids[SECRETS.length]].hidden = { kind: 'kufrik', contents: [] };
 }

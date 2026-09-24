@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
 import {
-  DIRS, FURNITURE_KINDS, ROOM_THEMES, neighbor, type EmbassySize, type GameState,
+  DIRS, FIXTURE_KINDS, FURNITURE_KINDS, ROOM_THEMES, neighbor, type EmbassySize, type GameState,
 } from '../../src/games/spy-vs-spy/logic/state';
 import { cs } from '../../src/shared/i18n/cs';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
@@ -34,15 +34,24 @@ describe('room themes', () => {
     });
   });
 
-  it('picks every furniture piece from its room theme pool', () => {
+  it('picks every non-fixture furniture piece from its room theme pool', () => {
     forAll((s) => {
-      for (const f of s.furniture) expect(THEME_FURNITURE[s.rooms[f.room].theme]).toContain(f.kind);
+      for (const f of s.furniture) {
+        if (f.source !== null) continue; // fixtures replace an ordinary piece's kind
+        expect(THEME_FURNITURE[s.rooms[f.room].theme]).toContain(f.kind);
+      }
     });
   });
 
-  it('covers every furniture kind across the theme pools (a forgotten kind fails loudly)', () => {
-    const pooled = new Set(Object.values(THEME_FURNITURE).flat());
+  it('covers every furniture kind across the theme pools plus the fixture kinds (a forgotten kind fails loudly)', () => {
+    const pooled = new Set([...Object.values(THEME_FURNITURE).flat(), ...FIXTURE_KINDS]);
     expect([...pooled].sort()).toEqual([...FURNITURE_KINDS].sort());
+  });
+
+  it('never puts a fixture kind in an ordinary theme pool', () => {
+    for (const pool of Object.values(THEME_FURNITURE)) {
+      for (const kind of FIXTURE_KINDS) expect(pool).not.toContain(kind);
+    }
   });
 
   it('never gives two neighbouring rooms the same theme', () => {

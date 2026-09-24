@@ -10,7 +10,7 @@ export const THEME_FURNITURE: Readonly<Record<RoomTheme, readonly FurnitureKind[
   knihovna: ['knihovna', 'globus', 'lampa', 'pohovka'],
   salonek: ['pohovka', 'krb', 'obraz', 'kvetina'],
   archiv: ['kartoteka', 'skrin', 'trezor', 'knihovna'],
-  konferencni: ['stul', 'televize', 'vesak', 'kvetina'],
+  konferencni: ['stul', 'televize', 'kvetina'],
   kuchynka: ['lednice', 'stul', 'kvetina', 'skrin'],
   radiostanice: ['radio', 'stul', 'trezor', 'kartoteka'],
   pracovna: ['stul', 'trezor', 'globus', 'obraz'],
