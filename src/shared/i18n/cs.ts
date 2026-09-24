@@ -8,6 +8,7 @@ export const cs = {
     clockLabel: 'Čas na hráče',
     clockOption: (seconds: number) => `${seconds / 60} min`,
     mute: 'Ztlumit zvuk',
+    music: 'Hudba',
     waiting: 'čeká…',
     joinHint: 'Každý hráč stiskne svou Akci (F / Enter / A na gamepadu)',
     startHint: 'Oba připojeni — stiskni Akci pro start',
