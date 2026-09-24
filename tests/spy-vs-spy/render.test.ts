@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { shade } from '../../src/games/spy-vs-spy/render/draw';
 import { project } from '../../src/games/spy-vs-spy/render/geometry';
+import { formatClock } from '../../src/games/spy-vs-spy/render/hud';
 import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_PALETTES } from '../../src/games/spy-vs-spy/render/sprite-data';
 
 describe('project', () => {
@@ -42,5 +43,14 @@ describe('sprite data', () => {
       expect(rows).toHaveLength(8);
       expect(rows[0].length).toBe(8);
     }
+  });
+});
+
+describe('formatClock', () => {
+  it('shows m:ss rounded up', () => {
+    expect(formatClock(480)).toBe('8:00');
+    expect(formatClock(59.2)).toBe('1:00');
+    expect(formatClock(58.9)).toBe('0:59');
+    expect(formatClock(0)).toBe('0:00');
   });
 });
