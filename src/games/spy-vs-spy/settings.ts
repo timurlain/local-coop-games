@@ -7,6 +7,8 @@ export interface Settings {
   muted: boolean;
   /** „Skrýt letiště" (spec §4) */
   hideAirport: boolean;
+  /** Background music (round-3 spec §1); independent from `muted`, which covers the effects only. Default on. */
+  music: boolean;
 }
 
 /** Round-2 embassy sizes → the level with the same grid (mala 3×3, stredni 4×3, velka 5×4). */
@@ -25,7 +27,7 @@ export function migrateSettings(raw: unknown): Settings {
   if (isLevel(o.level)) level = o.level;
   else if (typeof o.size === 'string' && o.size in LEVEL_OF_SIZE) level = LEVEL_OF_SIZE[o.size];
   else if ('size' in o || 'clock' in o) level = LEGACY_LEVEL;
-  return { level, muted: o.muted === true, hideAirport: o.hideAirport === true };
+  return { level, muted: o.muted === true, hideAirport: o.hideAirport === true, music: o.music !== false };
 }
 
 export interface LevelStats {

@@ -101,24 +101,37 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   },
 };
 
+let shared: AudioContext | null = null;
+
+/** The one AudioContext shared by effects and music; null until `unlockAudio()` ran (or without audio support). */
+export function getAudioContext(): AudioContext | null {
+  return shared;
+}
+
+/** Create/resume the shared AudioContext. Call from a user gesture (browser autoplay policy). */
+export function unlockAudio(): AudioContext | null {
+  if (shared === null) {
+    try {
+      shared = new AudioContext();
+    } catch {
+      return null; // no audio support: everything stays silent
+    }
+  }
+  void shared.resume();
+  return shared;
+}
+
 /** Synthesized sound effects. Call `unlock()` from a user gesture (browser autoplay policy). */
 export class Sfx {
-  private ctx: AudioContext | null = null;
   muted = false;
 
   unlock(): void {
-    if (this.ctx === null) {
-      try {
-        this.ctx = new AudioContext();
-      } catch {
-        return; // no audio support: play() stays silent
-      }
-    }
-    void this.ctx.resume();
+    unlockAudio();
   }
 
   play(name: SfxName): void {
-    if (this.muted || this.ctx === null) return;
-    RECIPES[name](this.ctx);
+    const ctx = getAudioContext();
+    if (this.muted || ctx === null) return;
+    RECIPES[name](ctx);
   }
 }

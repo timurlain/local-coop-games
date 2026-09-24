@@ -8,6 +8,7 @@ export const cs = {
     levelReadout: (rooms: number, traps: number, minutes: number) => `${rooms} místností · ${traps} pastí · ${minutes} min`,
     hideAirport: 'Skrýt letiště',
     mute: 'Ztlumit zvuk',
+    music: 'Hudba',
     waiting: 'čeká…',
     joinHint: 'Každý hráč stiskne svou Akci (F / Enter / A na gamepadu)',
     startHint: 'Oba připojeni — stiskni Akci pro start',

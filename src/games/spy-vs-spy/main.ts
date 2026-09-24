@@ -1,8 +1,9 @@
-import { Sfx, type SfxName } from '../../shared/audio';
+import { Sfx, getAudioContext, type SfxName } from '../../shared/audio';
 import { cs } from '../../shared/i18n/cs';
 import type { PlayerActions } from '../../shared/input/actions';
 import { InputManager, type DeviceId } from '../../shared/input/manager';
 import { startLoop } from '../../shared/loop';
+import { Music } from '../../shared/music';
 import { randomSeed } from '../../shared/rng';
 import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
@@ -25,14 +26,18 @@ type Screen = 'menu' | 'title' | 'play' | 'pause' | 'victory' | 'result';
 const T = cs.spy;
 const SETTINGS_KEY = 'spy-vs-spy/settings';
 const STEP_INTERVAL = 0.3;
+/** The music speeds up while either clock is under a minute. */
+const HURRY_TEMPO = 1.25;
 
 const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
 const canvas = $<HTMLCanvasElement>('game');
 const ctx = canvas.getContext('2d')!;
 const input = new InputManager(window);
 const sfx = new Sfx();
+const music = new Music(getAudioContext);
 const settings = migrateSettings(loadJson<Record<string, unknown>>(SETTINGS_KEY, {}));
 sfx.muted = settings.muted;
+music.muted = !settings.music;
 const urlSeed = parseSeed(new URLSearchParams(location.search).get('seed'));
 
 let screen: Screen = 'menu';
@@ -72,6 +77,7 @@ function setupMenu(): void {
   $('level-label').textContent = T.levelLabel;
   $('hide-airport-label').textContent = T.hideAirport;
   $('mute-label').textContent = T.mute;
+  $('music-label').textContent = T.music;
   $('controls').textContent = T.controls;
   $('back').textContent = T.back;
   $('toosmall-title').textContent = T.tooSmall;
@@ -101,6 +107,14 @@ function setupMenu(): void {
   mute.onchange = () => {
     settings.muted = mute.checked;
     sfx.muted = mute.checked;
+    saveJson(SETTINGS_KEY, settings);
+  };
+
+  const musicBox = $<HTMLInputElement>('music');
+  musicBox.checked = settings.music;
+  musicBox.onchange = () => {
+    settings.music = musicBox.checked;
+    music.muted = !musicBox.checked;
     saveJson(SETTINGS_KEY, settings);
   };
   renderSlots();
@@ -150,9 +164,11 @@ function beginPlay(): void {
     spy.prev = toSpyInput(input.get(slots[i]!));
   });
   screen = 'play';
+  music.start();
 }
 
 function toMenu(): void {
+  music.stop();
   screen = 'menu';
   state = null;
   slots = [null, null];
@@ -161,6 +177,7 @@ function toMenu(): void {
 }
 
 function pause(reason: string): void {
+  music.pause();
   screen = 'pause';
   $('pause-title').textContent = reason;
   $('pause-hint').textContent = T.resumeHint;
@@ -170,6 +187,7 @@ function pause(reason: string): void {
 /** Result screen (spec §7): both spies' score and rank, winner first — Bílý then Černý on a draw. */
 function finish(s: GameState): void {
   const r = s.result!;
+  music.stop();
   $('result-title').textContent = r.kind === 'win' ? T.winner(r.winner === 0 ? T.white : T.black) : T.draw;
   $('result-time').textContent = r.kind === 'win' ? T.timeLeft(formatClock(s.spies[r.winner].clock)) : '';
   $('result-host').textContent = T.titleCard(s.host, s.year);
@@ -222,6 +240,7 @@ function update(dt: number): void {
       if (slotPressed('pause') && slotDevices().every((d) => input.isConnected(d))) {
         screen = 'play';
         show(null);
+        music.resume();
       } else if (input.keyPressed('KeyM')) {
         toMenu();
       }
@@ -288,6 +307,7 @@ function updatePlay(dt: number): void {
   }
   spawnEffects(effects, s, events, now);
   for (const spy of s.spies) lowTimeBeep(spy);
+  music.setTempo(s.spies.some((spy) => spy.clock < LOW_TIME) ? HURRY_TEMPO : 1);
   for (const spy of s.spies) {
     if (spy.mode !== 'normal') continue;
     if (posKey(spy) !== before[spy.id]) {
@@ -304,6 +324,7 @@ function updatePlay(dt: number): void {
     if (s.result.kind === 'win') {
       screen = 'victory';
       victoryT = 0;
+      music.stop();
     } else {
       finish(s);
     }
