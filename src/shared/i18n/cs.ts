@@ -28,6 +28,8 @@ export const cs = {
     tooSmall: 'Zvětši okno',
     out: 'Došel čas',
     map: 'Mapa',
+    /** merged view (spec §2): the dark half of the spy who entered a shared room later */
+    duel: 'SOUBOJ',
     device: { traps: 'PASTI', map: 'MAPA', remedy: 'OCHRANA', secrets: 'TAJNÉ' },
     things: {
       klic: 'Klíč',

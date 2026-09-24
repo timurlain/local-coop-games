@@ -180,6 +180,8 @@ export interface Spy {
   kickTimer: number;
   /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */
   doorOpening: string | null;
+  /** `GameState.tick` when the spy entered its current room: door pass, match start (same for both) or respawn (spec §2) */
+  enteredAt: number;
   visited: boolean[];
   /** internal doors passed, most recent last, at most `RULES.trailLength`; kept across death (spec §9) */
   trail: Dir[];

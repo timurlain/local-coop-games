@@ -63,6 +63,7 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): b
 
   const next = neighbor(state, spy.room, dir)!;
   spy.room = next;
+  spy.enteredAt = state.tick;
   spy.visited[next] = true;
   recordTrail(spy.trail, dir);
   switch (dir) {

@@ -19,7 +19,7 @@ export function createSpy(
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
     menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...stock },
     swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, kickTimer: 0, doorOpening: null,
-    visited, trail: [], prev: { ...NO_INPUT },
+    enteredAt: 0, visited, trail: [], prev: { ...NO_INPUT },
   };
 }
 
@@ -185,7 +185,7 @@ function placeExit(state: GameState): void {
 /**
  * Both spies start in the same room, chosen after the exit among rooms that are not the exit
  * room (spec §2). Bílý (0) at x=40, Černý (1) at x=160 — already set by `createSpy` — facing
- * each other, z=20; the room counts as visited for both.
+ * each other, z=20; the room counts as visited for both, entered at the same tick.
  */
 function placeSpawn(state: GameState): void {
   const candidates = state.rooms.filter((r) => r.exit === null).map((r) => r.id);
@@ -194,6 +194,7 @@ function placeSpawn(state: GameState): void {
     spy.room = room;
     spy.visited.fill(false);
     spy.visited[room] = true;
+    spy.enteredAt = state.tick; // same for both: the merged view (spec §2) breaks the tie
   }
 }
 

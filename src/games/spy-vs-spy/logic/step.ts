@@ -47,7 +47,7 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     updateHealthRegen(spy, dt);
     switch (spy.mode) {
       case 'dead':
-        updateDead(spy, dt, events);
+        updateDead(state, spy, dt, events);
         break;
       case 'searching':
         updateSearching(state, spy, dt, events);

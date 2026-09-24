@@ -90,7 +90,7 @@ export function nearestFurniture(
   return null;
 }
 
-export function updateDead(spy: Spy, dt: number, events: GameEvent[]): void {
+export function updateDead(state: GameState, spy: Spy, dt: number, events: GameEvent[]): void {
   spy.modeTimer -= dt;
   if (spy.modeTimer > 0) return;
   spy.mode = 'normal';
@@ -100,5 +100,6 @@ export function updateDead(spy: Spy, dt: number, events: GameEvent[]): void {
   spy.deathCause = null;
   spy.x = RULES.roomW / 2;
   spy.z = RULES.roomD / 2;
+  spy.enteredAt = state.tick;
   events.push({ type: 'respawn', spy: spy.id });
 }

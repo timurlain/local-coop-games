@@ -95,9 +95,9 @@ describe('updateDead', () => {
     spy.health = 1;
     kill(s, spy, 'fight', []);
     const ev: GameEvent[] = [];
-    updateDead(spy, RULES.respawnTime - 0.5, ev);
+    updateDead(s, spy, RULES.respawnTime - 0.5, ev);
     expect(spy.mode).toBe('dead');
-    updateDead(spy, 0.5, ev);
+    updateDead(s, spy, 0.5, ev);
     expect(spy.mode).toBe('normal');
     expect(spy.room).toBe(4);
     expect(spy.x).toBe(RULES.roomW / 2);
