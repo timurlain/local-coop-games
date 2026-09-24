@@ -68,7 +68,7 @@ Base: branch `feat/round-2`. Extends the v1 and round-2 specs; where this docume
 
 ## 9. Breadcrumbs and the airport guard
 - **Breadcrumbs**: each spy keeps its last up to 9 door moves; the under-frame strip shows up to 9 small arrows pointing **the way back** (reverse direction of each move, most recent first). Hidden on levels 7–8. Reset on respawn? No — keep them (the original shows the path back to where you came from).
-- **Guard**: opening the exit without the full kufřík (or while the airport is hidden for that spy) makes an airport **guard** appear in the doorway and **kick the spy back** 30 logic units into the room (0.8 s animation: guard in uniform and cap, a boot; spy tumbles), event `bounced` {spy}, a "boot" sound; replaces the „Zamčeno" message. No time penalty.
+- **Guard**: opening the exit without the full kufřík makes an airport **guard** appear in the doorway and **kick the spy back** 30 logic units into the room (0.8 s animation: guard in uniform and cap, a boot; spy tumbles), event `bounced` {spy}, a "boot" sound; replaces the „Zamčeno" message. No time penalty. A hidden airport (§4) is not a door at all for that spy (behaves as a wall), so no guard appears there — a guard would give its position away.
 
 ## 10. Testing
 - Logic (Vitest): level table → generator sizes/clock/stock for every level with all guarantees; hidden airport visibility per spy; door open/timer/close, pass only when open, trap triggers on opening only, bump event; bash vs jab damage/blocking/ducking at strike time; score for every row + rank thresholds + lastHolder steals; breadcrumbs (cap 9, reverse dirs) and hidden on 7–8; guard bounce distance and event; enteredAt on entry/start/respawn.
