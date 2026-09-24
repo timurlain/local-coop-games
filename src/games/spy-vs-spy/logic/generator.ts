@@ -1,6 +1,6 @@
 import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
 import { RULES } from './rules';
-import { THEME_FURNITURE, assignThemes, decorate } from './themes';
+import { THEME_FURNITURE, assignThemes, decorate, pickHost } from './themes';
 import {
   DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, NO_INPUT, OPPOSITE, SECRETS, neighbor,
   type Dir, type EmbassySize, type FixtureKind, type Furniture, type GameState, type PlayerId, type Room, type Spy,
@@ -26,6 +26,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
   // Looks come from their own stream so the gameplay stream (doors, slots, hidden things) is untouched.
   const looks = makeRng((seed ^ LOOKS_SALT) >>> 0);
   const themes = assignThemes({ cols, rows }, looks);
+  const { host, year } = pickHost(looks);
   const rooms: Room[] = [];
   for (let gy = 0; gy < rows; gy++) {
     for (let gx = 0; gx < cols; gx++) {
@@ -42,7 +43,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
     throw new Error(`embassy ${size} too small: needs room for ${neededPieces} hidden things`);
   }
   const state: GameState = {
-    seed, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
+    seed, host, year, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
     spies: [createSpy(0, 0, 40, rooms.length, clock), createSpy(1, 0, 160, rooms.length, clock)],
     rng: makeRng(seed), time: 0, tick: 0, result: null,
   };
@@ -52,7 +53,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
   placeExit(state);
   placeSpawn(state);
   placeThings(state);
-  for (const room of rooms) decorate(room, room.furniture.map((id) => state.furniture[id]), looks);
+  for (const room of rooms) decorate(room, room.furniture.map((id) => state.furniture[id]), looks, host);
   return state;
 }
 

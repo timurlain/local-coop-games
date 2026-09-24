@@ -16,7 +16,7 @@ const LOOKS: Readonly<Record<RoomTheme, ThemeLook>> = {
   archiv: { wall: '#9a7a36', floor: 'tiles', base: '#8a8478', accent: '#6a655c' },
   konferencni: { wall: '#35598f', floor: 'carpet', base: '#4a4a58', accent: '#8a8aa0' },
   kuchynka: { wall: '#c2b489', floor: 'checker', base: '#e6e2d6', accent: '#2e2e36' },
-  radiostanice: { wall: '#747244', floor: 'tiles', base: '#5e6258', accent: '#474a42' },
+  sifrovna: { wall: '#747244', floor: 'tiles', base: '#5e6258', accent: '#474a42' },
   pracovna: { wall: '#5e3f7e', floor: 'carpet', base: '#2f4a3a', accent: '#c9a36b' },
 };
 const BG = '#101018';

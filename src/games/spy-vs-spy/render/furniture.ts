@@ -125,7 +125,7 @@ function drawPiece(ctx: Ctx, f: Furniture, x: number, y: number, highlight: bool
       }
       top = y - 24;
       break;
-    case 'televize':
+    case 'gramofon':
       r(ctx, x - 9, y - 10, 18, 6, '#6b4220');
       r(ctx, x - 8, y - 4, 2, 4, '#4a2e16');
       r(ctx, x + 6, y - 4, 2, 4, '#4a2e16');
@@ -150,7 +150,7 @@ function drawPiece(ctx: Ctx, f: Furniture, x: number, y: number, highlight: bool
       r(ctx, x - 7, y - 12, 4, 1, '#c9a36b');
       top = y - 25;
       break;
-    case 'lednice':
+    case 'kredenc':
       r(ctx, x - 8, y - 30, 16, 30, '#b8bcc0');
       r(ctx, x - 7, y - 29, 14, 28, '#eceff1');
       r(ctx, x - 7, y - 19, 14, 1, '#b8bcc0');
@@ -172,6 +172,15 @@ function drawPiece(ctx: Ctx, f: Furniture, x: number, y: number, highlight: bool
       line(ctx, x + 7.5, y - 20, x + 9.5, y - 34, '#9a9a9a');
       if (Math.floor(now * 2) % 2 === 0) r(ctx, x + 5, y - 11, 2, 2, '#ff5050');
       top = y - 22;
+      break;
+    case 'telefon':
+      r(ctx, x - 6, y - 12, 12, 2, '#6b4220');
+      r(ctx, x - 5, y - 10, 2, 10, '#5a3a1e');
+      r(ctx, x + 3, y - 10, 2, 10, '#5a3a1e');
+      r(ctx, x - 1, y - 22, 2, 10, '#1a1a1a');
+      r(ctx, x - 3, y - 14, 6, 2, '#1a1a1a');
+      r(ctx, x - 2, y - 24, 4, 2, '#1a1a1a');
+      top = y - 24;
       break;
     case 'kvetina':
       r(ctx, x - 5, y - 8, 10, 2, '#9c4a22');

@@ -1,6 +1,7 @@
-import type { RoomDecor } from '../logic/state';
+import type { HostCountry, RoomDecor } from '../logic/state';
+import { drawFlag } from './flags';
 import { DECOR_W } from '../logic/themes';
-import { disc, line, poly, r, text, withScale } from './draw';
+import { disc, line, r, text, withScale } from './draw';
 import { VIEW, wallX } from './geometry';
 
 type Ctx = CanvasRenderingContext2D;
@@ -12,6 +13,10 @@ const H = 10;
 /** One wall decoration, centred at `d.x` on the back wall. Visual only. */
 export function drawDecor(ctx: Ctx, d: RoomDecor, now: number): void {
   const cx = wallX(d.x);
+  if (d.kind.startsWith('vlajka_')) {
+    drawFlagOnPole(ctx, d.kind.slice(7) as HostCountry, cx, now);
+    return;
+  }
   withScale(cx, TOP, VIEW.scale, () => drawPicture(ctx, d, cx, now));
 }
 
@@ -67,16 +72,15 @@ function drawPicture(ctx: Ctx, d: RoomDecor, cx: number, now: number): void {
       r(ctx, x0 + 3, y0, 1, 1, '#f0d070');
       r(ctx, x0 + 16, y0 + H - 1, 1, 1, '#a07a20');
       break;
-    case 'vlajka': {
-      r(ctx, x0 + 3, y0, 1, H, '#9a9a9a');
-      r(ctx, x0 + 3, y0 - 1, 1, 1, '#e8c547');
-      const wave = Math.floor(now * 3) % 2;
-      r(ctx, x0 + 4, y0 + 1, 13, 3, '#f4f4f4');
-      r(ctx, x0 + 4, y0 + 4, 13, 3, '#d23c3c');
-      poly(ctx, [[x0 + 4, y0 + 1], [x0 + 10, y0 + 4], [x0 + 4, y0 + 7]], '#2a4fa0');
-      r(ctx, x0 + 16, y0 + 1 + wave, 1, 6, '#101018');
+    case 'telegram':
+      // telegram form pinned to a cork board
+      r(ctx, x0 + 1, y0, 18, H, '#5a3a1e');
+      r(ctx, x0 + 2, y0 + 1, 16, H - 2, '#b0844e');
+      r(ctx, x0 + 5, y0 + 2, 11, 7, '#efe4c4');
+      r(ctx, x0 + 5, y0 + 2, 11, 1, '#c9a36b');
+      for (const ly of [4, 6, 7]) r(ctx, x0 + 6, y0 + ly, ly === 7 ? 6 : 9, 1, '#6a6a6a');
+      r(ctx, x0 + 10, y0 + 1, 1, 1, '#d23c3c');
       break;
-    }
     case 'hodiny': {
       const cy = y0 + 5;
       disc(ctx, cx, cy, 5, '#3b2618');
@@ -104,4 +108,14 @@ function drawPicture(ctx: Ctx, d: RoomDecor, cx: number, now: number): void {
       r(ctx, x0 + 2, y0 + 5, 16, 1, '#e0dcd4');
       break;
   }
+}
+
+/** A small flag on a wall-mounted pole with a gilt finial, drawn at native pixels so the bands stay exact. */
+function drawFlagOnPole(ctx: Ctx, host: HostCountry, cx: number, now: number): void {
+  const px = Math.round(cx - 6);
+  const y = Math.round(TOP);
+  r(ctx, px, y + 1, 1, 9, '#6b4a20');
+  r(ctx, px - 1, y, 3, 1, '#e8c547');
+  r(ctx, px - 1, y + 9, 3, 1, '#8a6a2a');
+  drawFlag(ctx, host, px + 1, y + 1, 12, 6, Math.floor(now * 3) % 2);
 }

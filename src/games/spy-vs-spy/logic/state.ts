@@ -10,14 +10,20 @@ export type DoorTrapKind = 'elektrina' | 'pistole';
 export type TrapKind = FurnitureTrapKind | DoorTrapKind | 'casovana';
 export type FurnitureKind =
   | 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak'
-  | 'kartoteka' | 'televize' | 'globus' | 'lednice' | 'radio' | 'kvetina' | 'krb'
+  | 'kartoteka' | 'gramofon' | 'globus' | 'kredenc' | 'radio' | 'kvetina' | 'krb' | 'telefon'
   | 'hasicak' | 'naradi' | 'lekarnicka';
 /** Furniture kinds that are always an infinite source of exactly one remedy (never ordinary theme pool pieces). */
 export type FixtureKind = 'vesak' | 'hasicak' | 'naradi' | 'lekarnicka';
 export type DeathCause = TrapKind | 'fight';
 /** Visual theme of a room: wall colour, floor style and the furniture pool. */
 export type RoomTheme =
-  | 'kancelar' | 'knihovna' | 'salonek' | 'archiv' | 'konferencni' | 'kuchynka' | 'radiostanice' | 'pracovna';
+  | 'kancelar' | 'knihovna' | 'salonek' | 'archiv' | 'konferencni' | 'kuchynka' | 'sifrovna' | 'pracovna';
+/** Country whose Prague embassy the match is set in (1930s, interwar); visual only. */
+export type HostCountry = 'cs' | 'pl' | 'de' | 'hu' | 'at';
+export const HOSTS: readonly HostCountry[] = ['cs', 'pl', 'de', 'hu', 'at'];
+/** Range of the in-game year, inclusive. */
+export const YEAR_MIN = 1929;
+export const YEAR_MAX = 1937;
 
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
 export const SECRETS: readonly SecretKind[] = ['klic', 'penize', 'pas', 'plany'];
@@ -26,7 +32,7 @@ export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pis
 export const MENU_MAP = TRAPS.length;
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
-  'kartoteka', 'televize', 'globus', 'lednice', 'radio', 'kvetina', 'krb',
+  'kartoteka', 'gramofon', 'globus', 'kredenc', 'radio', 'kvetina', 'krb', 'telefon',
   'hasicak', 'naradi', 'lekarnicka',
 ];
 export const FIXTURE_KINDS: readonly FixtureKind[] = ['vesak', 'hasicak', 'naradi', 'lekarnicka'];
@@ -38,8 +44,10 @@ export const FIXTURE_REMEDY: Readonly<Record<FixtureKind, RemedyKind>> = {
   lekarnicka: 'nuzky',
 };
 /** Wall decorations: purely visual, never searchable. */
+export type FlagKind = `vlajka_${HostCountry}`;
 export type DecorKind =
-  | 'plakat_psst' | 'plakat_mapa' | 'plakat_tajne' | 'plakat_spion' | 'portret' | 'vlajka' | 'hodiny' | 'okno';
+  | 'plakat_psst' | 'plakat_mapa' | 'plakat_tajne' | 'plakat_spion' | 'portret' | 'hodiny' | 'okno' | 'telegram'
+  | FlagKind;
 
 export interface RoomDecor {
   kind: DecorKind;
@@ -48,7 +56,7 @@ export interface RoomDecor {
 }
 
 export const ROOM_THEMES: readonly RoomTheme[] = [
-  'kancelar', 'knihovna', 'salonek', 'archiv', 'konferencni', 'kuchynka', 'radiostanice', 'pracovna',
+  'kancelar', 'knihovna', 'salonek', 'archiv', 'konferencni', 'kuchynka', 'sifrovna', 'pracovna',
 ];
 export const OPPOSITE: Readonly<Record<Dir, Dir>> = { N: 'S', S: 'N', E: 'W', W: 'E' };
 /** Door-trap key used for the airport exit door. */
@@ -158,6 +166,10 @@ export type GameResult = { kind: 'win'; winner: PlayerId } | { kind: 'draw' };
 
 export interface GameState {
   seed: number;
+  /** visual only: whose embassy this is (from the looks stream) */
+  host: HostCountry;
+  /** visual only: the year shown on the title card, YEAR_MIN..YEAR_MAX */
+  year: number;
   cols: number;
   rows: number;
   rooms: Room[];
