@@ -105,4 +105,43 @@ describe('orchestration', () => {
     run(s, [IDLE, IDLE], 0.5, 0.25);
     expect(s.spies[1].mode).toBe('dead');
   });
+
+  it('a searching spy cannot keep a stale block from before the search started', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    const spy0 = atFurniture(s, 0, f);
+    // same room, out of fight range, to the right of spy 0
+    const spy1 = place(s, 1, 0, f.x + RULES.fightRangeX + 1, 0);
+    const holdAway = input({ action: true, moveX: -1 }); // away from spy1, who is to the right
+    step(s, [holdAway, IDLE], 1 / 60); // press: starts the hold
+    expect(spy0.blocking).toBe(true);
+    step(s, [holdAway, IDLE], RULES.hideHold); // holds long enough; empty hand falls back to a search
+    expect(spy0.mode).toBe('searching');
+    // spy 1 steps into range and swings while spy 0 is searching
+    spy1.x = f.x + 10;
+    const ev = step(s, [IDLE, input({ action: true })], 1 / 60);
+    expect(ev).toContainEqual({ type: 'hit', spy: 0 });
+    expect(ev).not.toContainEqual({ type: 'blocked', spy: 0 });
+  });
+});
+
+describe('fairness', () => {
+  it('alternates processing order each tick so neither spy always wins a simultaneous trade', () => {
+    function duel(burnIdleTick: boolean): ReturnType<typeof openGame> {
+      const s = openGame();
+      const a = place(s, 0, 4, 100, 20);
+      const b = place(s, 1, 4, 110, 20);
+      a.health = 1;
+      b.health = 1;
+      if (burnIdleTick) step(s, [IDLE, IDLE], 1 / 60);
+      const swing = input({ action: true });
+      step(s, [swing, swing], 1 / 60);
+      return s;
+    }
+    const game1 = duel(false);
+    const game2 = duel(true);
+    const survivor1 = game1.spies[0].mode === 'dead' ? 1 : 0;
+    const survivor2 = game2.spies[0].mode === 'dead' ? 1 : 0;
+    expect(survivor1).not.toBe(survivor2);
+  });
 });

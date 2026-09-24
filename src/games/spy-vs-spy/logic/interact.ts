@@ -60,6 +60,7 @@ function placeArmed(state: GameState, spy: Spy, events: GameEvent[]): void {
 
 export function startSearch(state: GameState, spy: Spy, f: Furniture, events: GameEvent[]): void {
   events.push({ type: 'searchStart', spy: spy.id });
+  spy.blocking = false;
   if (!triggerFurnitureTrap(state, spy, f, events)) return;
   spy.mode = 'searching';
   spy.modeTimer = RULES.searchTime;
