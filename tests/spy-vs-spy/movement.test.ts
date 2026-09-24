@@ -103,18 +103,18 @@ describe('doors', () => {
 // tests/spy-vs-spy/step.test.ts, describe('meeting: entering is judged at the end of the tick').
 
 describe('exit', () => {
-  it('stays locked without the full kufrik and says so once per second (once open)', () => {
+  it('without the full kufrik the guard kicks the spy back into the room (once open, spec §9)', () => {
     const s = openGame();
     const spy = place(s, 0, 2, 200, 20);
     openDoor(s, 0, 'E');
     spy.hand = kufrik('pas', 'klic', 'penize');
     const ev: GameEvent[] = [];
     updateMovement(s, spy, input({ moveX: 1 }), TICK, ev);
-    updateMovement(s, spy, input({ moveX: 1 }), TICK, ev);
     expect(spy.mode).toBe('normal');
     expect(spy.room).toBe(2);
-    expect(ev).toEqual([{ type: 'locked', spy: 0 }]);
-    expect(spy.lockedMsg).toBe(RULES.lockedMsgTime);
+    expect(spy.x).toBe(RULES.roomW - RULES.guardKick);
+    expect(ev).toEqual([{ type: 'bounced', spy: 0 }]);
+    expect(spy.kickTimer).toBe(RULES.guardKickTime);
   });
 
   it('lets the spy escape with all four secrets in the kufrik, once the exit is open', () => {

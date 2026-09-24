@@ -134,14 +134,14 @@ describe('closed doors (spec §5)', () => {
       expect(spy.mode).toBe('normal');
     });
 
-    it('still refuses to let a spy through without the full kufrik once open (spec §9 keeps this until the guard lands)', () => {
+    it('still refuses to let a spy through without the full kufrik once open: the guard kicks it back (spec §9)', () => {
       const s = openGame();
       const spy = place(s, 0, 2, 200, 20);
       run(s, [input({ action: true }), IDLE], OPENED); // opens it
       const ev = step(s, [input({ moveX: 1 }), IDLE], TICK);
       expect(spy.mode).toBe('normal');
       expect(spy.room).toBe(2);
-      expect(ev).toContainEqual({ type: 'locked', spy: 0 });
+      expect(ev).toContainEqual({ type: 'bounced', spy: 0 });
     });
 
     it('lets a spy with the full kufrik escape once the exit is open', () => {

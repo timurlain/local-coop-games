@@ -1,6 +1,8 @@
+import { RULES } from '../logic/rules';
 import type { GameEvent, GameState, PlayerId, Thing } from '../logic/state';
 import { r, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
+import { drawGuard } from './guard';
 import { SPY_H, type SpyFrame } from './sprite-data';
 import { drawIcon, handPoint, thingIcon } from './sprites';
 
@@ -13,9 +15,10 @@ export const EFFECT_TIME = 0.6;
  * Render-side feedback for a logic event (spec §7):
  * - `found` / `nothing`: a search outcome with / without a find;
  * - `hidden`, `swapped`, `stored`: hand ↔ furniture exchanges;
- * - `dropped`: the hand item flies into the furniture that received it; `poof`: it was lost (remedy).
+ * - `dropped`: the hand item flies into the furniture that received it; `poof`: it was lost (remedy);
+ * - `guard`: the airport guard in the exit doorway kicking a spy back (spec §9), for `RULES.guardKickTime`.
  */
-export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof';
+export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard';
 
 /** Pose the spy sprite shows while an effect runs (overrides search/fight/walk, not swing/block). */
 export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut'>;
@@ -79,6 +82,8 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
         fromSpy: room === state.spies[e.spy].room,
       };
     }
+    case 'bounced':
+      return { kind: 'guard', spy: e.spy, duration: RULES.guardKickTime };
     default:
       return null;
   }
@@ -115,6 +120,7 @@ function poseOf(e: Effect, now: number): EffectPose | null {
       return progress(e, now) < 0.5 ? 'hidePut' : 'liftFind';
     case 'dropped':
     case 'poof':
+    case 'guard':
       return null;
   }
 }
@@ -229,6 +235,11 @@ function drawEffect(ctx: Ctx, state: GameState, e: Effect, t: number): void {
       const h = hand(e, 'stand');
       if (t < 0.25) icon(ctx, e.thing, h.x, h.y);
       dust(ctx, h.x, h.y - 2, t, 6);
+      break;
+    }
+    case 'guard': {
+      const exit = state.rooms[e.room].exit;
+      if (exit !== null) drawGuard(ctx, exit, e.x, t * e.duration);
       break;
     }
   }

@@ -76,7 +76,7 @@ describe('hidden exit in logic', () => {
     expect(doorAt(s, spy)).toBe('E');
   });
 
-  it('blocks like a wall: no escape, no „Zamčeno", the spy stays in the room', () => {
+  it('blocks like a wall: no escape, no guard, the spy stays in the room', () => {
     const s = hiddenGame();
     const spy = place(s, 0, 2, 190, 20);
     const ev: GameEvent[] = [];
@@ -85,7 +85,7 @@ describe('hidden exit in logic', () => {
     expect(spy.room).toBe(2);
     expect(spy.x).toBe(RULES.roomW);
     expect(spy.mode).toBe('normal');
-    expect(spy.lockedMsg).toBe(0);
+    expect(spy.kickTimer).toBe(0);
   });
 
   it('blocks like a wall even with a partial kufrik', () => {
@@ -123,7 +123,7 @@ describe('hidden exit in logic', () => {
     openDoor(s, 0, 'E');
     const ev: GameEvent[] = [];
     updateMovement(s, spy, input({ moveX: 1 }), TICK, ev);
-    expect(ev).toEqual([{ type: 'locked', spy: 0 }]);
+    expect(ev).toEqual([{ type: 'bounced', spy: 0 }]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { RULES } from '../logic/rules';
 import { sameRoomOpponent } from '../logic/fight';
-import { isActive, type GameState, type Spy } from '../logic/state';
+import { isActive, type Dir, type GameState, type Spy } from '../logic/state';
 import { line, r, text } from './draw';
 import { project } from './geometry';
 import { SPY_H, SPY_W, type SpyFrame, type SpyPalette } from './sprite-data';
@@ -40,6 +40,11 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
     drawDeath(ctx, spy, sx, sy, now);
     return;
   }
+  const exit = state.rooms[spy.room].exit;
+  if (spy.kickTimer > 0 && exit !== null) {
+    drawTumble(ctx, spy, exit);
+    return;
+  }
   const moving = spy.mode === 'normal' && (movingUntil.get(spy.id) ?? 0) > now;
   const frame = pickFrame(spy, inFight(state, spy), moving, now, pose);
   const flip = spy.facing < 0;
@@ -76,6 +81,42 @@ export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: num
   if (spy.mode === 'searching') return digFrame(now);
   if (fighting) return 'fightStand';
   return moving ? walkFrame(now) : 'stand';
+}
+
+/** Share of the kick's flight spent rolling back from the doorway; the spy then sits there, indignant. */
+const ROLL_SHARE = 0.4;
+
+/**
+ * The kicked spy's tumble `elapsed` seconds after the guard's kick (spec §9): `back` is how much of the
+ * `RULES.guardKick` flight is still ahead of it (1 = still in the doorway, 0 = landed at its logic position) and
+ * `angle` the backward roll so far (radians, 0..2π, 0 once landed).
+ */
+export function tumble(elapsed: number): { back: number; angle: number } {
+  const u = elapsed / (RULES.guardKickTime * ROLL_SHARE);
+  if (u >= 1) return { back: 0, angle: 0 };
+  const k = Math.max(0, u);
+  return { back: 1 - k * (2 - k), angle: 2 * Math.PI * k };
+}
+
+const EXIT_STEP: Readonly<Record<Dir, readonly [number, number]>> = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
+
+/** A spy kicked back by the airport guard: rolls back from the exit, curled up, then lands with its hands up. */
+function drawTumble(ctx: Ctx, spy: Spy, exit: Dir): void {
+  const { back, angle } = tumble(RULES.guardKickTime - spy.kickTimer);
+  const [dx, dz] = EXIT_STEP[exit];
+  const { sx, sy } = project(spy.x + dx * back * RULES.guardKick, spy.z + dz * back * RULES.guardKick);
+  const flip = spy.facing < 0;
+  if (back === 0) {
+    drawSprite(ctx, spyImage(baseColor(spy), 'shrug'), sx, sy, flip);
+    return;
+  }
+  // roll away from the door: head first towards the room
+  const away = dx !== 0 ? -dx : -spy.facing;
+  ctx.save();
+  ctx.translate(sx, sy - SPY_H / 2);
+  ctx.rotate(away * angle);
+  drawSprite(ctx, spyImage(baseColor(spy), 'duck'), 0, SPY_H / 2, flip);
+  ctx.restore();
 }
 
 function drawDeath(ctx: Ctx, spy: Spy, sx: number, sy: number, now: number): void {

@@ -19,7 +19,7 @@ export function inFightRange(a: Spy, b: Spy): boolean {
 /** Holding the direction away from the opponent = block. */
 export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): void {
   const o = sameRoomOpponent(state, spy);
-  spy.blocking = o !== null && spy.mode === 'normal' && input.moveX !== 0 && input.moveX === -Math.sign(o.x - spy.x);
+  spy.blocking = o !== null && spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveX !== 0 && input.moveX === -Math.sign(o.x - spy.x);
 }
 
 /**
@@ -27,7 +27,7 @@ export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): voi
  * spy doesn't move that tick. Outside a shared room down still just walks towards the front.
  */
 export function updateDucking(state: GameState, spy: Spy, input: SpyInput): void {
-  spy.ducking = spy.mode === 'normal' && input.moveY === 1 && spy.attack === null && sharesRoom(state, spy);
+  spy.ducking = spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveY === 1 && spy.attack === null && sharesRoom(state, spy);
 }
 
 /**

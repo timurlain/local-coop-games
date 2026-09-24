@@ -2,7 +2,7 @@ export type SfxName =
   | 'join' | 'search' | 'found' | 'hide' | 'trapSet' | 'fail'
   | 'nothing' | 'thud' | 'swap' | 'clatter'
   | 'bomb' | 'zap' | 'boing' | 'shot'
-  | 'swing' | 'hit' | 'block' | 'door' | 'bump' | 'locked' | 'tick' | 'win' | 'draw'
+  | 'swing' | 'hit' | 'block' | 'door' | 'bump' | 'boot' | 'tick' | 'win' | 'draw'
   | 'step'
   | 'laugh' | 'mob'
   | 'lowtime';
@@ -81,7 +81,13 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   block: (c) => tone(c, { freq: 1200, dur: 0.05, type: 'triangle', vol: 0.15 }),
   door: (c) => { noise(c, { dur: 0.1, vol: 0.1, delay: 0.02, lowpass: 800 }); tone(c, { freq: 220, to: 180, dur: 0.08, type: 'triangle', vol: 0.12 }); },
   bump: (c) => tone(c, { freq: 110, to: 70, dur: 0.06, type: 'sine', vol: 0.08 }),
-  locked: (c) => { tone(c, { freq: 200, dur: 0.08 }); tone(c, { freq: 160, dur: 0.12, delay: 0.1 }); },
+  // a boot's thump, then a short indignant whistle (up, then down)
+  boot: (c) => {
+    tone(c, { freq: 150, to: 50, dur: 0.14, type: 'sine', vol: 0.45 });
+    noise(c, { dur: 0.07, vol: 0.25, lowpass: 700 });
+    tone(c, { freq: 1300, to: 2300, dur: 0.12, delay: 0.18, type: 'sine', vol: 0.1 });
+    tone(c, { freq: 2300, to: 1200, dur: 0.18, delay: 0.31, type: 'sine', vol: 0.1 });
+  },
   tick: (c) => tone(c, { freq: 1500, dur: 0.03, vol: 0.08 }),
   win: (c) => [523, 659, 784, 1047].forEach((f, i) => tone(c, { freq: f, dur: 0.18, delay: i * 0.15, vol: 0.2 })),
   draw: (c) => [392, 330, 262].forEach((f, i) => tone(c, { freq: f, dur: 0.25, delay: i * 0.2, vol: 0.2 })),

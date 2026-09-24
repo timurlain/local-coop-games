@@ -26,7 +26,6 @@ export const cs = {
     padLost: 'Ovladač odpojen',
     resumeHint: 'Esc / Start = pokračovat · M = menu',
     tooSmall: 'Zvětši okno',
-    locked: 'Zamčeno',
     out: 'Došel čas',
     map: 'Mapa',
     device: { traps: 'PASTI', map: 'MAPA', remedy: 'OCHRANA', secrets: 'TAJNÉ' },

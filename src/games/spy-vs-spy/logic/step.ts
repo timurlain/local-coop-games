@@ -44,7 +44,6 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     // the opponent's stance as last set; ducking is re-decided below only if the spy is free to.
     updateSwing(state, spy, dt, events);
     spy.ducking = false;
-    spy.lockedMsg = Math.max(0, spy.lockedMsg - dt);
     updateHealthRegen(spy, dt);
     switch (spy.mode) {
       case 'dead':
@@ -104,6 +103,7 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
+  spy.kickTimer = 0;
   cancelSwing(spy);
   cancelDoorOpening(state, spy);
   events.push({ type: 'timeout', spy: spy.id });
@@ -111,6 +111,14 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
 
 /** Returns true when the spy passed through an internal door into a new room this tick. */
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
+  // Kicked back by the airport guard (spec §9): tumbling, fully immobile — no movement, Akce or Trapulator.
+  if (spy.kickTimer > 0) {
+    spy.kickTimer = Math.max(0, spy.kickTimer - dt);
+    spy.menuOpen = false;
+    spy.mapOpen = false;
+    spy.holdTarget = null;
+    return false;
+  }
   // Opening a door (spec §5): the spy is fully immobile for the 0.3 s swing — no movement, no
   // Trapulator, no fighting — same idea as a search or a hide-hold taking over the tick.
   if (spy.doorOpening !== null) {

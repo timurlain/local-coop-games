@@ -18,7 +18,7 @@ export function createSpy(
     hand: null, clock, health: RULES.health, sinceHit: 0, score: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
     menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...stock },
-    swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, lockedMsg: 0, doorOpening: null,
+    swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, kickTimer: 0, doorOpening: null,
     visited, trail: [], prev: { ...NO_INPUT },
   };
 }

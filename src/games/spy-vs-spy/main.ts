@@ -374,7 +374,7 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'door': return 'door';
     case 'doorOpened': return 'door';
     case 'bump': return 'bump';
-    case 'locked': return 'locked';
+    case 'bounced': return 'boot';
     case 'tick': return 'tick';
     case 'explode': return 'bomb';
     case 'timeout': return 'fail';

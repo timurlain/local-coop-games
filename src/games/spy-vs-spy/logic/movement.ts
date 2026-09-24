@@ -52,10 +52,8 @@ function isFreshPush(spy: Spy, input: SpyInput, dir: Dir): boolean {
 function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): boolean {
   if (state.rooms[spy.room].exit === dir) {
     if (!hasAllSecrets(spy.hand)) {
-      if (spy.lockedMsg <= 0) {
-        spy.lockedMsg = RULES.lockedMsgTime;
-        events.push({ type: 'locked', spy: spy.id });
-      }
+      kickBack(spy, dir);
+      events.push({ type: 'bounced', spy: spy.id });
       return false;
     }
     spy.mode = 'escaped';
@@ -87,6 +85,21 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): b
   }
   events.push({ type: 'door', spy: spy.id });
   return true;
+}
+
+/** The airport guard (spec §9) kicks a spy without the full kufřík `RULES.guardKick` units back from the exit
+ *  at `dir`, into the room; it tumbles, immobile, for `RULES.guardKickTime`. No time penalty. */
+function kickBack(spy: Spy, dir: Dir): void {
+  const k = RULES.guardKick;
+  switch (dir) {
+    case 'N': spy.z += k; break;
+    case 'S': spy.z -= k; break;
+    case 'W': spy.x += k; break;
+    case 'E': spy.x -= k; break;
+  }
+  spy.x = clamp(spy.x, 0, RULES.roomW);
+  spy.z = clamp(spy.z, 0, RULES.roomD);
+  spy.kickTimer = RULES.guardKickTime;
 }
 
 /**

@@ -157,13 +157,13 @@ describe('orchestration', () => {
     expect(ev).toContainEqual({ type: 'respawn', spy: 0 });
   });
 
-  it('counts down swing cooldown and locked message', () => {
+  it('counts down swing cooldown and the guard kick', () => {
     const s = openGame();
     s.spies[0].swingCooldown = 0.4;
-    s.spies[0].lockedMsg = 1;
+    s.spies[0].kickTimer = 1;
     run(s, [IDLE, IDLE], 0.5, 0.25);
     expect(s.spies[0].swingCooldown).toBe(0);
-    expect(s.spies[0].lockedMsg).toBe(0.5);
+    expect(s.spies[0].kickTimer).toBe(0.5);
   });
 
   it('time bombs go off through step', () => {

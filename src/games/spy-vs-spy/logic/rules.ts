@@ -58,7 +58,10 @@ export const RULES = {
   jabDamage: 1,
   bashDamage: 2,
   knockback: 12,
-  lockedMsgTime: 1,
+  /** the airport guard (spec §9): how far he kicks a spy without the full kufřík back into the room, and how
+   *  long that spy tumbles, immobile */
+  guardKick: 30,
+  guardKickTime: 0.8,
   /** Akce at a closed door (spec §5): immobile while it swings open, then open for both spies. */
   doorOpenTime: 0.3,
   doorOpenDuration: 1.5,

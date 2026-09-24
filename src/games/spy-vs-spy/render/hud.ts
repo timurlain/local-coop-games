@@ -113,12 +113,8 @@ export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | n
   }
 }
 
-/** "Zamčeno" and the out-of-time veil, inside the room view. */
+/** The out-of-time veil, inside the room view. */
 export function drawMessages(ctx: Ctx, spy: Spy): void {
-  if (spy.lockedMsg > 0) {
-    r(ctx, VIEW.cx - 40, VIEW.top + 19, 80, 12, '#000000');
-    text(ctx, T.locked, VIEW.cx, VIEW.top + 28, '#ffffff', 8, 'center');
-  }
   if (spy.mode === 'out') {
     r(ctx, VIEW.left, VIEW.top, VIEW.right - VIEW.left, VIEW.bottom - VIEW.top, 'rgba(0,0,0,0.6)');
     text(ctx, T.out, VIEW.cx, VIEW.top + 39, '#ff5050', 12, 'center');

@@ -176,8 +176,8 @@ export interface Spy {
   blocking: boolean;
   /** holding down in a shared room while not swinging (spec §8): stops a head bash, can't move */
   ducking: boolean;
-  /** >0 while "Zamčeno" is shown */
-  lockedMsg: number;
+  /** seconds left of the airport guard's kick (spec §9): tumbling back, immobile; 0 = not kicked */
+  kickTimer: number;
   /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */
   doorOpening: string | null;
   visited: boolean[];
@@ -233,7 +233,8 @@ export type GameEvent =
   | { type: 'door'; spy: PlayerId }
   | { type: 'doorOpened'; spy: PlayerId; key: string }
   | { type: 'bump'; spy: PlayerId }
-  | { type: 'locked'; spy: PlayerId }
+  /** the airport guard kicked this spy back from the exit (spec §9) */
+  | { type: 'bounced'; spy: PlayerId }
   | { type: 'tick'; room: number }
   | { type: 'explode'; room: number }
   | { type: 'escaped'; spy: PlayerId }
