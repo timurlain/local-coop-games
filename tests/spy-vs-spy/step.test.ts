@@ -173,6 +173,21 @@ describe('meeting: shared room (spec §3)', () => {
     expect(spy.menuOpen).toBe(false);
   });
 
+  it('pressing the Trapulator in a shared room emits trapBlocked once per press', () => {
+    const s = openGame();
+    place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 130, 20);
+    const ev1 = step(s, [input({ trap: true }), IDLE], 1 / 60);
+    expect(ev1.filter((e) => e.type === 'trapBlocked')).toHaveLength(1);
+    // still held: no repeat
+    const ev2 = step(s, [input({ trap: true }), IDLE], 1 / 60);
+    expect(ev2.filter((e) => e.type === 'trapBlocked')).toHaveLength(0);
+    // release and press again: fires once more
+    step(s, [IDLE, IDLE], 1 / 60);
+    const ev3 = step(s, [input({ trap: true }), IDLE], 1 / 60);
+    expect(ev3.filter((e) => e.type === 'trapBlocked')).toHaveLength(1);
+  });
+
   it('the map cannot be opened while sharing a room (spec §3, §5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);

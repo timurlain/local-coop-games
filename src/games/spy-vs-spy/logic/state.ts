@@ -192,6 +192,7 @@ export type GameEvent =
   | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
   | { type: 'trapFailed'; spy: PlayerId }
+  | { type: 'trapBlocked'; spy: PlayerId }
   | { type: 'disarmed'; spy: PlayerId; trap: TrapKind }
   | { type: 'died'; spy: PlayerId; cause: DeathCause }
   | { type: 'respawn'; spy: PlayerId }

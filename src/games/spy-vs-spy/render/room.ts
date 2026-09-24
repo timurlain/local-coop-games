@@ -4,9 +4,11 @@ import { line, poly, r, shade, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawDecor } from './decor';
 import { drawFloor, drawRug, type ThemeLook } from './floor';
-import { drawFurniture } from './furniture';
+import { drawFurniture, drawReachMarker } from './furniture';
 import { ROOM } from './layout';
 import { drawIcon } from './sprites';
+
+const ARMED_RED = '#ff3030';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -66,8 +68,14 @@ function background(ctx: Ctx, theme: RoomTheme, rug: boolean): HTMLCanvasElement
   return bg;
 }
 
-/** Draws one room in logical coordinates of a half-viewport. `highlightId` marks furniture in reach of the viewer. */
-export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId: number | null, now: number): void {
+/**
+ * Draws one room in logical coordinates of a half-viewport. `highlightId` marks furniture in reach of the viewer
+ * (white); `armedFurnitureId` / `armedDoor` mark where an armed trap can be placed right now (red), spec §5.
+ */
+export function drawRoom(
+  ctx: Ctx, state: GameState, roomId: number, highlightId: number | null, now: number,
+  armedFurnitureId: number | null = null, armedDoor: Dir | null = null,
+): void {
   const room = state.rooms[roomId];
   const look = LOOKS[room.theme];
   const bg = background(ctx, room.theme, room.rug);
@@ -78,11 +86,13 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId
 
   for (const dir of DIRS) {
     const isExit = room.exit === dir;
-    if (room.doors[dir] || isExit) drawDoor(ctx, dir, isExit);
+    if (room.doors[dir] || isExit) drawDoor(ctx, dir, isExit, dir === armedDoor);
   }
   if (look.light === 'chandelier') drawChandelier(ctx, now);
 
-  for (const id of room.furniture) drawFurniture(ctx, state.furniture[id], room.theme, id === highlightId, now);
+  for (const id of room.furniture) {
+    drawFurniture(ctx, state.furniture[id], room.theme, id === highlightId, id === armedFurnitureId, now);
+  }
 
   for (const bomb of state.timeBombs) {
     if (bomb.room !== roomId) continue;
@@ -260,7 +270,7 @@ function drawChandelier(ctx: Ctx, now: number): void {
   [-5, -2, 2, 5].forEach((dx, i) => r(ctx, cx + dx, y + 3, 1, 1, i === twinkle ? '#ffffff' : GLOW));
 }
 
-function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
+function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed = false): void {
   const fill = isExit ? '#2e7dd1' : '#4a2c18';
   const panel = isExit ? '#5aa0e8' : '#5e3a20';
   const frame = isExit ? '#f4f4f4' : '#c9a36b';
@@ -283,6 +293,7 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
       r(ctx, cx - 2, top + 16, 1, 1, BRASS);
       r(ctx, cx + 1, top + 16, 1, 1, BRASS);
       if (isExit) drawIcon(ctx, 'plane', cx, top + 13);
+      if (armed) drawReachMarker(ctx, cx, top, ARMED_RED);
       break;
     }
     case 'S': {
@@ -291,6 +302,7 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
       r(ctx, a.sx, VIEW.frontY - 2, b.sx - a.sx, 2, frame);
       r(ctx, a.sx, VIEW.frontY, b.sx - a.sx, VIEW.bottom - VIEW.frontY, fill);
       if (isExit) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
+      if (armed) drawReachMarker(ctx, (a.sx + b.sx) / 2, VIEW.frontY - 2, ARMED_RED);
       break;
     }
     case 'W':
@@ -316,6 +328,7 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
       const knob = lerp(dir === 'W' ? 0.8 : 0.2, 0.5 * h0);
       r(ctx, knob[0] - 0.5, knob[1], 1, 1, BRASS);
       if (isExit) drawIcon(ctx, 'plane', (p0.sx + p1.sx) / 2, p0.sy - h1 - 2);
+      if (armed) drawReachMarker(ctx, (p0.sx + p1.sx) / 2, Math.min(p0.sy - h0, p1.sy - h1), ARMED_RED);
       break;
     }
   }

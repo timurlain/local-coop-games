@@ -80,7 +80,9 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
 
 /** Returns true when the spy passed through an internal door into a new room this tick. */
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
-  // Shared room (spec §3): the Trapulator cannot be opened, input for it is ignored.
+  // Shared room (spec §3): the Trapulator cannot be opened, input for it is ignored. Tell the
+  // player why (edge-triggered: once per fresh press, not every tick the button stays held).
+  if (input.trap && sharesRoom(state, spy) && !spy.prev.trap) events.push({ type: 'trapBlocked', spy: spy.id });
   if (input.trap && !sharesRoom(state, spy)) {
     spy.holdTarget = null;
     spy.blocking = false;

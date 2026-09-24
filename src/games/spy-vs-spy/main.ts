@@ -324,6 +324,12 @@ function toastOn(e: GameEvent, now: number): void {
     case 'stored':
       pushToast(toasts[e.spy], toastFor({ kind: 'secret', secret: e.secret }), now);
       break;
+    case 'trapBlocked':
+      pushToast(toasts[e.spy], { text: T.trapBlocked, kind: 'trap' }, now);
+      break;
+    case 'trapFailed':
+      pushToast(toasts[e.spy], { text: T.trapPlaceFailed, kind: 'trap' }, now, 1.2);
+      break;
   }
 }
 
@@ -346,6 +352,7 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'dropped': return e.thing ? 'clatter' : null;
     case 'trapSet': return 'trapSet';
     case 'trapFailed': return 'fail';
+    case 'trapBlocked': return 'fail';
     case 'disarmed': return 'found';
     case 'died':
       switch (e.cause) {

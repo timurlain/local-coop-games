@@ -1,6 +1,6 @@
 import { cs } from '../../../shared/i18n/cs';
 import { RULES } from '../logic/rules';
-import { MENU_MAP, TRAPS, type GameState, type Spy } from '../logic/state';
+import { MENU_MAP, TRAPS, type DoorTrapKind, type FurnitureTrapKind, type GameState, type Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { r, roundRect, text } from './draw';
 import { VIEW } from './geometry';
@@ -39,7 +39,19 @@ export function drawFrame(ctx: Ctx): void {
   r(ctx, f.x + 7, f.y + f.h - 2, f.w - 14, 1, BRICK_DARK);
 }
 
-/** Strip under the frame: player name, room name (or the Trapulator entry being chosen), toast, health pips. */
+/** While the Trapulator menu is held: the selected entry's name plus how to use it (spec §5). */
+export function trapMenuLabel(cursor: number): string {
+  if (cursor === MENU_MAP) return T.mapSelectHint;
+  return T.trapSelectHint(T.traps[TRAPS[cursor]]);
+}
+
+/** While a trap is armed (Trapulator closed): where to press Akce to place it (spec §5). */
+export function armedTrapHint(trap: FurnitureTrapKind | DoorTrapKind): string {
+  const label = T.traps[trap];
+  return trap === 'bomba' || trap === 'pruzina' ? T.trapArmedFurniture(label) : T.trapArmedDoor(label);
+}
+
+/** Strip under the frame: player name, room name (or Trapulator/armed-trap guidance), toast, health pips. */
 export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | null): void {
   r(ctx, UNDER.x, UNDER.y, UNDER.w, UNDER.h, '#0c0c12');
   const p = UNDER_PARTS;
@@ -47,8 +59,9 @@ export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | n
   text(ctx, name, p.name.x, p.name.y + 8, spy.id === 0 ? '#f4f4f4' : '#9a9aae', 7);
 
   if (spy.menuOpen) {
-    const label = spy.menuCursor === MENU_MAP ? T.map : T.traps[TRAPS[spy.menuCursor]];
-    text(ctx, label, p.room.x, p.room.y + 8, '#ffe27a', 6);
+    text(ctx, trapMenuLabel(spy.menuCursor), p.room.x, p.room.y + 8, '#ffe27a', 6);
+  } else if (spy.armed !== null && spy.armed !== 'casovana') {
+    text(ctx, armedTrapHint(spy.armed), p.room.x, p.room.y + 8, '#ffe27a', 6);
   } else {
     text(ctx, T.rooms[state.rooms[spy.room].theme], p.room.x, p.room.y + 8, '#9a9ab0', 6);
   }

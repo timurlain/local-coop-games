@@ -28,11 +28,11 @@ export function toastFor(t: Thing): { text: string; kind: HandColor } {
   }
 }
 
-/** Queues a toast; it starts now or when the previous one ends. */
-export function pushToast(q: ToastQueue, toast: { text: string; kind: HandColor }, now: number): void {
+/** Queues a toast; it starts now or when the previous one ends. `duration` defaults to `TOAST_TIME`. */
+export function pushToast(q: ToastQueue, toast: { text: string; kind: HandColor }, now: number, duration = TOAST_TIME): void {
   const last = q[q.length - 1];
   const start = last && last.end > now ? last.end : now;
-  q.push({ ...toast, start, end: start + TOAST_TIME });
+  q.push({ ...toast, start, end: start + duration });
 }
 
 /** The toast showing at `now` (dropping finished ones), or null. */
