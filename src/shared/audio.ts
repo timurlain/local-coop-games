@@ -1,7 +1,8 @@
 export type SfxName =
   | 'join' | 'search' | 'found' | 'hide' | 'trapSet' | 'fail'
   | 'bomb' | 'zap' | 'boing' | 'shot'
-  | 'swing' | 'hit' | 'block' | 'door' | 'locked' | 'tick' | 'win' | 'draw';
+  | 'swing' | 'hit' | 'block' | 'door' | 'locked' | 'tick' | 'win' | 'draw'
+  | 'step';
 
 interface ToneOpts {
   freq: number;
@@ -73,6 +74,7 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   tick: (c) => tone(c, { freq: 1500, dur: 0.03, vol: 0.08 }),
   win: (c) => [523, 659, 784, 1047].forEach((f, i) => tone(c, { freq: f, dur: 0.18, delay: i * 0.15, vol: 0.2 })),
   draw: (c) => [392, 330, 262].forEach((f, i) => tone(c, { freq: f, dur: 0.25, delay: i * 0.2, vol: 0.2 })),
+  step: (c) => noise(c, { dur: 0.04, vol: 0.06, lowpass: 900 }),
 };
 
 /** Synthesized sound effects. Call `unlock()` from a user gesture (browser autoplay policy). */
