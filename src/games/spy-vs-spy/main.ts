@@ -32,6 +32,9 @@ const ctx = canvas.getContext('2d')!;
 const input = new InputManager(window);
 const sfx = new Sfx();
 const settings = loadJson<Settings>(SETTINGS_KEY, { size: 'stredni', clock: RULES.defaultClock, muted: false });
+if (!SIZES.includes(settings.size)) settings.size = 'stredni';
+if (!RULES.clockOptions.includes(settings.clock)) settings.clock = RULES.defaultClock;
+if (typeof settings.muted !== 'boolean') settings.muted = false;
 sfx.muted = settings.muted;
 const urlSeed = parseSeed(new URLSearchParams(location.search).get('seed'));
 
