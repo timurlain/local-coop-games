@@ -30,6 +30,10 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
       });
     }
   }
+  // 4 remedy sources + 4 secrets + kufrik need 9 distinct furniture pieces.
+  if (rooms.length * RULES.furniturePerRoom.min < 9) {
+    throw new Error(`embassy ${size} too small: needs room for 9 hidden things`);
+  }
   const last = rooms.length - 1;
   const state: GameState = {
     seed, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
