@@ -18,6 +18,16 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
 
   for (const spy of state.spies) updateClock(state, spy, dt, events);
 
+  // Judge both spies' blocking/ducking for this tick before either one's swing can land (spec §8).
+  // Order-independent (only reads room/x as left by the previous tick, mutates neither), so it runs
+  // once here rather than inside the per-spy loop below — otherwise whichever spy the alternating
+  // order happens to process first would land a strike against the target's stance from last tick,
+  // since the target's own stance update for this tick wouldn't have run yet.
+  for (const spy of state.spies) {
+    updateBlocking(state, spy, inputs[spy.id]);
+    updateDucking(state, spy, inputs[spy.id]);
+  }
+
   // Alternate who is processed first each tick, so a simultaneous kill doesn't always favour spy 0.
   const order: readonly PlayerId[] = state.tick % 2 === 0 ? [0, 1] : [1, 0];
   // Spies that passed an internal door this tick (spec §3). Judged only after BOTH spies have

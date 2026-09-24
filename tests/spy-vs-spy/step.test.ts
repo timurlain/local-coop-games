@@ -343,6 +343,20 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(b.health).toBe(RULES.health - 2);
   });
 
+  it('a bash landing this tick is dodged when the target starts ducking this same tick, even '
+    + 'when the target is processed second in the alternating order (spec §8)', () => {
+    const { s, a, b } = duel();
+    // Force the order this tick to process the attacker (0) first, the target (1) second —
+    // the case where a stance judged only after the attacker's turn would be too late.
+    s.tick = 1;
+    a.attack = 'bash';
+    a.strikeIn = 0.001; // lands this tick
+    const ev = step(s, [IDLE, input({ moveY: 1 })], 1 / 60);
+    expect(b.ducking).toBe(true);
+    expect(b.health).toBe(RULES.health);
+    expect(ev).toContainEqual({ type: 'blocked', spy: 1 });
+  });
+
   it('holding down outside a shared room still walks towards the front', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 10);
