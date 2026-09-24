@@ -6,6 +6,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
+        spy: 'src/games/spy-vs-spy/index.html',
       },
     },
   },
