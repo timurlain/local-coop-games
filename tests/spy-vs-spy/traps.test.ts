@@ -77,6 +77,42 @@ describe('door traps', () => {
   });
 });
 
+describe('remedies disarm every trap (spec §8)', () => {
+  it.each([
+    ['bomba', 'voda'],
+    ['pruzina', 'kleste'],
+  ] as const)('furniture trap %s disarmed by %s', (trap, cure) => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.trap = { kind: trap, owner: 1 };
+    const spy = atFurniture(s, 0, f);
+    spy.hand = remedy(cure);
+    const ev: GameEvent[] = [];
+    expect(triggerFurnitureTrap(s, spy, f, ev)).toBe(true);
+    expect(spy.mode).toBe('normal');
+    expect(spy.hand).toBeNull();
+    expect(f.trap).toBeNull();
+    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap }]);
+  });
+
+  it.each([
+    ['elektrina', 'destnik'],
+    ['pistole', 'nuzky'],
+  ] as const)('door trap %s disarmed by %s', (trap, cure) => {
+    const s = openGame();
+    const key = doorKey(4, 1);
+    s.doorTraps[key] = { kind: trap, owner: 1 };
+    const spy = place(s, 0, 4, 100, 0);
+    spy.hand = remedy(cure);
+    const ev: GameEvent[] = [];
+    expect(triggerDoorTrap(s, spy, key, ev)).toBe(true);
+    expect(spy.mode).toBe('normal');
+    expect(spy.hand).toBeNull();
+    expect(s.doorTraps[key]).toBeUndefined();
+    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap }]);
+  });
+});
+
 describe('placing traps', () => {
   it('places a furniture trap, spends stock and disarms the hand', () => {
     const s = openGame();
