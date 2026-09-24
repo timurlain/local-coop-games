@@ -1,7 +1,8 @@
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { step } from '../../src/games/spy-vs-spy/logic/step';
 import {
   DIRS, NO_INPUT, neighbor,
-  type Furniture, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing,
+  type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing,
 } from '../../src/games/spy-vs-spy/logic/state';
 
 /**
@@ -48,3 +49,11 @@ export const input = (p: Partial<SpyInput> = {}): SpyInput => ({ ...NO_INPUT, ..
 export const secret = (k: SecretKind): Thing => ({ kind: 'secret', secret: k });
 export const kufrik = (...contents: SecretKind[]): Thing => ({ kind: 'kufrik', contents: [...contents] });
 export const remedy = (k: RemedyKind): Thing => ({ kind: 'remedy', remedy: k });
+
+/** Runs the full step for `seconds` with fixed inputs; returns all events. */
+export function run(s: GameState, inputs: [SpyInput, SpyInput], seconds: number, dt = 1 / 60): GameEvent[] {
+  const out: GameEvent[] = [];
+  const n = Math.round(seconds / dt);
+  for (let i = 0; i < n; i++) out.push(...step(s, inputs, dt));
+  return out;
+}
