@@ -1,9 +1,9 @@
 import { dropHand, updateDead } from './death';
 import { sharesRoom, updateBlocking, updateHealthRegen } from './fight';
 import { updateAction, updateSearching } from './interact';
-import { updateMovement } from './movement';
+import { dropOnEntering, updateMovement } from './movement';
 import { updateTimeBombs, updateTrapMenu } from './traps';
-import type { GameEvent, GameState, PlayerId, Spy, SpyInput } from './state';
+import { isActive, type GameEvent, type GameState, type PlayerId, type Spy, type SpyInput } from './state';
 
 /**
  * Advances the game by `dt` seconds. Mutates `state`; returns what happened
@@ -19,6 +19,12 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
 
   // Alternate who is processed first each tick, so a simultaneous kill doesn't always favour spy 0.
   const order: readonly PlayerId[] = state.tick % 2 === 0 ? [0, 1] : [1, 0];
+  // Spies that passed an internal door this tick (spec §3). Judged only after BOTH spies have
+  // moved, below — evaluating a `dropOnEntering` immediately inside the per-spy loop would let
+  // processing order decide it: if both spies pass doors into each other's current room in the
+  // same tick, whoever is processed first would drop while the other (who by then has already
+  // left) would not, even though neither ends up sharing a room with an active opponent.
+  const entered = new Set<PlayerId>();
   for (const id of order) {
     const spy = state.spies[id];
     const input = inputs[spy.id];
@@ -34,13 +40,21 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
         updateSearching(state, spy, dt, events);
         break;
       case 'normal':
-        updateNormal(state, spy, input, dt, events);
+        if (updateNormal(state, spy, input, dt, events)) entered.add(id);
         break;
       case 'out':
       case 'escaped':
         break;
     }
     spy.prev = { ...input };
+  }
+
+  // Judge entering-drops now that both spies have finished moving this tick, before the time
+  // bombs tick (order chosen arbitrarily between the two end-of-tick passes; documented here
+  // since nothing in the spec depends on it — bombs don't interact with entering).
+  for (const id of entered) {
+    const spy = state.spies[id];
+    if (isActive(spy) && sharesRoom(state, spy)) dropOnEntering(state, spy, events);
   }
 
   updateTimeBombs(state, dt, events);
@@ -64,20 +78,21 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   events.push({ type: 'timeout', spy: spy.id });
 }
 
-function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
+/** Returns true when the spy passed through an internal door into a new room this tick. */
+function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
   // Shared room (spec §3): the Trapulator cannot be opened, input for it is ignored.
   if (input.trap && !sharesRoom(state, spy)) {
     spy.holdTarget = null;
     spy.blocking = false;
     updateTrapMenu(state, spy, input, events);
-    return;
+    return false;
   }
   spy.menuOpen = false;
   spy.mapOpen = false;
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
-  if (spy.mode !== 'normal' || spy.holdTarget !== null) return;
-  updateMovement(state, spy, input, dt, events);
+  if (spy.mode !== 'normal' || spy.holdTarget !== null) return false;
+  return updateMovement(state, spy, input, dt, events);
 }
 
 function updateResult(state: GameState, events: GameEvent[]): void {

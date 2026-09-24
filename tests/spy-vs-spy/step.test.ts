@@ -220,6 +220,82 @@ describe('meeting: shared room (spec §3)', () => {
   });
 });
 
+describe('meeting: entering is judged at the end of the tick (spec §3, fairness)', () => {
+  it('does not drop either spy when they pass each other through the same door in one tick', () => {
+    const s = openGame();
+    const a = place(s, 0, 4, RULES.roomW, RULES.roomD / 2);
+    const b = place(s, 1, 5, 0, RULES.roomD / 2);
+    a.hand = secret('klic');
+    b.hand = secret('pas');
+    const ev = step(s, [input({ moveX: 1 }), input({ moveX: -1 })], 1 / 60);
+    expect(a.room).toBe(5);
+    expect(b.room).toBe(4);
+    expect(a.hand).toEqual(secret('klic'));
+    expect(b.hand).toEqual(secret('pas'));
+    expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
+  });
+
+  it('drops both spies when they enter the same empty room from different doors in one tick', () => {
+    const s = openGame();
+    const a = place(s, 0, 1, RULES.roomW / 2, RULES.roomD);
+    const b = place(s, 1, 3, RULES.roomW, RULES.roomD / 2);
+    a.hand = secret('klic');
+    b.hand = secret('pas');
+    const ev = step(s, [input({ moveY: 1 }), input({ moveX: 1 })], 1 / 60);
+    expect(a.room).toBe(4);
+    expect(b.room).toBe(4);
+    expect(a.hand).toBeNull();
+    expect(b.hand).toBeNull();
+    expect(ev.filter((e) => e.type === 'dropped')).toHaveLength(2);
+  });
+
+  it('still drops a spy that enters a room where the opponent already stands', () => {
+    const s = openGame();
+    place(s, 1, 1, 100, 20);
+    const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    spy.hand = secret('pas');
+    const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
+    expect(spy.room).toBe(1);
+    expect(spy.hand).toBeNull();
+    expect(ev).toContainEqual(expect.objectContaining({ type: 'dropped', spy: 0 }));
+  });
+
+  it('clears an armed trap and re-hides a held secret in the same drop when entering', () => {
+    const s = openGame();
+    place(s, 1, 1, 100, 20);
+    const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    spy.hand = secret('pas');
+    spy.armed = 'bomba';
+    const stockBefore = spy.stock.bomba;
+    const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
+    expect(spy.armed).toBeNull();
+    expect(spy.stock.bomba).toBe(stockBefore);
+    expect(spy.hand).toBeNull();
+    const dropped = ev.filter((e) => e.type === 'dropped');
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0]).toEqual({ type: 'dropped', spy: 0, thing: secret('pas'), furniture: expect.any(Number) });
+  });
+
+  it('does not drop a respawning spy even though the opponent is already in that room', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.trap = { kind: 'bomba', owner: 1 };
+    const spy = atFurniture(s, 0, f);
+    step(s, [input({ action: true }), IDLE], 1 / 60);
+    step(s, [IDLE, IDLE], 1 / 60);
+    expect(spy.mode).toBe('dead');
+    place(s, 1, 0, 100, 20); // opponent moves into spy 0's room while it is dead
+    const dt = 1 / 60;
+    let ev: ReturnType<typeof step> = [];
+    for (let elapsed = 0; spy.mode === 'dead' && elapsed < RULES.respawnTime + 1; elapsed += dt) {
+      ev = step(s, [IDLE, IDLE], dt);
+    }
+    expect(spy.mode).toBe('normal');
+    expect(ev).toContainEqual({ type: 'respawn', spy: 0 });
+    expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
+  });
+});
+
 describe('health recovery', () => {
   it('recovers health over time after a hit, via step', () => {
     const s = openGame();

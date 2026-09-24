@@ -1,5 +1,4 @@
 import { dropHand } from './death';
-import { sharesRoom } from './fight';
 import { hasAllSecrets } from './hand';
 import { doorAt, doorKeyFor } from './places';
 import { RULES } from './rules';
@@ -8,12 +7,19 @@ import { neighbor, type Dir, type GameEvent, type GameState, type Spy, type SpyI
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
+/**
+ * Advances one spy's position and door-crossing for this tick.
+ * Returns true when the spy just passed an internal door into a new room (not the exit, not
+ * blocked, not killed by a door trap) — the caller (`step`) uses this to judge entering-drops
+ * only after BOTH spies have moved this tick (spec §3; see step.ts for why).
+ */
+export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
   if (input.moveX !== 0) spy.facing = input.moveX;
   spy.x = clamp(spy.x + input.moveX * RULES.speedX * dt, 0, RULES.roomW);
   spy.z = clamp(spy.z + input.moveY * RULES.speedZ * dt, 0, RULES.roomD);
   const dir = pushingDoor(state, spy, input);
-  if (dir !== null) goThrough(state, spy, dir, events);
+  if (dir === null) return false;
+  return goThrough(state, spy, dir, events);
 }
 
 /** A door the spy is standing at AND pressing into. */
@@ -26,7 +32,7 @@ function pushingDoor(state: GameState, spy: Spy, input: SpyInput): Dir | null {
   return null;
 }
 
-function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): void {
+function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): boolean {
   const key = doorKeyFor(state, spy.room, dir);
 
   if (state.rooms[spy.room].exit === dir) {
@@ -35,15 +41,15 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): v
         spy.lockedMsg = RULES.lockedMsgTime;
         events.push({ type: 'locked', spy: spy.id });
       }
-      return;
+      return false;
     }
-    if (!triggerDoorTrap(state, spy, key, events)) return;
+    if (!triggerDoorTrap(state, spy, key, events)) return false;
     spy.mode = 'escaped';
     events.push({ type: 'escaped', spy: spy.id });
-    return;
+    return false;
   }
 
-  if (!triggerDoorTrap(state, spy, key, events)) return;
+  if (!triggerDoorTrap(state, spy, key, events)) return false;
   const next = neighbor(state, spy.room, dir)!;
   spy.room = next;
   spy.visited[next] = true;
@@ -66,7 +72,7 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): v
       break;
   }
   events.push({ type: 'door', spy: spy.id });
-  if (sharesRoom(state, spy)) dropOnEntering(state, spy, events);
+  return true;
 }
 
 /**
@@ -74,8 +80,12 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): v
  * an armed-but-unplaced trap is cleared (nothing to refund, its stock was never spent), a remedy
  * in hand is simply lost (sources are infinite), a secret or kufřík is re-hidden via the normal
  * `dropHand` rules (nearest free furniture, same room first).
+ *
+ * Called by `step`, once per spy that passed a door this tick, AFTER both spies have moved
+ * (see step.ts) — not from `goThrough` itself, so that two spies crossing paths in the same
+ * tick are judged by where they actually end up, not by processing order.
  */
-function dropOnEntering(state: GameState, spy: Spy, events: GameEvent[]): void {
+export function dropOnEntering(state: GameState, spy: Spy, events: GameEvent[]): void {
   const thing = spy.hand;
   spy.armed = null;
   const furniture = thing !== null && thing.kind !== 'remedy' ? dropHand(state, spy) : null;
