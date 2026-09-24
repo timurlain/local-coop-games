@@ -11,6 +11,7 @@ import {
 } from '../../src/games/spy-vs-spy/render/sprite-data';
 import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
 import { WALK_CYCLE, digFrame, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
+import { leafFraction } from '../../src/games/spy-vs-spy/render/room';
 
 describe('project', () => {
   it('maps the floor corners onto the trapezoid inside the room view', () => {
@@ -219,5 +220,22 @@ describe('formatClock', () => {
     expect(formatClock(59.2)).toBe('1:00');
     expect(formatClock(58.9)).toBe('0:59');
     expect(formatClock(0)).toBe('0:00');
+  });
+});
+
+describe('leafFraction (spec §5: closed vs open door drawing)', () => {
+  it('is fully closed (1) when there is no runtime state', () => {
+    expect(leafFraction(undefined)).toBe(1);
+  });
+
+  it('shrinks linearly over the 0.3 s opening swing', () => {
+    expect(leafFraction({ phase: 'opening', timer: RULES.doorOpenTime })).toBe(1);
+    expect(leafFraction({ phase: 'opening', timer: RULES.doorOpenTime / 2 })).toBeCloseTo(0.575, 5);
+    expect(leafFraction({ phase: 'opening', timer: 0 })).toBeCloseTo(0.15, 5);
+  });
+
+  it('stays at the open sliver for the whole 1.5 s open window', () => {
+    expect(leafFraction({ phase: 'open', timer: 1.5 })).toBeCloseTo(0.15, 5);
+    expect(leafFraction({ phase: 'open', timer: 0.01 })).toBeCloseTo(0.15, 5);
   });
 });

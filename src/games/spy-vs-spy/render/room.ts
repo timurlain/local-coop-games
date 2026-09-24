@@ -1,5 +1,6 @@
+import { doorKeyFor } from '../logic/places';
 import { RULES } from '../logic/rules';
-import { DIRS, type Dir, type GameState, type Room, type RoomTheme } from '../logic/state';
+import { DIRS, type Dir, type DoorRuntimeState, type GameState, type Room, type RoomTheme } from '../logic/state';
 import { line, poly, r, shade, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawDecor } from './decor';
@@ -95,7 +96,10 @@ export function drawRoom(
 
   for (const d of room.decor) drawDecor(ctx, d, now);
 
-  for (const { dir, isExit } of doorsToDraw(room, showExit)) drawDoor(ctx, dir, isExit, dir === armedDoor);
+  for (const { dir, isExit } of doorsToDraw(room, showExit)) {
+    const key = doorKeyFor(state, roomId, dir);
+    drawDoor(ctx, dir, isExit, dir === armedDoor, leafFraction(state.doorOpen[key]));
+  }
   if (look.light === 'chandelier') drawChandelier(ctx, now);
 
   for (const id of room.furniture) {
@@ -278,38 +282,61 @@ function drawChandelier(ctx: Ctx, now: number): void {
   [-5, -2, 2, 5].forEach((dx, i) => r(ctx, cx + dx, y + 3, 1, 1, i === twinkle ? '#ffffff' : GLOW));
 }
 
-function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed = false): void {
+/** Fraction of a door's width still occupied by the closed leaf: 1 = fully closed, `LEAF_OPEN` = fully
+ *  open (swung to a sliver against the frame), interpolated during the 0.3 s opening swing (spec §5). */
+const LEAF_OPEN = 0.15;
+/** The dark opening revealed behind a door that isn't fully closed. */
+const OPENING_DARK = '#0a0a10';
+
+export function leafFraction(door: DoorRuntimeState | undefined): number {
+  if (door === undefined) return 1;
+  if (door.phase === 'open') return LEAF_OPEN;
+  const progress = 1 - door.timer / RULES.doorOpenTime;
+  return 1 - (1 - LEAF_OPEN) * Math.min(1, Math.max(0, progress));
+}
+
+function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: number): void {
   const fill = isExit ? '#2e7dd1' : '#4a2c18';
   const panel = isExit ? '#5aa0e8' : '#5e3a20';
   const frame = isExit ? '#f4f4f4' : '#c9a36b';
+  const closed = leaf >= 0.999;
   const cx = wallX(RULES.roomW / 2);
   const half = RULES.doorHalfX;
   switch (dir) {
     case 'N': {
-      // panelled double door with a fanlight
+      // panelled double door with a fanlight; hinged at the left when swinging open
       const top = VIEW.backY - N_DOOR_H;
       r(ctx, cx - half - 1, top, half * 2 + 2, N_DOOR_H, frame);
-      r(ctx, cx - half, top + 1, half * 2, N_DOOR_H - 1, fill);
-      r(ctx, cx - half + 1, top + 2, half * 2 - 2, 4, isExit ? '#9ad0ff' : '#e8d49a');
-      for (const dx of [-half / 2, half / 2]) r(ctx, Math.round(cx + dx), top + 2, 1, 4, frame);
-      r(ctx, cx - half, top + 6, half * 2, 1, frame);
-      for (const sx of [cx - half + 2, cx + 2]) {
-        r(ctx, sx, top + 9, half - 4, 6, panel);
-        r(ctx, sx, top + 17, half - 4, 7, panel);
+      if (!closed) r(ctx, cx - half, top + 1, half * 2, N_DOOR_H - 1, OPENING_DARK);
+      const leafW = Math.max(2, Math.round(half * 2 * leaf));
+      r(ctx, cx - half, top + 1, leafW, N_DOOR_H - 1, fill);
+      if (closed) {
+        r(ctx, cx - half + 1, top + 2, half * 2 - 2, 4, isExit ? '#9ad0ff' : '#e8d49a');
+        for (const dx of [-half / 2, half / 2]) r(ctx, Math.round(cx + dx), top + 2, 1, 4, frame);
+        r(ctx, cx - half, top + 6, half * 2, 1, frame);
+        for (const sx of [cx - half + 2, cx + 2]) {
+          r(ctx, sx, top + 9, half - 4, 6, panel);
+          r(ctx, sx, top + 17, half - 4, 7, panel);
+        }
+        r(ctx, cx - 0.5, top + 7, 1, N_DOOR_H - 7, shade(fill, 0.6));
+        r(ctx, cx - 2, top + 16, 1, 1, BRASS);
+        r(ctx, cx + 1, top + 16, 1, 1, BRASS);
+        if (isExit) drawIcon(ctx, 'plane', cx, top + 13);
+      } else {
+        r(ctx, cx - half, top + 1, leafW, 1, shade(fill, 1.3));
       }
-      r(ctx, cx - 0.5, top + 7, 1, N_DOOR_H - 7, shade(fill, 0.6));
-      r(ctx, cx - 2, top + 16, 1, 1, BRASS);
-      r(ctx, cx + 1, top + 16, 1, 1, BRASS);
-      if (isExit) drawIcon(ctx, 'plane', cx, top + 13);
       if (armed) drawReachMarker(ctx, cx, top, ARMED_RED);
       break;
     }
     case 'S': {
       const a = project(RULES.roomW / 2 - RULES.doorHalfX, RULES.roomD);
       const b = project(RULES.roomW / 2 + RULES.doorHalfX, RULES.roomD);
-      r(ctx, a.sx, VIEW.frontY - 2, b.sx - a.sx, 2, frame);
-      r(ctx, a.sx, VIEW.frontY, b.sx - a.sx, VIEW.bottom - VIEW.frontY, fill);
-      if (isExit) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
+      const w = b.sx - a.sx;
+      r(ctx, a.sx, VIEW.frontY - 2, w, 2, frame);
+      if (!closed) r(ctx, a.sx, VIEW.frontY, w, VIEW.bottom - VIEW.frontY, OPENING_DARK);
+      const leafW = Math.max(2, Math.round(w * leaf));
+      r(ctx, a.sx, VIEW.frontY, leafW, VIEW.bottom - VIEW.frontY, fill);
+      if (isExit && closed) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
       if (armed) drawReachMarker(ctx, (a.sx + b.sx) / 2, VIEW.frontY - 2, ARMED_RED);
       break;
     }
@@ -320,22 +347,28 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed = false): void {
       const p1 = project(x, RULES.roomD / 2 + RULES.doorHalfZ);
       const h0 = 26;
       const h1 = 30;
-      poly(ctx, [[p0.sx, p0.sy], [p1.sx, p1.sy], [p1.sx, p1.sy - h1], [p0.sx, p0.sy - h0]], fill);
-      // two raised panels following the perspective
+      // hinge at p0: the leaf occupies the [0, leaf] portion of the span (t), the rest is the
+      // revealed dark opening while opening/open (spec §5). lerp(t, h0) is that t's top edge,
+      // lerp(t, 0) its bottom edge (h scales with the door's height at t, per the original panels).
       const lerp = (t: number, h: number) => {
         const sx = p0.sx + (p1.sx - p0.sx) * t;
         const sy = p0.sy + (p1.sy - p0.sy) * t;
         return [sx, sy - h * (h0 + (h1 - h0) * t) / h0] as const;
       };
-      for (const [f0, f1] of [[0.15, 0.48], [0.55, 0.85]] as const) {
-        poly(ctx, [lerp(0.2, f0 * h0), lerp(0.8, f0 * h0), lerp(0.8, f1 * h0), lerp(0.2, f1 * h0)], panel);
+      if (!closed) poly(ctx, [lerp(leaf, 0), lerp(1, 0), lerp(1, h0), lerp(leaf, h0)], OPENING_DARK);
+      poly(ctx, [lerp(0, 0), lerp(leaf, 0), lerp(leaf, h0), lerp(0, h0)], fill);
+      if (closed) {
+        // two raised panels following the perspective
+        for (const [f0, f1] of [[0.15, 0.48], [0.55, 0.85]] as const) {
+          poly(ctx, [lerp(0.2, f0 * h0), lerp(0.8, f0 * h0), lerp(0.8, f1 * h0), lerp(0.2, f1 * h0)], panel);
+        }
+        const knob = lerp(dir === 'W' ? 0.8 : 0.2, 0.5 * h0);
+        r(ctx, knob[0] - 0.5, knob[1], 1, 1, BRASS);
+        if (isExit) drawIcon(ctx, 'plane', (p0.sx + p1.sx) / 2, p0.sy - h1 - 2);
       }
       line(ctx, p0.sx, p0.sy - h0, p1.sx, p1.sy - h1, frame);
       line(ctx, p0.sx, p0.sy, p0.sx, p0.sy - h0, frame);
       line(ctx, p1.sx, p1.sy, p1.sx, p1.sy - h1, frame);
-      const knob = lerp(dir === 'W' ? 0.8 : 0.2, 0.5 * h0);
-      r(ctx, knob[0] - 0.5, knob[1], 1, 1, BRASS);
-      if (isExit) drawIcon(ctx, 'plane', (p0.sx + p1.sx) / 2, p0.sy - h1 - 2);
       if (armed) drawReachMarker(ctx, (p0.sx + p1.sx) / 2, Math.min(p0.sy - h0, p1.sy - h1), ARMED_RED);
       break;
     }
