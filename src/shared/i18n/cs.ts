@@ -1,0 +1,42 @@
+export const cs = {
+  spy: {
+    title: 'Spy vs Spy',
+    white: 'Bílý',
+    black: 'Černý',
+    sizeLabel: 'Velikost ambasády',
+    sizes: { mala: 'Malá 3×3', stredni: 'Střední 4×3', velka: 'Velká 5×4' },
+    clockLabel: 'Čas na hráče',
+    clockOption: (seconds: number) => `${seconds / 60} min`,
+    mute: 'Ztlumit zvuk',
+    waiting: 'čeká…',
+    joinHint: 'Každý hráč stiskne svou Akci (F / Enter / A na gamepadu)',
+    startHint: 'Oba připojeni — stiskni Akci pro start',
+    devices: {
+      kbLeft: 'klávesnice vlevo',
+      kbRight: 'klávesnice vpravo',
+      pad: (n: number) => `gamepad ${n}`,
+    },
+    controls:
+      'Bílý: WASD, F akce, G pasti · Černý: šipky, Enter akce, pravý Shift pasti · ' +
+      'Gamepad: A akce, X pasti, Start pauza · Podrž akci u nábytku = schovat · Esc pauza · F1 ladění',
+    back: '← Zpět na hry',
+    paused: 'Pauza',
+    padLost: 'Ovladač odpojen',
+    resumeHint: 'Esc / Start = pokračovat · M = menu',
+    tooSmall: 'Zvětši okno',
+    locked: 'Zamčeno',
+    out: 'Došel čas',
+    armed: 'Past:',
+    winner: (name: string) => `${name} utekl!`,
+    draw: 'Remíza — oběma došel čas',
+    rematchHint: 'Akce = odveta · Esc = menu',
+    seed: 'Seed',
+    traps: {
+      bomba: 'Bomba',
+      pruzina: 'Pružina',
+      elektrina: 'Elektrický kbelík',
+      pistole: 'Pistole na provázku',
+      casovana: 'Časovaná bomba',
+    },
+  },
+};
