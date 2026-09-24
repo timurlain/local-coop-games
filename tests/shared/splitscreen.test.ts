@@ -11,4 +11,9 @@ describe('computeScale', () => {
   it('never goes below 1', () => {
     expect(computeScale(300, 150)).toBe(1);
   });
+
+  it('scales in physical pixels when a devicePixelRatio is given', () => {
+    expect(computeScale(1280, 720, 1.5)).toBe(5);
+    expect(computeScale(1280, 720, 1)).toBe(3);
+  });
 });
