@@ -38,7 +38,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
   const state: GameState = {
     seed, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
     spies: [createSpy(0, 0, 40, rooms.length, clock), createSpy(1, last, 160, rooms.length, clock)],
-    rng: makeRng(seed), time: 0, result: null,
+    rng: makeRng(seed), time: 0, tick: 0, result: null,
   };
   carveDoors(state);
   placeFurniture(state);

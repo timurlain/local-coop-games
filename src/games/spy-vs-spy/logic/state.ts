@@ -125,6 +125,7 @@ export interface GameState {
   spies: [Spy, Spy];
   rng: RngState;
   time: number;
+  tick: number;
   result: GameResult | null;
 }
 

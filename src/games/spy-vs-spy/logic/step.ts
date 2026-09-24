@@ -3,7 +3,7 @@ import { updateBlocking } from './fight';
 import { updateAction, updateSearching } from './interact';
 import { updateMovement } from './movement';
 import { updateTimeBombs, updateTrapMenu } from './traps';
-import type { GameEvent, GameState, Spy, SpyInput } from './state';
+import type { GameEvent, GameState, PlayerId, Spy, SpyInput } from './state';
 
 /**
  * Advances the game by `dt` seconds. Mutates `state`; returns what happened
@@ -13,10 +13,14 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
   const events: GameEvent[] = [];
   if (state.result !== null) return events;
   state.time += dt;
+  state.tick += 1;
 
   for (const spy of state.spies) updateClock(state, spy, dt, events);
 
-  for (const spy of state.spies) {
+  // Alternate who is processed first each tick, so a simultaneous kill doesn't always favour spy 0.
+  const order: readonly PlayerId[] = state.tick % 2 === 0 ? [0, 1] : [1, 0];
+  for (const id of order) {
+    const spy = state.spies[id];
     const input = inputs[spy.id];
     spy.swingCooldown = Math.max(0, spy.swingCooldown - dt);
     spy.swingAnim = Math.max(0, spy.swingAnim - dt);
