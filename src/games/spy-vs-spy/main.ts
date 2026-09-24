@@ -181,15 +181,24 @@ function update(dt: number): void {
 }
 
 function updateMenu(): void {
+  slots.forEach((d, i) => {
+    if (d && !input.isConnected(d)) {
+      slots[i as 0 | 1] = null;
+      renderSlots();
+    }
+  });
   for (const d of input.devices()) {
     if (!input.pressed(d, 'action')) continue;
     sfx.unlock();
     if (slots.includes(d)) {
-      if (slots[0] && slots[1]) startGame();
-      return;
+      if (slots[0] && slots[1]) {
+        startGame();
+        return;
+      }
+      continue;
     }
     const free = slots.indexOf(null);
-    if (free === -1) return;
+    if (free === -1) continue;
     slots[free as 0 | 1] = d;
     sfx.play('join');
     renderSlots();
