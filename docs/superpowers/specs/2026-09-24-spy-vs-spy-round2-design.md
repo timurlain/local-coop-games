@@ -96,6 +96,45 @@ Distinct animations (render-side effects driven by logic events):
 - Hold onto an **occupied** piece = swap (user decision), shown with the swap animation — not a silent search.
 - Logic change: `resolveSearch` reports the outcome kind so `interact.ts` can emit `swapped`/`stored` instead of only `found`.
 
+## 7b. Setting: interwar Central Europe (user request)
+
+The whole game is set in **1930s Prague embassies** (between the world wars). Everything drawn must fit the period; nothing anachronistic.
+
+- **Host country per game** (logic, seeded, gameplay-neutral — use the looks RNG stream): one of
+  | id | Czech title | Flag (period-correct) |
+  |---|---|---|
+  | `cs` | Velvyslanectví Československé republiky | white over red, blue triangle at the hoist |
+  | `pl` | Velvyslanectví Polské republiky | white over red |
+  | `de` | Velvyslanectví Německé říše (Výmarská republika) | **black–red–gold** horizontal tricolour (Weimar Republic, 1919–1933) — **never** any other German flag |
+  | `hu` | Velvyslanectví Maďarského království | red–white–green horizontal tricolour |
+  | `at` | Velvyslanectví Rakouské republiky | red–white–red horizontal |
+  Plus a year 1929–1937 from the seed. A **title card** („Velvyslanectví Polské republiky · Praha 1934") shows for ~2 s at the start of the match over both halves, and the host name appears on the result screen.
+- **Flags as decor**: `vlajka_<id>` for all five; the host's flag appears in about half of the rooms, the other four occasionally; the map poster shows Central Europe with interwar borders (simplified shapes, no text needed).
+- **Rooms in the period look**: art-deco wallpaper patterns (diamonds, fans, stripes — one per theme) over dark wood **wainscoting**; floors herringbone parquet, terrazzo, patterned carpet with an art-deco border, black-and-white tiles for the kitchen; brass chandelier or wall sconces; theme colours shifted to period palettes (burgundy, bottle green, ochre, cream, navy, plum).
+- **Furniture restyled / replaced** (keep ids where the object stays, rename where it changes):
+  | Now | Period version |
+  |---|---|
+  | stul | writing desk with a **typewriter** (kancelář) or a desk with a green banker's lamp |
+  | knihovna | glazed bookcase, dark wood |
+  | lampa | floor lamp with a fringed / glass shade |
+  | pohovka | chesterfield / club **armchair and sofa** in leather or velvet |
+  | trezor | cast-iron safe with a brass dial and ornament |
+  | obraz | oil painting in a gilt frame over a low sideboard |
+  | skrin | art-deco wardrobe with rounded corners |
+  | kartoteka | oak filing cabinet with brass label holders |
+  | televize → **gramofon** | gramophone with a horn on a small table |
+  | globus | floor globe in a wooden stand |
+  | lednice → **kredenc** | kitchen dresser with glass doors and plates |
+  | radio | valve radio set (wooden, arched) in the cipher room, plus a **cipher machine** look on the desk |
+  | kvetina | palm / aspidistra in a ceramic pot on a stand |
+  | krb | marble fireplace with a mantel clock |
+  | new **telefon** (on a side table) | candlestick telephone |
+  Fixtures per §1 in period style (bentwood coat stand with umbrella, enamel first-aid box, enamel fire box with bucket, wooden toolbox).
+- **Room themes renamed where needed**: `radiostanice` → **Šifrovací místnost** (cipher room). Others keep their names.
+- **Decor** restyled: art-deco posters („PSST!", „PŘÍSNĚ TAJNÉ", spy with magnifying glass), **telegram** pinned to a board (new), **generic** portrait of a moustached gentleman in 1930s dress (never a real person), wall clock with Roman numerals, window with **Prague rooftops and spires**.
+- **Victory scene**: grass airfield with a hangar and windsock; a **1930s propeller airliner** (e.g. three-engine silhouette, generic); the winner laughs, then boards and the plane **taxis and takes off**; the mob (pitchforks, torches) fits as is.
+- **Menu and launcher**: art-deco styling (period display font from Google Fonts, gold-on-dark ornaments, a warm sepia accent), subtitle „Praha, 193x".
+
 ## 8. Unchanged
 
 Everything else from the v1 spec and the room-themes addendum stays (controls, traps and remedies pairing, death & respawn, fight block, victory scene, menus, deploy).

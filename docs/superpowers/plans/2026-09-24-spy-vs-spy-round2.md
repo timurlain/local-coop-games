@@ -54,5 +54,11 @@ Unlike the v1 plan, tasks give exact rules and test expectations instead of full
 - [ ] Implement the table in spec §7; effects are visible in both halves when the viewer is in that room; `dropped` flies to the furniture that received the item (logic event carries the furniture id).
 - [ ] Controller reviews visually; iterate. Commit `feat(spy): search, hide and swap feedback`.
 
+### R7b: Interwar setting (spec §7b)
+**Files:** `logic/state.ts` + `logic/generator.ts`/`themes.ts` (host country + year from the looks RNG; theme rename `radiostanice`→`sifrovna` with name „Šifrovací místnost"; furniture ids `televize`→`gramofon`, `lednice`→`kredenc`, new `telefon`), `render/furniture.ts`, `render/floor.ts`, `render/room.ts` (wallpaper + wainscot + lights), `render/decor.ts` (5 period flags, telegram, restyled posters/portrait/clock/window), `render/victory.ts` (airfield, 1930s airliner, taxi + take-off), `main.ts` + overlay (title card, host on result), `index.html`/`style.css`/launcher (art-deco look), `shared/i18n/cs.ts`, tests.
+- [ ] Tests first: host country ∈ {cs,pl,de,hu,at} and year ∈ 1929–1937, deterministic by seed and **gameplay layout unchanged by it**; host flag decor present in ≥ 40 % of rooms over many seeds; theme/furniture pools contain no removed ids; i18n has names for all countries/themes/furniture.
+- [ ] Flags must be period-correct exactly as the spec table (Germany = Weimar black–red–gold only).
+- [ ] Implement in 2–3 commits (logic+i18n, room & furniture restyle, victory+menu). Controller reviews visually and iterates.
+
 ### R8: Finish
 - [ ] Full `npm test`, `npm run build`; controller smoke test in the browser; final Fable review of `feat/room-themes..feat/round-2`; push and update PR #1 (or a new PR) — ask the user first.
