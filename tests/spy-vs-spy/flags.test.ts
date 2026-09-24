@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { HOSTS } from '../../src/games/spy-vs-spy/logic/state';
 import { FLAGS, FLAG_COLORS as C } from '../../src/games/spy-vs-spy/render/flags';
+import { PICTURES, PICTURE_H, PICTURE_PALETTE, PICTURE_W } from '../../src/games/spy-vs-spy/render/decor-data';
+import { DECOR_KINDS } from '../../src/games/spy-vs-spy/logic/themes';
 
 const rgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.slice(1), 16);
@@ -55,5 +57,22 @@ describe('period-correct flags', () => {
   it('uses true whites and reds', () => {
     expect(isWhite(C.white)).toBe(true);
     for (const red of [C.csRed, C.plRed, C.deRed, C.huRed, C.atRed]) expect(isRed(red)).toBe(true);
+  });
+});
+
+describe('wall picture pixel art', () => {
+  it('is exactly PICTURE_W x PICTURE_H and uses only palette colours', () => {
+    for (const [kind, rows] of Object.entries(PICTURES)) {
+      expect(rows.length, kind).toBe(PICTURE_H);
+      for (const row of rows) {
+        expect(row.length, `${kind}: ${row}`).toBe(PICTURE_W);
+        for (const ch of row) if (ch !== '.') expect(PICTURE_PALETTE[ch], `${kind} '${ch}'`).toBeDefined();
+      }
+    }
+  });
+
+  it('covers every non-flag decoration', () => {
+    const pictures = DECOR_KINDS.filter((k) => !k.startsWith('vlajka_'));
+    expect(Object.keys(PICTURES).sort()).toEqual([...pictures].sort());
   });
 });
