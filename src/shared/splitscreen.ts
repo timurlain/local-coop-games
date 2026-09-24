@@ -38,6 +38,9 @@ export function withViewport(ctx: CanvasRenderingContext2D, scale: number, vp: V
   ctx.rect(0, 0, vp.w, vp.h);
   ctx.clip();
   ctx.imageSmoothingEnabled = false;
-  draw();
-  ctx.restore();
+  try {
+    draw();
+  } finally {
+    ctx.restore();
+  }
 }
