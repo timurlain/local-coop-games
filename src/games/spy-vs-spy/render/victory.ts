@@ -5,7 +5,7 @@ import type { GameState, PlayerId, Spy } from '../logic/state';
 import { line, r, text } from './draw';
 import { VIEW, project } from './geometry';
 import { drawRoom } from './room';
-import type { SpyPalette } from './sprite-data';
+import { SPY_H, type SpyPalette } from './sprite-data';
 import { drawIcon, drawKufrikInHand, drawSprite, spyImage } from './sprites';
 import { walkFrame } from './spy';
 
@@ -18,7 +18,8 @@ export const VICTORY_SKIPPABLE_AFTER = 1;
 export const LAUGH_AT = 1;
 /** Scene time when the mob starts storming in. */
 export const MOB_AT = 1.2;
-export const MOB_CLEARANCE = 16;
+/** Half the spy sprite plus half a mob member, so nobody stands inside the loser. */
+export const MOB_CLEARANCE = 20;
 const MOB_SIZE = 8;
 const MOB_SPEED = 45;
 const MOB_GAP = 11;
@@ -83,8 +84,8 @@ function drawRunway(ctx: Ctx, winner: Spy, t: number, now: number): void {
   drawSprite(ctx, spyImage(palette(winner), frame), x, 78);
   drawKufrikInHand(ctx, frame, x, 78);
   if (laughing) {
-    const bx = x + 14;
-    const by = 36;
+    const bx = x + 16;
+    const by = 78 - SPY_H - 12;
     r(ctx, bx, by, 60, 14, '#ffffff');
     r(ctx, bx + 2, by + 14, 4, 4, '#ffffff');
     text(ctx, T.laugh, bx + 30, by + 10, '#111111', 8, 'center');
@@ -115,7 +116,7 @@ function drawMobbed(ctx: Ctx, state: GameState, loser: Spy, t: number, now: numb
   const { sx, sy } = project(onFloor ? loser.x : RULES.roomW / 2, onFloor ? loser.z : RULES.roomD / 2);
   const tremble = Math.floor(now * 25) % 2 === 0 ? 1 : 0;
   drawSprite(ctx, spyImage(palette(loser), 'stand'), sx + tremble, sy, loser.facing < 0);
-  text(ctx, '!', sx, sy - 24, '#ff5050', 10, 'center');
+  text(ctx, '!', sx, sy - SPY_H - 2, '#ff5050', 10, 'center');
 
   for (const m of mobPositions(t, sx)) drawMobMember(ctx, m, sy, now);
   if (t > MOB_AT + 1) text(ctx, T.mobShout, 160, 20, '#ff5050', 12, 'center');

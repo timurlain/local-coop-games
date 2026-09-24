@@ -28,7 +28,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, scale: number, state: 
       const near = viewer.mode === 'normal' ? furnitureAt(state, viewer) : null;
       drawRoom(ctx, state, viewer.room, near?.id ?? null, now);
       const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
-      for (const s of here) drawSpy(ctx, s, now);
+      for (const s of here) drawSpy(ctx, state, s, now);
       if (viewer.menuOpen) drawTrapulator(ctx, viewer);
       drawMessages(ctx, viewer);
       if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
