@@ -18,7 +18,8 @@ export const cs = {
     },
     controls:
       'Bílý: WASD, F akce, G pasti · Černý: šipky, Enter akce, pravý Shift pasti · ' +
-      'Gamepad: A akce, X pasti, Start pauza · Podrž akci u nábytku = schovat · Esc pauza · F1 ladění',
+      'Gamepad: A akce, X pasti, Start pauza · Podrž akci u nábytku = schovat · Esc pauza · F1 ladění' +
+      ' · Stejná past znovu = odzbrojit',
     back: '← Zpět na hry',
     paused: 'Pauza',
     padLost: 'Ovladač odpojen',

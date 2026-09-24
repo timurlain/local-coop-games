@@ -186,6 +186,17 @@ describe('Trapulator menu', () => {
     expect(ev).toEqual([{ type: 'trapFailed', spy: 0 }]);
   });
 
+  it('picking the armed trap again unarms it', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    menu(s, spy, input({ trap: true, action: true }), []); // arm bomba (cursor 0)
+    expect(spy.armed).toBe('bomba');
+    menu(s, spy, input({ trap: true }), []); // release Akce
+    menu(s, spy, input({ trap: true, action: true }), []); // press Akce again
+    expect(spy.armed).toBeNull();
+    expect(spy.stock.bomba).toBe(RULES.trapStock.bomba);
+  });
+
   it('places the time bomb immediately', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 80, 30);

@@ -80,6 +80,7 @@ export function updateTrapMenu(state: GameState, spy: Spy, input: SpyInput, even
     return;
   }
   if (kind === 'casovana') placeTimeBomb(state, spy, events);
+  else if (spy.armed === kind) spy.armed = null;
   else spy.armed = kind;
 }
 
