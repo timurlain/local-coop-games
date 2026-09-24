@@ -1,7 +1,7 @@
 import { RULES } from '../logic/rules';
 import { DIRS, type Dir, type GameState, type RoomTheme } from '../logic/state';
 import { line, poly, r, shade, text } from './draw';
-import { VIEW, project } from './geometry';
+import { VIEW, project, wallX } from './geometry';
 import { drawDecor } from './decor';
 import { drawFloor, drawRug, type ThemeLook } from './floor';
 import { drawFurniture } from './furniture';
@@ -20,6 +20,8 @@ const LOOKS: Readonly<Record<RoomTheme, ThemeLook>> = {
   pracovna: { wall: '#5e3f7e', floor: 'carpet', base: '#2f4a3a', accent: '#c9a36b' },
 };
 const BG = '#101018';
+/** Height of the back-wall (N) door; its top stays below the decoration band. */
+const N_DOOR_H = 27;
 
 /** Wall shades used repeatedly while drawing a room, precomputed once per wall colour. */
 interface WallShades {
@@ -46,15 +48,16 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId
   const wall = look.wall;
   const { dim, edge, side } = wallShades(wall);
 
-  r(ctx, 0, 0, 320, VIEW.viewH, BG);
-  poly(ctx, [[0, 0], [320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backLeft, VIEW.wallTop]], dim);
+  const { left: L, right: R, top: T, bottom: B } = VIEW;
+  r(ctx, L, T, R - L, B - T, BG);
+  poly(ctx, [[L, T], [R, T], [VIEW.backRight, VIEW.wallTop], [VIEW.backLeft, VIEW.wallTop]], dim);
   r(ctx, VIEW.backLeft, VIEW.wallTop, VIEW.backRight - VIEW.backLeft, VIEW.backY - VIEW.wallTop, wall);
   r(ctx, VIEW.backLeft, VIEW.backY - 3, VIEW.backRight - VIEW.backLeft, 3, edge);
-  poly(ctx, [[0, 0], [VIEW.backLeft, VIEW.wallTop], [VIEW.backLeft, VIEW.backY], [VIEW.frontLeft, VIEW.frontY], [0, VIEW.viewH]], side);
-  poly(ctx, [[320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [320, VIEW.viewH]], side);
+  poly(ctx, [[L, T], [VIEW.backLeft, VIEW.wallTop], [VIEW.backLeft, VIEW.backY], [VIEW.frontLeft, VIEW.frontY], [L, B]], side);
+  poly(ctx, [[R, T], [VIEW.backRight, VIEW.wallTop], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [R, B]], side);
   drawFloor(ctx, look);
   if (room.rug) drawRug(ctx, wall);
-  r(ctx, 0, VIEW.frontY, 320, VIEW.viewH - VIEW.frontY, BG);
+  r(ctx, L, VIEW.frontY, R - L, B - VIEW.frontY, BG);
   for (const d of room.decor) drawDecor(ctx, d, now);
 
   for (const dir of DIRS) {
@@ -75,19 +78,21 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId
 function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
   const fill = isExit ? '#2e7dd1' : '#3b2618';
   const frame = isExit ? '#f4f4f4' : '#c9a36b';
-  const cx = VIEW.backLeft + RULES.roomW / 2;
+  const cx = wallX(RULES.roomW / 2);
+  const half = RULES.doorHalfX;
   switch (dir) {
     case 'N': {
-      r(ctx, cx - RULES.doorHalfX - 1, 17, RULES.doorHalfX * 2 + 2, VIEW.backY - 17, frame);
-      r(ctx, cx - RULES.doorHalfX, 18, RULES.doorHalfX * 2, VIEW.backY - 18, fill);
-      if (isExit) drawIcon(ctx, 'plane', cx, 16);
+      const top = VIEW.backY - N_DOOR_H;
+      r(ctx, cx - half - 1, top, half * 2 + 2, N_DOOR_H, frame);
+      r(ctx, cx - half, top + 1, half * 2, N_DOOR_H - 1, fill);
+      if (isExit) drawIcon(ctx, 'plane', cx, top + 9);
       break;
     }
     case 'S': {
       const a = project(RULES.roomW / 2 - RULES.doorHalfX, RULES.roomD);
       const b = project(RULES.roomW / 2 + RULES.doorHalfX, RULES.roomD);
       r(ctx, a.sx, VIEW.frontY - 2, b.sx - a.sx, 2, frame);
-      r(ctx, a.sx, VIEW.frontY, b.sx - a.sx, VIEW.viewH - VIEW.frontY, fill);
+      r(ctx, a.sx, VIEW.frontY, b.sx - a.sx, VIEW.bottom - VIEW.frontY, fill);
       if (isExit) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
       break;
     }

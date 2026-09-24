@@ -4,10 +4,13 @@ import { RULES } from '../logic/rules';
 import type { GameState, PlayerId, Spy } from '../logic/state';
 import { line, r, text } from './draw';
 import { VIEW, project } from './geometry';
+import { drawFrame } from './hud';
+import { ROOM, UNDER } from './layout';
 import { drawRoom } from './room';
 import { SPY_H, type SpyPalette } from './sprite-data';
 import { drawIcon, drawKufrikInHand, drawSprite, spyImage } from './sprites';
 import { walkFrame } from './spy';
+import { drawCable, drawDevice } from './trapulator';
 
 type Ctx = CanvasRenderingContext2D;
 const T = cs.spy;
@@ -32,16 +35,19 @@ export interface MobMember {
   torch: boolean;
 }
 
-/** Screen x of each mob member `t` seconds into the scene; half enter from the left, half from the right, and stop in a ring around the loser. */
-export function mobPositions(t: number, loserX: number): MobMember[] {
+/**
+ * Screen x of each mob member `t` seconds into the scene; half enter from the left, half from the right, and stop in a
+ * ring around the loser, inside the screen span `lo`..`hi`.
+ */
+export function mobPositions(t: number, loserX: number, lo = 0, hi: number = LOGICAL_W): MobMember[] {
   const walked = Math.max(0, t - MOB_AT) * MOB_SPEED;
   const mob: MobMember[] = [];
   for (let i = 0; i < MOB_SIZE; i++) {
     const fromLeft = i % 2 === 0;
     const rank = Math.floor(i / 2);
-    const start = fromLeft ? -12 - rank * MOB_GAP : LOGICAL_W + 12 + rank * MOB_GAP;
+    const start = fromLeft ? lo - 12 - rank * MOB_GAP : hi + 12 + rank * MOB_GAP;
     const rawStop = fromLeft ? loserX - MOB_CLEARANCE - rank * MOB_GAP : loserX + MOB_CLEARANCE + rank * MOB_GAP;
-    const stop = Math.min(LOGICAL_W - 6, Math.max(6, rawStop));
+    const stop = Math.min(hi - 6, Math.max(lo + 6, rawStop));
     const x = fromLeft ? Math.min(stop, start + walked) : Math.max(stop, start - walked);
     mob.push({ x, facing: fromLeft ? 1 : -1, color: MOB_COLORS[i % MOB_COLORS.length], torch: i % 3 === 0 });
   }
@@ -107,7 +113,7 @@ function drawMobbed(ctx: Ctx, state: GameState, loser: Spy, t: number, now: numb
   const shake = shaking ? (Math.floor(now * 30) % 2 === 0 ? 1 : -1) : 0;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, 0, LOGICAL_W, VIEW.viewH);
+  ctx.rect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
   ctx.clip();
   ctx.translate(shake, 0);
   drawRoom(ctx, state, loser.room, null, now);
@@ -118,12 +124,15 @@ function drawMobbed(ctx: Ctx, state: GameState, loser: Spy, t: number, now: numb
   drawSprite(ctx, spyImage(palette(loser), 'stand'), sx + tremble, sy, loser.facing < 0);
   text(ctx, '!', sx, sy - SPY_H - 2, '#ff5050', 10, 'center');
 
-  for (const m of mobPositions(t, sx)) drawMobMember(ctx, m, sy, now);
-  if (t > MOB_AT + 1) text(ctx, T.mobShout, 160, 20, '#ff5050', 12, 'center');
+  for (const m of mobPositions(t, sx, VIEW.left, VIEW.right)) drawMobMember(ctx, m, sy, now);
+  if (t > MOB_AT + 1) text(ctx, T.mobShout, VIEW.cx, VIEW.top + 14, '#ff5050', 12, 'center');
   ctx.restore();
 
-  r(ctx, 0, VIEW.viewH, 320, 20, '#0c0c12');
-  text(ctx, T.caught(name(loser)), 160, VIEW.viewH + 13, '#ff5050', 8, 'center');
+  drawFrame(ctx);
+  drawCable(ctx);
+  drawDevice(ctx, state, loser, now);
+  r(ctx, UNDER.x, UNDER.y, UNDER.w, UNDER.h, '#0c0c12');
+  text(ctx, T.caught(name(loser)), UNDER.x + UNDER.w / 2, UNDER.y + 9, '#ff5050', 7, 'center');
 }
 
 function drawMobMember(ctx: Ctx, m: MobMember, floorY: number, now: number): void {

@@ -1,98 +1,80 @@
 import { cs } from '../../../shared/i18n/cs';
 import { RULES } from '../logic/rules';
-import { MENU_MAP, SECRETS, TRAPS, type GameState, type Spy } from '../logic/state';
-import { r, text } from './draw';
+import { MENU_MAP, TRAPS, type GameState, type Spy } from '../logic/state';
+import { HAND_COLORS } from './colors';
+import { r, roundRect, text } from './draw';
 import { VIEW } from './geometry';
-import { drawIcon, thingIcon } from './sprites';
+import { FRAME, ROOM, UNDER, UNDER_PARTS } from './layout';
+import type { Toast } from './toast';
 
 type Ctx = CanvasRenderingContext2D;
 const T = cs.spy;
-export const HUD_Y = VIEW.viewH;
 
 export function formatClock(seconds: number): string {
   const s = Math.max(0, Math.ceil(seconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function box(ctx: Ctx, x: number, y: number, size: number): void {
-  r(ctx, x, y, size, size, '#2a2a36');
-  r(ctx, x + 1, y + 1, size - 2, size - 2, '#16161e');
+const BRICK = '#a4432c';
+const BRICK_DARK = '#5a1e12';
+const BRICK_LIGHT = '#d9876a';
+
+/** Rounded brick-red bezel around the room view, like a 1980s TV set. Draw after the room. */
+export function drawFrame(ctx: Ctx): void {
+  const f = FRAME;
+  ctx.beginPath();
+  roundRect(ctx, f.x, f.y, f.w, f.h, 7);
+  roundRect(ctx, ROOM.x, ROOM.y, ROOM.w, ROOM.h, 3);
+  ctx.fillStyle = BRICK;
+  ctx.fill('evenodd');
+  // darker inner edge
+  ctx.beginPath();
+  roundRect(ctx, ROOM.x - 0.5, ROOM.y - 0.5, ROOM.w + 1, ROOM.h + 1, 3);
+  ctx.strokeStyle = BRICK_DARK;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // a small highlight on the top-left of the bezel and a shade along the bottom
+  r(ctx, f.x + 7, f.y + 1, 46, 1, BRICK_LIGHT);
+  r(ctx, f.x + 1, f.y + 7, 1, 18, BRICK_LIGHT);
+  r(ctx, f.x + 7, f.y + f.h - 2, f.w - 14, 1, BRICK_DARK);
 }
 
-export function drawHud(ctx: Ctx, state: GameState, spy: Spy, now: number): void {
-  r(ctx, 0, HUD_Y, 320, 20, '#0c0c12');
-  r(ctx, 0, HUD_Y, 320, 1, '#33334a');
+/** Strip under the frame: player name, room name (or the Trapulator entry being chosen), toast, health pips. */
+export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | null): void {
+  r(ctx, UNDER.x, UNDER.y, UNDER.w, UNDER.h, '#0c0c12');
+  const p = UNDER_PARTS;
+  const name = (spy.id === 0 ? T.white : T.black).toUpperCase();
+  text(ctx, name, p.name.x, p.name.y + 8, spy.id === 0 ? '#f4f4f4' : '#9a9aae', 7);
 
-  text(ctx, spy.id === 0 ? T.white : T.black, 4, HUD_Y + 8, '#cccccc');
-  const blink = spy.clock < 60 && Math.floor(now * 2) % 2 === 0;
-  text(ctx, formatClock(spy.clock), 4, HUD_Y + 17, blink ? '#ff5050' : '#ffffff', 8);
-
-  for (let i = 0; i < RULES.health; i++) r(ctx, 44 + i * 5, HUD_Y + 12, 4, 4, i < spy.health ? '#d23c3c' : '#333333');
-
-  box(ctx, 72, HUD_Y + 4, 13);
-  if (spy.hand) drawIcon(ctx, thingIcon(spy.hand), 78.5, HUD_Y + 14);
-
-  const contents = spy.hand?.kind === 'kufrik' ? spy.hand.contents : [];
-  SECRETS.forEach((secret, i) => {
-    box(ctx, 92 + i * 12, HUD_Y + 5, 11);
-    if (contents.includes(secret)) drawIcon(ctx, secret, 97.5 + i * 12, HUD_Y + 14);
-  });
-
-  if (spy.armed) {
-    text(ctx, T.armed, 146, HUD_Y + 13, '#ccffcc', 6);
-    drawIcon(ctx, spy.armed, 172, HUD_Y + 15);
+  if (spy.menuOpen) {
+    const label = spy.menuCursor === MENU_MAP ? T.map : T.traps[TRAPS[spy.menuCursor]];
+    text(ctx, label, p.room.x, p.room.y + 8, '#ffe27a', 6);
+  } else {
+    text(ctx, T.rooms[state.rooms[spy.room].theme], p.room.x, p.room.y + 8, '#9a9ab0', 6);
   }
 
-  drawMiniMap(ctx, state, spy);
-  // right-aligned against the mini-map; the armed-trap label ends at x≈176, the longest name starts at x≈200
-  text(ctx, T.rooms[state.rooms[spy.room].theme], miniMapLeft(state) - 5, HUD_Y + 13, '#9a9ab0', 6, 'right');
-}
+  if (toast) {
+    const b = p.toast;
+    const color = HAND_COLORS[toast.kind];
+    r(ctx, b.x, b.y, b.w, b.h, color);
+    r(ctx, b.x, b.y + b.h - 1, b.w, 1, '#00000060');
+    text(ctx, toast.text, b.x + b.w / 2, b.y + 8, toast.kind === 'secret' ? '#1a1a1a' : '#ffffff', 6, 'center');
+  }
 
-function miniMapLeft(state: GameState): number {
-  return 316 - state.cols * 6;
-}
-
-function drawMiniMap(ctx: Ctx, state: GameState, spy: Spy): void {
-  const x0 = miniMapLeft(state);
-  const y0 = HUD_Y + 3;
-  for (const room of state.rooms) {
-    let color = '#222230';
-    if (spy.visited[room.id]) color = room.exit !== null ? '#2e7dd1' : '#666677';
-    if (room.id === spy.room) color = '#ffffff';
-    r(ctx, x0 + room.gx * 6, y0 + room.gy * 4, 5, 3, color);
+  const pips = p.pips;
+  for (let i = 0; i < RULES.health; i++) {
+    r(ctx, pips.x + 1 + i * 5, pips.y + 2, 4, 5, i < spy.health ? '#d23c3c' : '#333340');
   }
 }
 
-export function drawTrapulator(ctx: Ctx, spy: Spy): void {
-  const x0 = 90;
-  const y0 = 20;
-  const w = 140;
-  const h = 36;
-  r(ctx, x0, y0, w, h, '#6fbf6f');
-  r(ctx, x0 + 1, y0 + 1, w - 2, h - 2, '#1c2a1c');
-  TRAPS.forEach((trap, i) => {
-    const cx = x0 + 16 + i * 27;
-    if (i === spy.menuCursor) r(ctx, cx - 7, y0 + 5, 14, 13, '#e8c547');
-    r(ctx, cx - 6, y0 + 6, 12, 11, '#1c2a1c');
-    drawIcon(ctx, trap, cx, y0 + 16);
-    text(ctx, String(spy.stock[trap]), cx, y0 + 25, spy.stock[trap] > 0 ? '#ccffcc' : '#555555', 6, 'center');
-  });
-  // 6th cursor position (MAPA): drawn minimally here, real redesign is R6.
-  const mapCx = x0 + w - 10;
-  if (spy.menuCursor === MENU_MAP) r(ctx, mapCx - 9, y0 + 5, 18, 13, '#e8c547');
-  r(ctx, mapCx - 8, y0 + 6, 16, 11, '#1c2a1c');
-  text(ctx, 'M', mapCx, y0 + 15, '#ccffcc', 6, 'center');
-  const label = spy.menuCursor === MENU_MAP ? T.map : T.traps[TRAPS[spy.menuCursor]];
-  text(ctx, label, x0 + w / 2, y0 + 33, '#ccffcc', 6, 'center');
-}
-
+/** "Zamčeno" and the out-of-time veil, inside the room view. */
 export function drawMessages(ctx: Ctx, spy: Spy): void {
   if (spy.lockedMsg > 0) {
-    r(ctx, 120, 24, 80, 12, '#000000');
-    text(ctx, T.locked, 160, 33, '#ffffff', 8, 'center');
+    r(ctx, VIEW.cx - 40, VIEW.top + 19, 80, 12, '#000000');
+    text(ctx, T.locked, VIEW.cx, VIEW.top + 28, '#ffffff', 8, 'center');
   }
   if (spy.mode === 'out') {
-    r(ctx, 0, 0, 320, VIEW.viewH, 'rgba(0,0,0,0.6)');
-    text(ctx, T.out, 160, 44, '#ff5050', 12, 'center');
+    r(ctx, VIEW.left, VIEW.top, VIEW.right - VIEW.left, VIEW.bottom - VIEW.top, 'rgba(0,0,0,0.6)');
+    text(ctx, T.out, VIEW.cx, VIEW.top + 39, '#ff5050', 12, 'center');
   }
 }

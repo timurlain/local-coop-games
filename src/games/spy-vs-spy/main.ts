@@ -11,6 +11,8 @@ import { RULES } from './logic/rules';
 import type { EmbassySize, GameEvent, GameState, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
 import { formatClock } from './render/hud';
+import { pushToast, toastFor, type ToastQueue } from './render/toast';
+import { LOW_TIME } from './render/trapulator';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { renderGame } from './render/view';
 
@@ -49,6 +51,10 @@ let fpsTime = performance.now();
 /** Countdown per spy to the next footstep sound while walking. */
 const stepTimers: [number, number] = [0, 0];
 let victoryT = 0;
+/** Render-side toasts under each frame, fed from logic events. */
+let toasts: [ToastQueue, ToastQueue] = [[], []];
+/** Whole second of each clock at which the low-time beep last sounded. */
+const lastBeep: [number, number] = [-1, -1];
 
 function parseSeed(raw: string | null): number | null {
   if (raw === null) return null;
@@ -120,6 +126,9 @@ function startGame(): void {
   });
   stepTimers[0] = 0;
   stepTimers[1] = 0;
+  toasts = [[], []];
+  lastBeep[0] = -1;
+  lastBeep[1] = -1;
   screen = 'play';
   show(null);
 }
@@ -228,10 +237,13 @@ function updatePlay(dt: number): void {
   }
   const before: [string, string] = [posKey(s.spies[0]), posKey(s.spies[1])];
   const inputs: [SpyInput, SpyInput] = [toSpyInput(input.get(slots[0]!)), toSpyInput(input.get(slots[1]!))];
+  const now = performance.now() / 1000;
   for (const e of step(s, inputs, dt)) {
     const name = soundFor(e);
     if (name) sfx.play(name);
+    toastOn(e, now);
   }
+  for (const spy of s.spies) lowTimeBeep(spy);
   for (const spy of s.spies) {
     if (spy.mode !== 'normal') continue;
     if (posKey(spy) !== before[spy.id]) {
@@ -261,6 +273,30 @@ function updateVictory(dt: number): void {
   if (before < MOB_AT && victoryT >= MOB_AT) sfx.play('mob');
   const skipped = victoryT >= VICTORY_SKIPPABLE_AFTER && slotPressed('action');
   if (victoryT >= VICTORY_DURATION || skipped) finish(state!);
+}
+
+/** A remedy, secret or kufřík entering the hand shows its name under that player's frame. */
+function toastOn(e: GameEvent, now: number): void {
+  switch (e.type) {
+    case 'found':
+      if (e.thing) pushToast(toasts[e.spy], toastFor(e.thing), now);
+      break;
+    case 'swapped':
+      pushToast(toasts[e.spy], toastFor(e.took), now);
+      break;
+    case 'stored':
+      pushToast(toasts[e.spy], toastFor({ kind: 'secret', secret: e.secret }), now);
+      break;
+  }
+}
+
+/** Once per second per player while the clock is under LOW_TIME. */
+function lowTimeBeep(spy: Spy): void {
+  if (spy.mode === 'out' || spy.mode === 'escaped' || spy.clock <= 0 || spy.clock >= LOW_TIME) return;
+  const sec = Math.ceil(spy.clock);
+  if (sec === lastBeep[spy.id]) return;
+  lastBeep[spy.id] = sec;
+  sfx.play('lowtime');
 }
 
 function soundFor(e: GameEvent): SfxName | null {
@@ -311,7 +347,7 @@ function render(): void {
   if (screen === 'victory' && state?.result?.kind === 'win') {
     renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
   } else if (state && screen !== 'menu') {
-    renderGame(ctx, scale, state, now / 1000, { on: debug, fps });
+    renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts);
   } else {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000000';

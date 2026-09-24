@@ -1,17 +1,22 @@
 import type { RoomDecor } from '../logic/state';
 import { DECOR_W } from '../logic/themes';
-import { disc, line, poly, r, text } from './draw';
-import { VIEW } from './geometry';
+import { disc, line, poly, r, text, withScale } from './draw';
+import { VIEW, wallX } from './geometry';
 
 type Ctx = CanvasRenderingContext2D;
 
-/** Top of the decoration band on the back wall (screen y); the band is 10 px tall, above the door frames. */
+/** Top of the decoration band on the back wall (screen y); the band is 10 px tall before scaling, above the door frames. */
 const TOP = VIEW.wallTop + 1;
 const H = 10;
 
 /** One wall decoration, centred at `d.x` on the back wall. Visual only. */
 export function drawDecor(ctx: Ctx, d: RoomDecor, now: number): void {
-  const cx = VIEW.backLeft + d.x;
+  const cx = wallX(d.x);
+  withScale(cx, TOP, VIEW.scale, () => drawPicture(ctx, d, cx, now));
+}
+
+/** Authored at 1 px per logic unit; `drawDecor` scales it with the wall. */
+function drawPicture(ctx: Ctx, d: RoomDecor, cx: number, now: number): void {
   const x0 = cx - DECOR_W / 2;
   const y0 = TOP;
   switch (d.kind) {

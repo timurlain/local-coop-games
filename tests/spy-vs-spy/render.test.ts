@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { shade } from '../../src/games/spy-vs-spy/render/draw';
-import { project } from '../../src/games/spy-vs-spy/render/geometry';
+import { VIEW, project, wallX } from '../../src/games/spy-vs-spy/render/geometry';
+import { ROOM } from '../../src/games/spy-vs-spy/render/layout';
 import { formatClock } from '../../src/games/spy-vs-spy/render/hud';
 import { createSpy } from '../../src/games/spy-vs-spy/logic/generator';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
@@ -12,12 +13,23 @@ import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
 import { WALK_CYCLE, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
 
 describe('project', () => {
-  it('maps the floor corners onto the trapezoid', () => {
-    expect(project(0, 0)).toEqual({ sx: 60, sy: 46 });
-    expect(project(200, 0)).toEqual({ sx: 260, sy: 46 });
-    expect(project(0, 40)).toEqual({ sx: 20, sy: 78 });
-    expect(project(200, 40)).toEqual({ sx: 300, sy: 78 });
-    expect(project(100, 20)).toEqual({ sx: 160, sy: 62 });
+  it('maps the floor corners onto the trapezoid inside the room view', () => {
+    expect(project(0, 0)).toEqual({ sx: 34, sy: 46 });
+    expect(project(200, 0)).toEqual({ sx: 184, sy: 46 });
+    expect(project(0, 40)).toEqual({ sx: 13, sy: 79 });
+    expect(project(200, 40)).toEqual({ sx: 205, sy: 79 });
+    expect(project(100, 20)).toEqual({ sx: 109, sy: 62.5 });
+    expect(VIEW.backLeft).toBe(34);
+    expect(VIEW.frontY).toBeLessThan(VIEW.bottom);
+  });
+
+  it('keeps the whole room inside ROOM', () => {
+    expect(VIEW.left).toBe(ROOM.x);
+    expect(VIEW.right).toBe(ROOM.x + ROOM.w);
+    expect(VIEW.frontLeft).toBeGreaterThanOrEqual(VIEW.left);
+    expect(VIEW.frontRight).toBeLessThanOrEqual(VIEW.right);
+    expect(VIEW.wallTop).toBeGreaterThan(VIEW.top);
+    expect(wallX(RULES.roomW)).toBe(VIEW.backRight);
   });
 });
 

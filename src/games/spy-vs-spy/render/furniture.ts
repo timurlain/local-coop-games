@@ -1,12 +1,17 @@
 import type { Furniture } from '../logic/state';
-import { disc, line, r } from './draw';
-import { VIEW } from './geometry';
+import { disc, line, r, withScale } from './draw';
+import { VIEW, wallX } from './geometry';
 
 type Ctx = CanvasRenderingContext2D;
 
+/** Draws one piece standing against the back wall, scaled with the wall (pieces are authored at 1 px per logic unit). */
 export function drawFurniture(ctx: Ctx, f: Furniture, highlight: boolean, now: number): void {
-  const x = VIEW.backLeft + f.x;
+  const x = wallX(f.x);
   const y = VIEW.backY;
+  withScale(x, y, VIEW.scale, () => drawPiece(ctx, f, x, y, highlight, now));
+}
+
+function drawPiece(ctx: Ctx, f: Furniture, x: number, y: number, highlight: boolean, now: number): void {
   let top = y;
   switch (f.kind) {
     case 'stul':

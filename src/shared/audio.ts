@@ -3,7 +3,8 @@ export type SfxName =
   | 'bomb' | 'zap' | 'boing' | 'shot'
   | 'swing' | 'hit' | 'block' | 'door' | 'locked' | 'tick' | 'win' | 'draw'
   | 'step'
-  | 'laugh' | 'mob';
+  | 'laugh' | 'mob'
+  | 'lowtime';
 
 interface ToneOpts {
   freq: number;
@@ -78,6 +79,7 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   step: (c) => noise(c, { dur: 0.04, vol: 0.06, lowpass: 900 }),
   laugh: (c) => [0, 0.2, 0.4].forEach((delay, i) =>
     tone(c, { freq: 620 - i * 60, to: 480 - i * 60, dur: 0.14, delay, type: 'square', vol: 0.18 })),
+  lowtime: (c) => tone(c, { freq: 1760, dur: 0.06, type: 'square', vol: 0.07 }),
   mob: (c) => {
     noise(c, { dur: 3, vol: 0.25, lowpass: 450 });
     for (let i = 0; i < 6; i++) tone(c, { freq: 140 + (i % 3) * 30, dur: 0.25, delay: 0.3 + i * 0.4, type: 'sawtooth', vol: 0.08 });
