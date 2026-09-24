@@ -4,6 +4,7 @@ import type { GameState } from '../logic/state';
 import { drawDebug } from './debug';
 import { drawFrame, drawMessages, drawUnder } from './hud';
 import { ROOM } from './layout';
+import { drawBigMap } from './map';
 import { drawRoom } from './room';
 import { drawSpy, trackMotion } from './spy';
 import { currentToast, type ToastQueue } from './toast';
@@ -14,7 +15,7 @@ export interface DebugInfo {
   fps: number;
 }
 
-/** Draws both halves: room in the TV frame, the strip under it and the Trapulator. `now` is in seconds. */
+/** Draws both halves: room (or big map) in the TV frame, the strip under it and the Trapulator. `now` is in seconds. */
 export function renderGame(
   ctx: CanvasRenderingContext2D, scale: number, state: GameState, now: number, debug: DebugInfo,
   toasts: readonly ToastQueue[],
@@ -30,11 +31,15 @@ export function renderGame(
       ctx.beginPath();
       ctx.rect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
       ctx.clip();
-      const near = viewer.mode === 'normal' ? furnitureAt(state, viewer) : null;
-      drawRoom(ctx, state, viewer.room, near?.id ?? null, now);
-      const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
-      for (const s of here) drawSpy(ctx, state, s, now);
-      if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
+      if (viewer.mapOpen) {
+        drawBigMap(ctx, state, viewer, now);
+      } else {
+        const near = viewer.mode === 'normal' ? furnitureAt(state, viewer) : null;
+        drawRoom(ctx, state, viewer.room, near?.id ?? null, now);
+        const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
+        for (const s of here) drawSpy(ctx, state, s, now);
+        if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
+      }
       drawMessages(ctx, viewer);
       ctx.restore();
       drawFrame(ctx);

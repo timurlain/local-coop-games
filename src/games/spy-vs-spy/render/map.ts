@@ -1,7 +1,8 @@
+import { cs } from '../../../shared/i18n/cs';
 import { DIRS, OPPOSITE, neighbor, type Dir, type GameState, type Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
-import { r } from './draw';
-import { minimapLayout, type GridLayout } from './layout';
+import { r, text } from './draw';
+import { ROOM, bigMapLayout, minimapLayout, type GridLayout } from './layout';
 import { drawIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
@@ -61,6 +62,9 @@ interface GridStyle {
 
 const MINI: GridStyle = {
   unknown: '#2c2f38', visited: '#8a8f9c', current: '#ffffff', door: '#c9ccd4', thick: 1, dots: false, bigExit: false,
+};
+const BIG: GridStyle = {
+  unknown: '#1c2a40', visited: '#6f86a8', current: '#ffffff', door: '#dfe6f0', thick: 2, dots: true, bigExit: true,
 };
 const EXIT_COLOR = '#2e7dd1';
 
@@ -130,4 +134,13 @@ function drawExit(ctx: Ctx, g: GridLayout, style: GridStyle, dir: Dir, x: number
 /** Always-on mini-map inside the Trapulator (the caller draws the screen behind it). */
 export function drawMiniMap(ctx: Ctx, state: GameState, spy: Spy, now: number): void {
   drawGrid(ctx, state, spy, minimapLayout(state.cols, state.rows), MINI, now);
+}
+
+/** Big map drawn instead of the room view while MAPA is held. */
+export function drawBigMap(ctx: Ctx, state: GameState, spy: Spy, now: number): void {
+  r(ctx, ROOM.x, ROOM.y, ROOM.w, ROOM.h, '#0b1424');
+  for (let x = ROOM.x + 4; x < ROOM.x + ROOM.w; x += 8) r(ctx, x, ROOM.y, 1, ROOM.h, '#101c30');
+  for (let y = ROOM.y + 4; y < ROOM.y + ROOM.h; y += 8) r(ctx, ROOM.x, y, ROOM.w, 1, '#101c30');
+  drawGrid(ctx, state, spy, bigMapLayout(state.cols, state.rows), BIG, now);
+  text(ctx, cs.spy.device.map, ROOM.x + 3, ROOM.y + 7, '#6f86a8', 5);
 }
