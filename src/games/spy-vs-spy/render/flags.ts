@@ -42,22 +42,21 @@ export const FLAGS: Readonly<Record<HostCountry, FlagSpec>> = {
 };
 
 /**
- * Draws a flag with its top-left corner at (x, y) in whole pixels, hoist on the left. `h` should be a multiple of
- * the band count (6 works for all five). `wave` (0 or 1) drops the fly-end column by a pixel for a gentle flutter.
+ * Draws a flag hanging still with its top-left corner at (x, y) in whole pixels, hoist on the left.
+ * `h` should be a multiple of the band count (6 works for all five). Indoor flags don't flutter —
+ * there's no wind in an embassy hallway.
  */
-export function drawFlag(ctx: Ctx, host: HostCountry, x: number, y: number, w: number, h: number, wave = 0): void {
+export function drawFlag(ctx: Ctx, host: HostCountry, x: number, y: number, w: number, h: number): void {
   const spec = FLAGS[host];
   const n = spec.bands.length;
   const x0 = Math.round(x);
   const y0 = Math.round(y);
   for (let col = 0; col < w; col++) {
-    // the last third of the flag ripples
-    const dy = wave && col >= Math.ceil((w * 2) / 3) ? (col % 2 === 0 ? 1 : 0) : 0;
     for (let i = 0; i < n; i++) {
       const top = Math.round((h * i) / n);
       const bottom = Math.round((h * (i + 1)) / n);
       ctx.fillStyle = spec.bands[i];
-      ctx.fillRect(x0 + col, y0 + top + dy, 1, bottom - top);
+      ctx.fillRect(x0 + col, y0 + top, 1, bottom - top);
     }
   }
   if (spec.hoistTriangle) {

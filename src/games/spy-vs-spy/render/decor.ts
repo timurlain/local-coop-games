@@ -17,7 +17,7 @@ const DECO_RED = '#b8281e';
 export function drawDecor(ctx: Ctx, d: RoomDecor, now: number): void {
   const cx = wallX(d.x);
   if (d.kind.startsWith('vlajka_')) {
-    drawFlagOnPole(ctx, d.kind.slice(7) as HostCountry, cx, now);
+    drawFlagOnPole(ctx, d.kind.slice(7) as HostCountry, cx);
     return;
   }
   const kind = d.kind as PictureKind;
@@ -66,11 +66,11 @@ function drawClockHands(ctx: Ctx, cx: number, cy: number, now: number): void {
 }
 
 /** A small flag on a wall-mounted pole with a gilt finial, drawn at native pixels so the bands stay exact. */
-function drawFlagOnPole(ctx: Ctx, host: HostCountry, cx: number, now: number): void {
+function drawFlagOnPole(ctx: Ctx, host: HostCountry, cx: number): void {
   const px = Math.round(cx - 6);
   const y = Math.round(TOP);
   r(ctx, px, y + 1, 1, 8, '#6b4a20');
   r(ctx, px - 1, y, 3, 1, GILT_LIGHT);
   r(ctx, px - 1, y + 8, 3, 1, GILT_DARK);
-  drawFlag(ctx, host, px + 1, y + 1, 12, 6, Math.floor(now * 3) % 2);
+  drawFlag(ctx, host, px + 1, y + 1, 12, 6);
 }
