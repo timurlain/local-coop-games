@@ -69,7 +69,8 @@ Each half (320×100 logical) becomes:
 - **Hand colour coding** everywhere (Trapulator slots, toast): armed trap red, remedy green, secret gold, kufřík brown.
 - **Trapulator use**: holding the Trapulator button shows a cursor over the 6 buttons (left/right); Akce on a trap arms it (on the armed trap = unarm, as v1); the panel is always visible, no pop-up over the room. The spy cannot move while the button is held (v1 rule).
 - **Map**: Akce on MAPA shows the map **instead of the room view while the Trapulator button stays held**: grid of rooms, visited rooms filled, current room blinking, doors between visited rooms, **dots in visited rooms that hold a secret or the kufřík**, the exit room marked once visited. The opponent is never shown. Opening the map costs **5 s** of the clock (once per opening).
-- The always-on mini-map in the HUD is removed (the map button replaces it).
+- The **always-on mini-map stays** (user decision), moved into the Trapulator device, cells a bit larger than v1. It shows **doors**: a short connector between two cells for every door of a visited room (so a door is known once you have been on either side of it), walls without a door stay closed, the current room is highlighted, and the exit wall gets a plane marker once its room was visited. No item dots and never the opponent — those extras (item dots) are the MAPA button's job.
+- The **big map** (MAPA button) draws the same door connectors plus the item dots.
 - **Toast**: when a remedy/secret/kufřík enters the hand, its Czech name shows under the frame for 1.5 s.
 - **Icons redrawn** for clarity (8×8 stays): kbelík vody with handle and water line, kleště, deštník, nůžky, and all trap icons; new fixture looks per §1.
 
