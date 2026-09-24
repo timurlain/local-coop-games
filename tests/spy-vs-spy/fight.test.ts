@@ -220,6 +220,27 @@ describe('updateDucking (spec §8)', () => {
     updateDucking(s, b, input({ moveY: 1 }));
     expect(b.ducking).toBe(false);
   });
+
+  it('does not duck when the opponent shares the room but is out of fight range (L3 review)', () => {
+    const { s, b } = duel();
+    b.x = 100 + RULES.fightRangeX + 1;
+    updateDucking(s, b, input({ moveY: 1 }));
+    expect(b.ducking).toBe(false);
+    b.x = 110;
+    b.z = 20 + RULES.fightRangeZ + 1;
+    updateDucking(s, b, input({ moveY: 1 }));
+    expect(b.ducking).toBe(false);
+  });
+
+  it('ducks once the opponent is back within fight range', () => {
+    const { s, a, b } = duel();
+    b.x = 100 + RULES.fightRangeX + 1;
+    updateDucking(s, b, input({ moveY: 1 }));
+    expect(b.ducking).toBe(false);
+    b.x = a.x + RULES.fightRangeX;
+    updateDucking(s, b, input({ moveY: 1 }));
+    expect(b.ducking).toBe(true);
+  });
 });
 
 describe('updateHealthRegen', () => {

@@ -23,11 +23,15 @@ export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): voi
 }
 
 /**
- * Holding down in a shared room while not swinging = duck (spec §8): stops a head bash, and the
- * spy doesn't move that tick. Outside a shared room down still just walks towards the front.
+ * Holding down while not swinging = duck (spec §8): stops a head bash, and the spy doesn't move
+ * that tick — but only when the opponent is actually within fight range (L3 review). An opponent
+ * merely sharing the room but out of reach can't be ducked at, so holding down still just walks
+ * towards the front, letting the spy get to the S door instead of being stuck.
  */
 export function updateDucking(state: GameState, spy: Spy, input: SpyInput): void {
-  spy.ducking = spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveY === 1 && spy.attack === null && sharesRoom(state, spy);
+  const o = sameRoomOpponent(state, spy);
+  spy.ducking = spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveY === 1 && spy.attack === null
+    && o !== null && inFightRange(spy, o);
 }
 
 /**
