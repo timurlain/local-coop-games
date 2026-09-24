@@ -23,14 +23,19 @@ export class InputManager {
       'F1',
     ]);
     win.addEventListener('keydown', (e) => {
-      if (this.captured.has(e.code)) e.preventDefault();
+      const t = e.target as HTMLElement | null;
+      const inForm = !!t && ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName);
+      if (!inForm && this.captured.has(e.code)) e.preventDefault();
       if (!e.repeat) this.pendingPresses.add(e.code);
       this.keys.add(e.code);
     });
     win.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
     });
-    win.addEventListener('blur', () => this.keys.clear());
+    win.addEventListener('blur', () => {
+      this.keys.clear();
+      this.pendingPresses.clear();
+    });
   }
 
   update(): void {
