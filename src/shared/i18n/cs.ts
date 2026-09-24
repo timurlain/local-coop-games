@@ -36,6 +36,16 @@ export const cs = {
     rematchHint: 'Akce = odveta · Esc = menu',
     timeLeft: (clock: string) => `Zbývající čas: ${clock}`,
     seed: 'Seed',
+    rooms: {
+      kancelar: 'Kancelář',
+      knihovna: 'Knihovna',
+      salonek: 'Salonek',
+      archiv: 'Archiv',
+      konferencni: 'Konferenční sál',
+      kuchynka: 'Kuchyňka',
+      radiostanice: 'Radiostanice',
+      pracovna: 'Velvyslancova pracovna',
+    },
     traps: {
       bomba: 'Bomba',
       pruzina: 'Pružina',

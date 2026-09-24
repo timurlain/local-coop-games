@@ -44,10 +44,16 @@ export function drawHud(ctx: Ctx, state: GameState, spy: Spy, now: number): void
   }
 
   drawMiniMap(ctx, state, spy);
+  // right-aligned against the mini-map; the armed-trap label ends at x≈176, the longest name starts at x≈200
+  text(ctx, T.rooms[state.rooms[spy.room].theme], miniMapLeft(state) - 5, HUD_Y + 13, '#9a9ab0', 6, 'right');
+}
+
+function miniMapLeft(state: GameState): number {
+  return 316 - state.cols * 6;
 }
 
 function drawMiniMap(ctx: Ctx, state: GameState, spy: Spy): void {
-  const x0 = 316 - state.cols * 6;
+  const x0 = miniMapLeft(state);
   const y0 = HUD_Y + 3;
   for (const room of state.rooms) {
     let color = '#222230';
