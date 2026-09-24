@@ -56,6 +56,7 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   dropHand(state, spy);
   spy.mode = 'out';
   spy.menuOpen = false;
+  spy.mapOpen = false;
   spy.armed = null;
   spy.holdTarget = null;
   spy.searchTarget = null;
@@ -72,6 +73,7 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
     return;
   }
   spy.menuOpen = false;
+  spy.mapOpen = false;
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
   if (spy.mode !== 'normal' || spy.holdTarget !== null) return;

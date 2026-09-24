@@ -267,6 +267,8 @@ function soundFor(e: GameEvent): SfxName | null {
   switch (e.type) {
     case 'searchStart': return 'search';
     case 'found': return e.thing ? 'found' : null;
+    case 'stored': return 'found';
+    case 'swapped': return 'hide';
     case 'hidden': return 'hide';
     case 'dropped': return e.thing ? 'fail' : null;
     case 'trapSet': return 'trapSet';
@@ -288,6 +290,7 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'tick': return 'tick';
     case 'explode': return 'bomb';
     case 'timeout': return 'fail';
+    case 'mapOpened': return 'door';
     case 'respawn':
     case 'escaped':
     case 'draw':

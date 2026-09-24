@@ -28,6 +28,7 @@ export const cs = {
     locked: 'Zamčeno',
     out: 'Došel čas',
     armed: 'Past:',
+    map: 'Mapa',
     winner: (name: string) => `${name} utekl!`,
     draw: 'Remíza — oběma došel čas',
     laugh: 'HA HA HA!',

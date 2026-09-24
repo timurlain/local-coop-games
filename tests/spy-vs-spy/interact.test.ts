@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { updateAction, updateSearching } from '../../src/games/spy-vs-spy/logic/interact';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { doorKey, type GameEvent, type GameState, type Spy, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
-import { atFurniture, firstFurniture, input, openGame, place, secret } from './fixtures';
+import { atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, secret } from './fixtures';
 
 function act(s: GameState, spy: Spy, inp: SpyInput, dt: number, ev: GameEvent[]) {
   updateAction(s, spy, inp, dt, ev);
@@ -74,6 +74,91 @@ describe('hold = hide', () => {
     act(s, spy, input({ action: true }), 0.25, ev);
     act(s, spy, input({ action: true }), 0.25, ev);
     expect(spy.mode).toBe('searching');
+  });
+
+  it('holding onto an occupied piece falls back to a search that swaps (user decision)', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = secret('klic');
+    const spy = atFurniture(s, 0, f);
+    spy.hand = secret('pas');
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input({ action: true }), 0.25, ev);
+    act(s, spy, input({ action: true }), 0.25, ev);
+    expect(spy.mode).toBe('searching');
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: secret('klic') });
+    expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
+  });
+});
+
+describe('search outcome events (spec §7)', () => {
+  it('nothing found emits found with a null thing', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    const spy = atFurniture(s, 0, f);
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input(), 1 / 60, ev);
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: null });
+  });
+
+  it('a swap emits swapped with gave and took, not found', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = secret('klic');
+    const spy = atFurniture(s, 0, f);
+    spy.hand = secret('pas');
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input(), 1 / 60, ev);
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: secret('klic') });
+    expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
+  });
+
+  it('a secret going into the held kufrik emits stored', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = secret('klic');
+    const spy = atFurniture(s, 0, f);
+    spy.hand = kufrik('pas');
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input(), 1 / 60, ev);
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(ev).toContainEqual({ type: 'stored', spy: 0, secret: 'klic' });
+    expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
+  });
+
+  it('taking the kufrik while holding a secret also emits stored', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = kufrik('plany');
+    const spy = atFurniture(s, 0, f);
+    spy.hand = secret('penize');
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input(), 1 / 60, ev);
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(ev).toContainEqual({ type: 'stored', spy: 0, secret: 'penize' });
+    expect(spy.hand).toEqual(kufrik('plany', 'penize'));
+  });
+
+  it('putting back a source own remedy emits found with a null thing', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.source = 'voda';
+    const spy = atFurniture(s, 0, f);
+    spy.hand = remedy('voda');
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input(), 1 / 60, ev);
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: null });
+    expect(spy.hand).toBeNull();
   });
 });
 

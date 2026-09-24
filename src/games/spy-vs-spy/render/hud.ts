@@ -1,6 +1,6 @@
 import { cs } from '../../../shared/i18n/cs';
 import { RULES } from '../logic/rules';
-import { SECRETS, TRAPS, type GameState, type Spy } from '../logic/state';
+import { MENU_MAP, SECRETS, TRAPS, type GameState, type Spy } from '../logic/state';
 import { r, text } from './draw';
 import { VIEW } from './geometry';
 import { drawIcon, thingIcon } from './sprites';
@@ -77,7 +77,13 @@ export function drawTrapulator(ctx: Ctx, spy: Spy): void {
     drawIcon(ctx, trap, cx, y0 + 16);
     text(ctx, String(spy.stock[trap]), cx, y0 + 25, spy.stock[trap] > 0 ? '#ccffcc' : '#555555', 6, 'center');
   });
-  text(ctx, T.traps[TRAPS[spy.menuCursor]], x0 + w / 2, y0 + 33, '#ccffcc', 6, 'center');
+  // 6th cursor position (MAPA): drawn minimally here, real redesign is R6.
+  const mapCx = x0 + w - 10;
+  if (spy.menuCursor === MENU_MAP) r(ctx, mapCx - 9, y0 + 5, 18, 13, '#e8c547');
+  r(ctx, mapCx - 8, y0 + 6, 16, 11, '#1c2a1c');
+  text(ctx, 'M', mapCx, y0 + 15, '#ccffcc', 6, 'center');
+  const label = spy.menuCursor === MENU_MAP ? T.map : T.traps[TRAPS[spy.menuCursor]];
+  text(ctx, label, x0 + w / 2, y0 + 33, '#ccffcc', 6, 'center');
 }
 
 export function drawMessages(ctx: Ctx, spy: Spy): void {

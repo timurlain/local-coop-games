@@ -1,7 +1,7 @@
 import { kill } from './death';
 import { RULES } from './rules';
 import {
-  TRAPS, isActive,
+  MENU_MAP, TRAPS, isActive,
   type DoorTrapKind, type Furniture, type FurnitureTrapKind, type GameEvent, type GameState,
   type RemedyKind, type Spy, type SpyInput, type TimeBomb,
 } from './state';
@@ -75,13 +75,20 @@ export function placeTimeBomb(state: GameState, spy: Spy, events: GameEvent[]): 
   events.push({ type: 'trapSet', spy: spy.id, trap: 'casovana' });
 }
 
+/** Total Trapulator menu entries: the 5 traps plus the MAPA button (spec §5). */
+const MENU_ENTRIES = MENU_MAP + 1;
+
 /** Called every tick while the Trapulator button is held. The spy does not move meanwhile. */
 export function updateTrapMenu(state: GameState, spy: Spy, input: SpyInput, events: GameEvent[]): void {
   spy.menuOpen = true;
-  const n = TRAPS.length;
+  const n = MENU_ENTRIES;
   if (input.moveX === -1 && spy.prev.moveX !== -1) spy.menuCursor = (spy.menuCursor + n - 1) % n;
   if (input.moveX === 1 && spy.prev.moveX !== 1) spy.menuCursor = (spy.menuCursor + 1) % n;
   if (!input.action || spy.prev.action) return;
+  if (spy.menuCursor === MENU_MAP) {
+    openMap(spy, events);
+    return;
+  }
   const kind = TRAPS[spy.menuCursor];
   if (spy.stock[kind] <= 0) {
     events.push({ type: 'trapFailed', spy: spy.id });
@@ -90,6 +97,14 @@ export function updateTrapMenu(state: GameState, spy: Spy, input: SpyInput, even
   if (kind === 'casovana') placeTimeBomb(state, spy, events);
   else if (spy.armed === kind) spy.armed = null;
   else spy.armed = kind;
+}
+
+/** Akce on MAPA (spec §5): opens the map and costs the clock once per opening. */
+function openMap(spy: Spy, events: GameEvent[]): void {
+  if (spy.mapOpen) return;
+  spy.mapOpen = true;
+  spy.clock = Math.max(0, spy.clock - RULES.mapCost);
+  events.push({ type: 'mapOpened', spy: spy.id });
 }
 
 export function updateTimeBombs(state: GameState, dt: number, events: GameEvent[]): void {

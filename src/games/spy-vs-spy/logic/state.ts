@@ -22,6 +22,8 @@ export type RoomTheme =
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
 export const SECRETS: readonly SecretKind[] = ['klic', 'penize', 'pas', 'plany'];
 export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana'];
+/** Trapulator menu cursor: 0..TRAPS.length-1 select a trap, MENU_MAP (the 6th entry) selects the map. */
+export const MENU_MAP = TRAPS.length;
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
   'kartoteka', 'televize', 'globus', 'lednice', 'radio', 'kvetina', 'krb',
@@ -138,6 +140,8 @@ export interface Spy {
   deathCause: DeathCause | null;
   menuOpen: boolean;
   menuCursor: number;
+  /** true while the big map (MAPA) is shown; only while the Trapulator button is held */
+  mapOpen: boolean;
   armed: TrapKind | null;
   stock: Record<TrapKind, number>;
   swingCooldown: number;
@@ -170,6 +174,8 @@ export interface GameState {
 export type GameEvent =
   | { type: 'searchStart'; spy: PlayerId }
   | { type: 'found'; spy: PlayerId; thing: Thing | null }
+  | { type: 'stored'; spy: PlayerId; secret: SecretKind }
+  | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing }
   | { type: 'hidden'; spy: PlayerId }
   | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
@@ -186,6 +192,7 @@ export type GameEvent =
   | { type: 'explode'; room: number }
   | { type: 'escaped'; spy: PlayerId }
   | { type: 'timeout'; spy: PlayerId }
+  | { type: 'mapOpened'; spy: PlayerId }
   | { type: 'draw' };
 
 const DELTA: Readonly<Record<Dir, readonly [number, number]>> = {

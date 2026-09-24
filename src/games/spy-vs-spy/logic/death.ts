@@ -12,6 +12,7 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   spy.deathCause = cause;
   spy.clock = Math.max(0, spy.clock - RULES.deathPenalty);
   spy.menuOpen = false;
+  spy.mapOpen = false;
   spy.armed = null;
   spy.holdTarget = null;
   spy.searchTarget = null;

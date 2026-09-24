@@ -81,9 +81,25 @@ export function updateSearching(state: GameState, spy: Spy, dt: number, events: 
   spy.modeTimer -= dt;
   if (spy.modeTimer > 0 || spy.searchTarget === null) return;
   const f = state.furniture[spy.searchTarget];
+  const gave = spy.hand;
   spy.mode = 'normal';
   spy.modeTimer = 0;
   spy.searchTarget = null;
-  const found = resolveSearch(spy, f);
-  events.push({ type: 'found', spy: spy.id, thing: found });
+  const { outcome, found } = resolveSearch(spy, f);
+  switch (outcome) {
+    case 'nothing':
+    case 'putBack':
+      events.push({ type: 'found', spy: spy.id, thing: null });
+      break;
+    case 'took':
+      events.push({ type: 'found', spy: spy.id, thing: found });
+      break;
+    case 'stored':
+      // `found` is always the secret that went into the kufřík (spec §7).
+      if (found?.kind === 'secret') events.push({ type: 'stored', spy: spy.id, secret: found.secret });
+      break;
+    case 'swapped':
+      events.push({ type: 'swapped', spy: spy.id, gave: gave!, took: found! });
+      break;
+  }
 }

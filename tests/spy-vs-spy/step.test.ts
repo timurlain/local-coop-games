@@ -76,6 +76,37 @@ describe('orchestration', () => {
     expect(spy.menuOpen).toBe(false);
   });
 
+  it('releasing the Trapulator button closes the map', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    spy.menuCursor = 5; // MENU_MAP
+    step(s, [input({ trap: true, action: true }), IDLE], 1 / 60);
+    expect(spy.mapOpen).toBe(true);
+    step(s, [IDLE, IDLE], 1 / 60); // release the Trapulator button
+    expect(spy.mapOpen).toBe(false);
+  });
+
+  it('death closes the map', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.trap = { kind: 'bomba', owner: 1 };
+    const spy = atFurniture(s, 0, f);
+    spy.mapOpen = true;
+    step(s, [input({ action: true }), IDLE], 1 / 60);
+    step(s, [IDLE, IDLE], 1 / 60);
+    expect(spy.mode).toBe('dead');
+    expect(spy.mapOpen).toBe(false);
+  });
+
+  it('timeout closes the map', () => {
+    const s = openGame();
+    s.spies[0].clock = 0.1;
+    s.spies[0].mapOpen = true;
+    run(s, [IDLE, IDLE], 0.25, 0.25);
+    expect(s.spies[0].mode).toBe('out');
+    expect(s.spies[0].mapOpen).toBe(false);
+  });
+
   it('a dead spy respawns after the respawn time', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
@@ -131,6 +162,15 @@ describe('meeting: shared room (spec §3)', () => {
     run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.5);
     expect(spy.menuOpen).toBe(false);
     expect(spy.armed).toBeNull();
+  });
+
+  it('the map cannot be opened while sharing a room (spec §3, §5)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 130, 20);
+    spy.menuCursor = 5; // MENU_MAP
+    run(s, [input({ trap: true, action: true }), IDLE], 0.5);
+    expect(spy.mapOpen).toBe(false);
   });
 
   it('Akce out of fight range does nothing while sharing a room: no search, hide or trap placement', () => {

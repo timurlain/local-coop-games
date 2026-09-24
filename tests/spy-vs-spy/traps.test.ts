@@ -3,7 +3,9 @@ import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import {
   placeDoorTrap, placeFurnitureTrap, triggerDoorTrap, triggerFurnitureTrap, updateTimeBombs, updateTrapMenu,
 } from '../../src/games/spy-vs-spy/logic/traps';
-import { doorKey, type GameEvent, type GameState, type Spy, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
+import {
+  doorKey, MENU_MAP, type GameEvent, type GameState, type Spy, type SpyInput,
+} from '../../src/games/spy-vs-spy/logic/state';
 import { atFurniture, firstFurniture, input, openGame, place, remedy } from './fixtures';
 
 function menu(s: GameState, spy: Spy, inp: SpyInput, ev: GameEvent[]) {
@@ -171,19 +173,23 @@ describe('placing traps', () => {
 });
 
 describe('Trapulator menu', () => {
-  it('moves the cursor on direction presses and wraps', () => {
+  it('moves the cursor on direction presses and wraps over 6 entries (5 traps + MAPA)', () => {
     const s = openGame();
     const spy = s.spies[0];
     const ev: GameEvent[] = [];
     menu(s, spy, input({ trap: true }), ev);
     expect(spy.menuOpen).toBe(true);
     menu(s, spy, input({ trap: true, moveX: -1 }), ev);
-    expect(spy.menuCursor).toBe(4);
+    expect(spy.menuCursor).toBe(MENU_MAP);
     menu(s, spy, input({ trap: true, moveX: -1 }), ev); // still held → no move
-    expect(spy.menuCursor).toBe(4);
+    expect(spy.menuCursor).toBe(MENU_MAP);
     menu(s, spy, input({ trap: true }), ev);
     menu(s, spy, input({ trap: true, moveX: 1 }), ev);
     expect(spy.menuCursor).toBe(0);
+  });
+
+  it('MENU_MAP is the 6th entry, right after the 5 traps', () => {
+    expect(MENU_MAP).toBe(5);
   });
 
   it('arms the selected trap on Akce', () => {
@@ -228,6 +234,32 @@ describe('Trapulator menu', () => {
     expect(spy.stock.casovana).toBe(RULES.trapStock.casovana - 1);
     expect(spy.armed).toBeNull();
     expect(spy.clock).toBe(clock - RULES.trapSetCost);
+  });
+
+  it('Akce on MAPA opens the map, costs 5 s once and emits mapOpened', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    spy.menuCursor = MENU_MAP;
+    const clock = spy.clock;
+    const ev: GameEvent[] = [];
+    menu(s, spy, input({ trap: true, action: true }), ev);
+    expect(spy.mapOpen).toBe(true);
+    expect(spy.clock).toBe(clock - RULES.mapCost);
+    expect(ev).toEqual([{ type: 'mapOpened', spy: 0 }]);
+    // pressing Akce again while already open does not charge a second time
+    menu(s, spy, input({ trap: true }), ev); // release
+    menu(s, spy, input({ trap: true, action: true }), ev); // press again
+    expect(spy.clock).toBe(clock - RULES.mapCost);
+    expect(ev.filter((e) => e.type === 'mapOpened')).toHaveLength(1);
+  });
+
+  it('clamps the map cost at 0 clock', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    spy.menuCursor = MENU_MAP;
+    spy.clock = 1;
+    menu(s, spy, input({ trap: true, action: true }), []);
+    expect(spy.clock).toBe(0);
   });
 });
 

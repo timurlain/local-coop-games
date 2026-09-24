@@ -24,6 +24,8 @@ export const RULES = {
   timeBombFuse: 15,
   /** clock cost to the placer of any successfully-placed trap (incl. the time bomb) */
   trapSetCost: 3,
+  /** clock cost to open the big map (MAPA), charged once per opening */
+  mapCost: 5,
   deathPenalty: 30,
   respawnTime: 3,
   health: 7,
