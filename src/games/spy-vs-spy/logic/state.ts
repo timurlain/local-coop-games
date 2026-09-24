@@ -21,7 +21,6 @@ export type RoomTheme =
 
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
 export const SECRETS: readonly SecretKind[] = ['klic', 'penize', 'pas', 'plany'];
-export const REMEDIES: readonly RemedyKind[] = ['voda', 'kleste', 'destnik', 'nuzky'];
 export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana'];
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',

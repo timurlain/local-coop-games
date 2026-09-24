@@ -149,6 +149,9 @@ function placeFixtureKind(state: GameState, kind: FixtureKind, count: number): v
       placed++;
     }
   }
+  if (placed < count) {
+    throw new Error(`fixture ${kind}: placed ${placed} of ${count} — check RULES`);
+  }
 }
 
 function placeExit(state: GameState): void {
