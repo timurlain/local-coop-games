@@ -1,6 +1,6 @@
 import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
 import { RULES } from './rules';
-import { THEME_FURNITURE, assignThemes } from './themes';
+import { THEME_FURNITURE, assignThemes, decorate } from './themes';
 import {
   DIRS, NO_INPUT, OPPOSITE, REMEDIES, SECRETS, neighbor,
   type Dir, type EmbassySize, type GameState, type PlayerId, type Room, type Spy,
@@ -32,7 +32,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
       rooms.push({
         id: gy * cols + gx, gx, gy,
         doors: { N: false, S: false, E: false, W: false },
-        exit: null, furniture: [], theme: themes[gy * cols + gx],
+        exit: null, furniture: [], theme: themes[gy * cols + gx], decor: [], rug: false,
       });
     }
   }
@@ -50,6 +50,7 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
   placeFurniture(state);
   placeExit(state);
   placeThings(state);
+  for (const room of rooms) decorate(room, room.furniture.map((id) => state.furniture[id]), looks);
   return state;
 }
 

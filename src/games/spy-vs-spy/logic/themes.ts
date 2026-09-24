@@ -1,5 +1,8 @@
-import { shuffle, type RngState } from '../../../shared/rng';
-import { DIRS, ROOM_THEMES, neighbor, type FurnitureKind, type RoomTheme } from './state';
+import { pick, rand, shuffle, type RngState } from '../../../shared/rng';
+import { RULES } from './rules';
+import {
+  DIRS, ROOM_THEMES, neighbor, type DecorKind, type FurnitureKind, type Room, type RoomDecor, type RoomTheme,
+} from './state';
 
 /** Furniture a room of each theme is furnished from. */
 export const THEME_FURNITURE: Readonly<Record<RoomTheme, readonly FurnitureKind[]>> = {
@@ -49,4 +52,35 @@ export function assignThemes(grid: { cols: number; rows: number }, rng: RngState
     if (clean) break;
   }
   return themes;
+}
+
+export const DECOR_KINDS: readonly DecorKind[] = [
+  'plakat_psst', 'plakat_mapa', 'plakat_tajne', 'plakat_spion', 'portret', 'vlajka', 'hodiny', 'okno',
+];
+/** Width of a wall decoration, logic units (= screen px on the back wall). */
+export const DECOR_W = 20;
+/** Furniture drawn high enough to reach the decoration band; decorations keep clear of it. */
+export const TALL_FURNITURE: readonly FurnitureKind[] = ['obraz', 'skrin', 'knihovna', 'vesak', 'lednice', 'radio'];
+const DECOR_STEP = 5;
+const DECOR_GAP = 4;
+const RUG_CHANCE = 1 / 3;
+
+/** Hangs 1-2 decorations and maybe lays a rug. Needs furniture kinds/slots and the exit already in place. */
+export function decorate(room: Room, furniture: readonly { x: number; kind: FurnitureKind }[], rng: RngState): void {
+  const blocked = furniture.filter((f) => TALL_FURNITURE.includes(f.kind)).map((f) => f.x);
+  if (room.exit === 'N') blocked.push(RULES.roomW / 2);
+  const free: number[] = [];
+  for (let x = DECOR_W / 2; x <= RULES.roomW - DECOR_W / 2; x += DECOR_STEP) {
+    if (blocked.every((b) => Math.abs(x - b) >= DECOR_W)) free.push(x);
+  }
+  const wanted = rand(rng) < 0.5 ? 2 : 1;
+  const kinds = shuffle(rng, DECOR_KINDS);
+  const decor: RoomDecor[] = [];
+  for (let i = 0; i < wanted; i++) {
+    const options = free.filter((x) => decor.every((d) => Math.abs(x - d.x) >= DECOR_W + DECOR_GAP));
+    if (options.length === 0) break;
+    decor.push({ kind: kinds[i], x: pick(rng, options) });
+  }
+  room.decor = decor.sort((a, b) => a.x - b.x);
+  room.rug = rand(rng) < RUG_CHANCE;
 }

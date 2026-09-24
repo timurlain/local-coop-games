@@ -2,6 +2,7 @@ import { RULES } from '../logic/rules';
 import { DIRS, type Dir, type Furniture, type GameState, type RoomTheme } from '../logic/state';
 import { disc, line, poly, r, shade, text } from './draw';
 import { VIEW, project } from './geometry';
+import { drawDecor } from './decor';
 import { drawIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
@@ -42,7 +43,9 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId
   poly(ctx, [[0, 0], [VIEW.backLeft, VIEW.wallTop], [VIEW.backLeft, VIEW.backY], [VIEW.frontLeft, VIEW.frontY], [0, VIEW.viewH]], shade(wall, 0.7));
   poly(ctx, [[320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [320, VIEW.viewH]], shade(wall, 0.7));
   drawFloor(ctx, look);
+  if (room.rug) drawRug(ctx, wall);
   r(ctx, 0, VIEW.frontY, 320, VIEW.viewH - VIEW.frontY, BG);
+  for (const d of room.decor) drawDecor(ctx, d, now);
 
   for (const dir of DIRS) {
     const isExit = room.exit === dir;
@@ -102,6 +105,22 @@ function drawFloor(ctx: Ctx, look: ThemeLook): void {
         for (let j = 0; j < 5; j++) if ((i + j) % 2 === 1) floorQuad(ctx, i * 20, j * 8, (i + 1) * 20, (j + 1) * 8, look.accent);
       }
       break;
+  }
+}
+
+/** Rug in the middle of the floor, tinted from the wall colour, with a gold border and fringes. */
+function drawRug(ctx: Ctx, wall: string): void {
+  const x0 = 62, x1 = 138, z0 = 13, z1 = 31;
+  floorQuad(ctx, x0, z0, x1, z1, '#c9a36b');
+  floorQuad(ctx, x0 + 3, z0 + 2, x1 - 3, z1 - 2, shade(wall, 0.75));
+  const mid = (x0 + x1) / 2, midZ = (z0 + z1) / 2;
+  const pts = [project(mid, z0 + 4), project(x1 - 12, midZ), project(mid, z1 - 4), project(x0 + 12, midZ)];
+  poly(ctx, pts.map((p) => [p.sx, p.sy] as const), shade(wall, 1.15));
+  for (let z = z0 + 1; z < z1; z += 3) {
+    for (const [xa, xb] of [[x0 - 3, x0], [x1, x1 + 3]] as const) {
+      const a = project(xa, z), b = project(xb, z);
+      line(ctx, a.sx, a.sy, b.sx, b.sy, '#e0d0a0');
+    }
   }
 }
 

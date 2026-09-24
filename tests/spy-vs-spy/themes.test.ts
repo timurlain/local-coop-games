@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
 import { DIRS, ROOM_THEMES, neighbor, type EmbassySize, type GameState } from '../../src/games/spy-vs-spy/logic/state';
-import { THEME_FURNITURE } from '../../src/games/spy-vs-spy/logic/themes';
+import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
+import { DECOR_KINDS, DECOR_W, TALL_FURNITURE, THEME_FURNITURE } from '../../src/games/spy-vs-spy/logic/themes';
 
 const SIZES: EmbassySize[] = ['mala', 'stredni', 'velka'];
 const SEEDS = Array.from({ length: 200 }, (_, i) => i * 104729 + 3);
@@ -52,5 +53,53 @@ describe('room themes', () => {
       const a = createGame(77, size).rooms.map((r) => r.theme);
       expect(createGame(77, size).rooms.map((r) => r.theme)).toEqual(a);
     }
+  });
+});
+
+describe('wall decorations and rugs', () => {
+  it('hangs 1-2 distinct decorations per room, inside the back wall and apart', () => {
+    forAll((s) => {
+      for (const r of s.rooms) {
+        expect(r.decor.length).toBeGreaterThanOrEqual(1);
+        expect(r.decor.length).toBeLessThanOrEqual(2);
+        for (const d of r.decor) {
+          expect(DECOR_KINDS).toContain(d.kind);
+          expect(d.x - DECOR_W / 2).toBeGreaterThanOrEqual(0);
+          expect(d.x + DECOR_W / 2).toBeLessThanOrEqual(RULES.roomW);
+        }
+        if (r.decor.length === 2) {
+          expect(r.decor[0].kind).not.toBe(r.decor[1].kind);
+          expect(Math.abs(r.decor[0].x - r.decor[1].x)).toBeGreaterThanOrEqual(DECOR_W);
+        }
+      }
+    });
+  });
+
+  it('keeps decorations clear of tall furniture and of the exit sign above a north exit', () => {
+    forAll((s) => {
+      for (const r of s.rooms) {
+        for (const d of r.decor) {
+          for (const id of r.furniture) {
+            const f = s.furniture[id];
+            if (TALL_FURNITURE.includes(f.kind)) expect(Math.abs(d.x - f.x)).toBeGreaterThanOrEqual(DECOR_W);
+          }
+          if (r.exit === 'N') expect(Math.abs(d.x - RULES.roomW / 2)).toBeGreaterThanOrEqual(DECOR_W);
+        }
+      }
+    });
+  });
+
+  it('lays a rug in roughly a third of the rooms', () => {
+    let rugs = 0;
+    let rooms = 0;
+    forAll((s) => {
+      for (const r of s.rooms) {
+        expect(typeof r.rug).toBe('boolean');
+        if (r.rug) rugs++;
+        rooms++;
+      }
+    });
+    expect(rugs / rooms).toBeGreaterThan(0.25);
+    expect(rugs / rooms).toBeLessThan(0.42);
   });
 });

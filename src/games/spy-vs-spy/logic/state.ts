@@ -24,6 +24,16 @@ export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
   'kartoteka', 'televize', 'globus', 'lednice', 'radio', 'kvetina', 'krb',
 ];
+/** Wall decorations: purely visual, never searchable. */
+export type DecorKind =
+  | 'plakat_psst' | 'plakat_mapa' | 'plakat_tajne' | 'plakat_spion' | 'portret' | 'vlajka' | 'hodiny' | 'okno';
+
+export interface RoomDecor {
+  kind: DecorKind;
+  /** centre x on the back wall, logic units */
+  x: number;
+}
+
 export const ROOM_THEMES: readonly RoomTheme[] = [
   'kancelar', 'knihovna', 'salonek', 'archiv', 'konferencni', 'kuchynka', 'radiostanice', 'pracovna',
 ];
@@ -64,6 +74,10 @@ export interface Room {
   furniture: number[];
   /** visual only */
   theme: RoomTheme;
+  /** visual only: 1-2 pictures in the band above the furniture */
+  decor: RoomDecor[];
+  /** visual only: floor rug in the middle of the room */
+  rug: boolean;
 }
 
 export interface DoorTrap {
