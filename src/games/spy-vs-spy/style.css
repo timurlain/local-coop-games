@@ -1,10 +1,23 @@
+:root {
+  --night: #120e0a;
+  --panel: #1c160f;
+  --gold: #d9b45a;
+  --gold-dark: #8a6a24;
+  --cream: #efe4c4;
+  --sepia: #b98e5e;
+  --muted: #a8977a;
+  --deco-display: 'Limelight', 'Poiret One', Georgia, serif;
+  --deco-text: 'Poiret One', Georgia, serif;
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
   background: #000;
-  color: #eee;
-  font-family: system-ui, sans-serif;
+  color: var(--cream);
+  font-family: var(--deco-text);
+  font-weight: 400;
   overflow: hidden;
 }
 
@@ -26,8 +39,43 @@ canvas#game {
   justify-content: center;
   gap: 12px;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.78);
+  background:
+    repeating-conic-gradient(from 180deg at 50% 118%, rgba(217, 180, 90, 0.05) 0deg 3deg, transparent 3deg 9deg),
+    radial-gradient(ellipse at 50% 40%, rgba(40, 30, 18, 0.9), rgba(10, 8, 6, 0.96) 70%);
   text-align: center;
+}
+
+/* a gilt double frame with stepped corners around every overlay */
+.overlay::before,
+.overlay::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.overlay::before {
+  inset: 14px;
+  border: 1px solid var(--gold);
+  outline: 1px solid var(--gold-dark);
+  outline-offset: 4px;
+}
+
+.overlay::after {
+  inset: 26px;
+  background:
+    linear-gradient(var(--gold), var(--gold)) top left / 18px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top left / 2px 18px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top right / 18px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top right / 2px 18px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom left / 18px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom left / 2px 18px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom right / 18px 2px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom right / 2px 18px no-repeat;
+}
+
+.overlay > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hidden {
@@ -35,26 +83,76 @@ canvas#game {
 }
 
 h1 {
-  font-size: 48px;
+  font-family: var(--deco-display);
+  font-weight: 400;
+  font-size: 56px;
   margin: 0;
-  letter-spacing: 2px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-shadow: 0 2px 0 #3a2a10, 0 0 18px rgba(217, 180, 90, 0.25);
 }
 
 h2 {
-  font-size: 36px;
+  font-family: var(--deco-display);
+  font-weight: 400;
+  font-size: 38px;
   margin: 0;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
+.subtitle {
+  margin: -4px 0 0;
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: var(--sepia);
+}
+
+/* gold rule with a diamond in the middle */
+.deco-rule {
+  width: min(420px, 80vw);
+  height: 9px;
+  background: linear-gradient(var(--gold-dark), var(--gold-dark)) center / 100% 1px no-repeat;
+  display: flex;
+  justify-content: center;
+}
+
+.deco-rule span {
+  width: 9px;
+  height: 9px;
+  background: var(--gold);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 3px var(--night);
 }
 
 .row {
   display: flex;
   gap: 12px;
   align-items: center;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 select {
+  font-family: var(--deco-text);
+  font-weight: 700;
   font-size: 18px;
-  padding: 4px 8px;
+  padding: 4px 10px;
+  color: var(--cream);
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: 0;
+}
+
+select:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+input[type='checkbox'] {
+  accent-color: var(--gold);
 }
 
 .slots {
@@ -66,34 +164,47 @@ select {
 }
 
 .slot {
-  border: 2px dashed #666;
-  border-radius: 8px;
+  border: 1px dashed var(--gold-dark);
   padding: 12px 20px;
   min-width: 220px;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(28, 22, 15, 0.8);
 }
 
 .slot.joined {
-  border-style: solid;
-  border-color: #6c6;
+  border: 1px solid var(--gold);
+  color: var(--cream);
+  box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 4px var(--gold-dark);
 }
 
 .hint {
-  font-size: 18px;
-  color: #ccc;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--cream);
   margin: 0;
 }
 
 .small {
-  font-size: 14px;
-  color: #999;
+  font-size: 15px;
+  color: var(--muted);
   max-width: 720px;
 }
 
 a {
-  color: #8ab4ff;
+  color: var(--gold);
+  font-weight: 700;
 }
 
 #toosmall {
   z-index: 10;
+}
+
+/* pause and result keep the game faintly visible behind them */
+#pause,
+#result {
+  background:
+    repeating-conic-gradient(from 180deg at 50% 118%, rgba(217, 180, 90, 0.05) 0deg 3deg, transparent 3deg 9deg),
+    radial-gradient(ellipse at 50% 40%, rgba(40, 30, 18, 0.72), rgba(10, 8, 6, 0.86) 70%);
 }

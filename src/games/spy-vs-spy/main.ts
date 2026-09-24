@@ -15,9 +15,10 @@ import { formatClock } from './render/hud';
 import { pushToast, toastFor, type ToastQueue } from './render/toast';
 import { LOW_TIME } from './render/trapulator';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
+import { TITLE_CARD_TIME, renderTitleCard } from './render/title';
 import { renderGame } from './render/view';
 
-type Screen = 'menu' | 'play' | 'pause' | 'victory' | 'result';
+type Screen = 'menu' | 'title' | 'play' | 'pause' | 'victory' | 'result';
 interface Settings {
   size: EmbassySize;
   clock: number;
@@ -52,6 +53,8 @@ let fpsTime = performance.now();
 /** Countdown per spy to the next footstep sound while walking. */
 const stepTimers: [number, number] = [0, 0];
 let victoryT = 0;
+/** Seconds the match title card has been showing; the gameplay clock does not run meanwhile. */
+let titleT = 0;
 /** Render-side toasts under each frame, fed from logic events. */
 let toasts: [ToastQueue, ToastQueue] = [[], []];
 /** Render-side search / hide / swap / drop feedback, fed from logic events. */
@@ -69,6 +72,10 @@ function parseSeed(raw: string | null): number | null {
 
 function setupMenu(): void {
   $('menu-title').textContent = T.title;
+  $('menu-subtitle').textContent = T.subtitle;
+  // canvas text (title card) needs the art-deco faces loaded; the DOM menu loads them via CSS
+  document.fonts?.load('14px "Limelight"').catch(() => undefined);
+  document.fonts?.load('8px "Poiret One"').catch(() => undefined);
   $('size-label').textContent = T.sizeLabel;
   $('clock-label').textContent = T.clockLabel;
   $('mute-label').textContent = T.mute;
@@ -133,8 +140,17 @@ function startGame(): void {
   effects = [];
   lastBeep[0] = -1;
   lastBeep[1] = -1;
-  screen = 'play';
+  titleT = 0;
+  screen = 'title';
   show(null);
+}
+
+/** Title card done (or skipped with Akce): the match starts; held buttons don't count as fresh presses. */
+function beginPlay(): void {
+  state!.spies.forEach((spy, i) => {
+    spy.prev = toSpyInput(input.get(slots[i]!));
+  });
+  screen = 'play';
 }
 
 function toMenu(): void {
@@ -156,6 +172,7 @@ function finish(s: GameState): void {
   const r = s.result!;
   $('result-title').textContent = r.kind === 'win' ? T.winner(r.winner === 0 ? T.white : T.black) : T.draw;
   $('result-time').textContent = r.kind === 'win' ? T.timeLeft(formatClock(s.spies[r.winner].clock)) : '';
+  $('result-host').textContent = T.titleCard(s.host, s.year);
   $('result-seed').textContent = `${T.seed}: ${s.seed}`;
   $('result-hint').textContent = T.rematchHint;
   screen = 'result';
@@ -174,6 +191,10 @@ function update(dt: number): void {
   switch (screen) {
     case 'menu':
       updateMenu();
+      break;
+    case 'title':
+      titleT += dt;
+      if (titleT >= TITLE_CARD_TIME || slotPressed('action')) beginPlay();
       break;
     case 'play':
       updatePlay(dt);
@@ -354,6 +375,7 @@ function render(): void {
     renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
   } else if (state && screen !== 'menu') {
     renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts, effects);
+    if (screen === 'title') renderTitleCard(ctx, scale, state, titleT);
   } else {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000000';

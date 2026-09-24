@@ -4,6 +4,7 @@ import {
   FURNITURE_KINDS, HOSTS, ROOM_THEMES, YEAR_MAX, YEAR_MIN, type EmbassySize, type GameState,
 } from '../../src/games/spy-vs-spy/logic/state';
 import { DECOR_KINDS, THEME_FURNITURE, flagOf } from '../../src/games/spy-vs-spy/logic/themes';
+import { TITLE_CARD_TIME, titleCardAlpha, titleCardLines } from '../../src/games/spy-vs-spy/render/title';
 import { cs } from '../../src/shared/i18n/cs';
 
 const SIZES: EmbassySize[] = ['mala', 'stredni', 'velka'];
@@ -168,5 +169,22 @@ describe('Czech texts for the setting', () => {
   it('names every furniture kind', () => {
     expect(Object.keys(cs.spy.furniture).sort()).toEqual([...FURNITURE_KINDS].sort());
     for (const name of Object.values(cs.spy.furniture)) expect(name.length).toBeGreaterThan(0);
+  });
+});
+
+describe('title card', () => {
+  it('shows the embassy and „Praha <year>"', () => {
+    expect(titleCardLines('pl', 1934)).toEqual(['Velvyslanectví Polské republiky', 'Praha 1934']);
+    expect(titleCardLines('de', 1931)[0]).toBe('Velvyslanectví Německé říše (Výmarská republika)');
+  });
+
+  it('fades in, holds for about two seconds and fades out', () => {
+    expect(TITLE_CARD_TIME).toBeGreaterThanOrEqual(1.8);
+    expect(TITLE_CARD_TIME).toBeLessThanOrEqual(2.5);
+    expect(titleCardAlpha(0)).toBe(0);
+    expect(titleCardAlpha(0.1)).toBeGreaterThan(0);
+    expect(titleCardAlpha(1)).toBe(1);
+    expect(titleCardAlpha(TITLE_CARD_TIME - 0.1)).toBeLessThan(1);
+    expect(titleCardAlpha(TITLE_CARD_TIME)).toBe(0);
   });
 });

@@ -4,13 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Spy vs Spy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Limelight&family=Poiret+One&display=swap" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <canvas id="game"></canvas>
 
     <section id="menu" class="overlay">
+      <div class="deco-rule" aria-hidden="true"><span></span></div>
       <h1 id="menu-title"></h1>
+      <p id="menu-subtitle" class="subtitle"></p>
+      <div class="deco-rule" aria-hidden="true"><span></span></div>
       <div class="row"><label for="size" id="size-label"></label><select id="size"></select></div>
       <div class="row"><label for="clock" id="clock-label"></label><select id="clock"></select></div>
       <div class="row"><label><input type="checkbox" id="mute" /> <span id="mute-label"></span></label></div>
@@ -27,6 +33,7 @@
 
     <section id="result" class="overlay hidden">
       <h2 id="result-title"></h2>
+      <p id="result-host" class="subtitle"></p>
       <p id="result-time" class="hint"></p>
       <p id="result-seed" class="hint small"></p>
       <p id="result-hint" class="hint"></p>
