@@ -7,6 +7,11 @@ export function sameRoomOpponent(state: GameState, spy: Spy): Spy | null {
   return o.room === spy.room && isActive(o) ? o : null;
 }
 
+/** True while an active opponent shares this spy's room (spec §3: meeting rules). */
+export function sharesRoom(state: GameState, spy: Spy): boolean {
+  return sameRoomOpponent(state, spy) !== null;
+}
+
 export function inFightRange(a: Spy, b: Spy): boolean {
   return Math.abs(a.x - b.x) <= RULES.fightRangeX && Math.abs(a.z - b.z) <= RULES.fightRangeZ;
 }

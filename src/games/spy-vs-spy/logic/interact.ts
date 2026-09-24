@@ -1,34 +1,44 @@
-import { trySwing } from './fight';
+import { sharesRoom, trySwing } from './fight';
 import { canHide, hide, resolveSearch } from './hand';
 import { doorAt, doorKeyFor, furnitureAt } from './places';
 import { RULES } from './rules';
 import { placeDoorTrap, placeFurnitureTrap, triggerFurnitureTrap } from './traps';
 import type { Furniture, GameEvent, GameState, Spy, SpyInput } from './state';
 
-/** Akce handling for a spy in 'normal' mode. */
+/**
+ * Akce handling for a spy in 'normal' mode. While the opponent shares this room (spec §3), Akce
+ * only ever swings (if in range) — no search, no hide, no trap placement.
+ */
 export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
+  const shared = sharesRoom(state, spy);
   if (spy.holdTarget !== null) {
-    const f = state.furniture[spy.holdTarget];
-    if (!input.action) {
+    if (shared) {
+      // The opponent walked in while we were deciding hide vs. search: bail out of both.
       spy.holdTarget = null;
-      startSearch(state, spy, f, events);
+    } else {
+      const f = state.furniture[spy.holdTarget];
+      if (!input.action) {
+        spy.holdTarget = null;
+        startSearch(state, spy, f, events);
+        return;
+      }
+      spy.holdTime += dt;
+      if (spy.holdTime >= RULES.hideHold) {
+        spy.holdTarget = null;
+        if (canHide(spy, f)) {
+          hide(spy, f);
+          events.push({ type: 'hidden', spy: spy.id });
+        } else {
+          startSearch(state, spy, f, events);
+        }
+      }
       return;
     }
-    spy.holdTime += dt;
-    if (spy.holdTime >= RULES.hideHold) {
-      spy.holdTarget = null;
-      if (canHide(spy, f)) {
-        hide(spy, f);
-        events.push({ type: 'hidden', spy: spy.id });
-      } else {
-        startSearch(state, spy, f, events);
-      }
-    }
-    return;
   }
 
   if (!input.action || spy.prev.action) return;
   if (trySwing(state, spy, events)) return;
+  if (shared) return;
   if (spy.armed !== null) {
     placeArmed(state, spy, events);
     return;

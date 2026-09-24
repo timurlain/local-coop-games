@@ -1,3 +1,5 @@
+import { dropHand } from './death';
+import { sharesRoom } from './fight';
 import { hasAllSecrets } from './hand';
 import { doorAt, doorKeyFor } from './places';
 import { RULES } from './rules';
@@ -64,4 +66,19 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): v
       break;
   }
   events.push({ type: 'door', spy: spy.id });
+  if (sharesRoom(state, spy)) dropOnEntering(state, spy, events);
+}
+
+/**
+ * Entering a room where the opponent is active (spec §3): the entering spy drops everything —
+ * an armed-but-unplaced trap is cleared (nothing to refund, its stock was never spent), a remedy
+ * in hand is simply lost (sources are infinite), a secret or kufřík is re-hidden via the normal
+ * `dropHand` rules (nearest free furniture, same room first).
+ */
+function dropOnEntering(state: GameState, spy: Spy, events: GameEvent[]): void {
+  const thing = spy.hand;
+  spy.armed = null;
+  const furniture = thing !== null && thing.kind !== 'remedy' ? dropHand(state, spy) : null;
+  spy.hand = null;
+  events.push({ type: 'dropped', spy: spy.id, thing, furniture });
 }

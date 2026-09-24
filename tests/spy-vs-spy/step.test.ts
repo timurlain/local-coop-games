@@ -110,18 +110,73 @@ describe('orchestration', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     const spy0 = atFurniture(s, 0, f);
-    // same room, out of fight range, to the right of spy 0
-    const spy1 = place(s, 1, 0, f.x + RULES.fightRangeX + 1, 0);
-    const holdAway = input({ action: true, moveX: -1 }); // away from spy1, who is to the right
-    step(s, [holdAway, IDLE], 1 / 60); // press: starts the hold
-    expect(spy0.blocking).toBe(true);
-    step(s, [holdAway, IDLE], RULES.hideHold); // holds long enough; empty hand falls back to a search
+    spy0.blocking = true; // stale flag from an earlier moment, before the opponent left
+    step(s, [input({ action: true }), IDLE], 1 / 60); // press: starts the hold (spy 1 is far away in room 8)
+    step(s, [input({ action: true }), IDLE], RULES.hideHold); // holds long enough; empty hand falls back to a search
     expect(spy0.mode).toBe('searching');
+    expect(spy0.blocking).toBe(false);
     // spy 1 steps into range and swings while spy 0 is searching
-    spy1.x = f.x + 10;
+    place(s, 1, 0, f.x + 10, 0);
     const ev = step(s, [IDLE, input({ action: true })], 1 / 60);
     expect(ev).toContainEqual({ type: 'hit', spy: 0 });
     expect(ev).not.toContainEqual({ type: 'blocked', spy: 0 });
+  });
+});
+
+describe('meeting: shared room (spec §3)', () => {
+  it('ignores Trapulator input and keeps the menu closed while sharing a room', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 130, 20);
+    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.5);
+    expect(spy.menuOpen).toBe(false);
+    expect(spy.armed).toBeNull();
+  });
+
+  it('Akce out of fight range does nothing while sharing a room: no search, hide or trap placement', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 4);
+    const spy = atFurniture(s, 0, f);
+    place(s, 1, 4, f.x + RULES.fightRangeX + 1, 0); // same room, out of range
+    const ev = run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
+    expect(spy.mode).toBe('normal');
+    expect(spy.holdTarget).toBeNull();
+    expect(ev.filter((e) => e.type === 'searchStart' || e.type === 'hidden')).toHaveLength(0);
+  });
+
+  it('swings when in range even while sharing a room', () => {
+    const s = openGame();
+    place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 110, 20);
+    const ev = step(s, [input({ action: true }), IDLE], 1 / 60);
+    expect(ev).toContainEqual({ type: 'swing', spy: 0 });
+  });
+
+  it('a search already running completes even after the opponent walks in', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = secret('pas');
+    const spy = atFurniture(s, 0, f); // spy 1 starts far away in room 8
+    step(s, [input({ action: true }), IDLE], 1 / 60); // press: starts the hold
+    step(s, [IDLE, IDLE], 1 / 60); // release: search starts
+    expect(spy.mode).toBe('searching');
+    place(s, 1, 0, f.x + 50, 20); // opponent walks into the room mid-search
+    const ev = run(s, [IDLE, IDLE], RULES.searchTime + 0.1);
+    expect(spy.mode).toBe('normal');
+    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: secret('pas') });
+  });
+
+  it('normal behaviour returns once the opponent leaves the room', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 4);
+    const spy = atFurniture(s, 0, f);
+    const other = place(s, 1, 4, 100, 20);
+    run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
+    expect(spy.mode).toBe('normal'); // blocked while shared
+    other.room = 7; // opponent leaves
+    step(s, [IDLE, IDLE], 1 / 60); // release Akce so the next press is a fresh edge
+    const ev = run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
+    expect(ev.filter((e) => e.type === 'searchStart')).toHaveLength(1);
   });
 });
 

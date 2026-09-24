@@ -20,21 +20,25 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   events.push({ type: 'died', spy: spy.id, cause });
 }
 
-/** Re-hides the hand item in the nearest free furniture (spec §3.5). */
-export function dropHand(state: GameState, spy: Spy): void {
+/**
+ * Re-hides the hand item in the nearest free furniture (spec §3.5).
+ * Returns the furniture id that received it, or null when nothing was held or a remedy vanished.
+ */
+export function dropHand(state: GameState, spy: Spy): number | null {
   const thing = spy.hand;
-  if (thing === null) return;
+  if (thing === null) return null;
   spy.hand = null;
   const free = nearestFurniture(state, spy.room, (f) => f.hidden === null);
   if (free) {
     free.hidden = thing;
-    return;
+    return free.id;
   }
   // Remedies are infinite at their sources, losing one costs nothing.
-  if (thing.kind === 'remedy') return;
+  if (thing.kind === 'remedy') return null;
   const replace = nearestFurniture(state, spy.room, (f) => f.hidden?.kind === 'remedy');
   if (!replace) throw new Error('embassy has no room left for a secret item');
   replace.hidden = thing;
+  return replace.id;
 }
 
 /** Breadth-first over doors; random pick among matches at the smallest distance. */

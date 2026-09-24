@@ -172,6 +172,7 @@ export type GameEvent =
   | { type: 'searchStart'; spy: PlayerId }
   | { type: 'found'; spy: PlayerId; thing: Thing | null }
   | { type: 'hidden'; spy: PlayerId }
+  | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
   | { type: 'trapFailed'; spy: PlayerId }
   | { type: 'disarmed'; spy: PlayerId; trap: TrapKind }

@@ -1,5 +1,5 @@
 import { dropHand, updateDead } from './death';
-import { updateBlocking, updateHealthRegen } from './fight';
+import { sharesRoom, updateBlocking, updateHealthRegen } from './fight';
 import { updateAction, updateSearching } from './interact';
 import { updateMovement } from './movement';
 import { updateTimeBombs, updateTrapMenu } from './traps';
@@ -64,7 +64,8 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
 }
 
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
-  if (input.trap) {
+  // Shared room (spec §3): the Trapulator cannot be opened, input for it is ignored.
+  if (input.trap && !sharesRoom(state, spy)) {
     spy.holdTarget = null;
     spy.blocking = false;
     updateTrapMenu(state, spy, input, events);

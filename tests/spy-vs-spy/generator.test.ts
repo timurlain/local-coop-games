@@ -64,14 +64,13 @@ describe('createGame', () => {
     });
   });
 
-  it('has exactly one exit, on an outward wall, not in a start room', () => {
+  it('has exactly one exit, on an outward wall, not in the shared start room', () => {
     forAll((s) => {
       const exits = s.rooms.filter((r) => r.exit !== null);
       expect(exits).toHaveLength(1);
       const room = exits[0];
       expect(outwardDirs(s, room.id)).toContain(room.exit);
-      expect(room.id).not.toBe(0);
-      expect(room.id).not.toBe(s.rooms.length - 1);
+      expect(room.id).not.toBe(s.spies[0].room);
     });
   });
 
@@ -87,15 +86,29 @@ describe('createGame', () => {
     });
   });
 
-  it('starts the spies in opposite corners with full stock', () => {
+  it('starts both spies together in the same room, facing each other, with full stock', () => {
     forAll((s) => {
-      expect(s.spies[0].room).toBe(0);
-      expect(s.spies[1].room).toBe(s.rooms.length - 1);
-      expect(s.spies[0].visited[0]).toBe(true);
-      expect(s.spies[1].visited[s.rooms.length - 1]).toBe(true);
+      const [white, black] = s.spies;
+      expect(white.room).toBe(black.room);
+      expect(white.x).toBe(40);
+      expect(black.x).toBe(160);
+      expect(white.z).toBe(RULES.roomD / 2);
+      expect(black.z).toBe(RULES.roomD / 2);
+      expect(white.facing).toBe(1);
+      expect(black.facing).toBe(-1);
+      expect(white.visited[white.room]).toBe(true);
+      expect(black.visited[black.room]).toBe(true);
+      expect(white.visited.filter(Boolean)).toHaveLength(1);
+      expect(black.visited.filter(Boolean)).toHaveLength(1);
       expect(s.spies[0].stock).toEqual(RULES.trapStock);
       expect(s.spies[0].clock).toBe(RULES.defaultClock);
     });
+  });
+
+  it('picks the shared start room with the gameplay RNG, deterministically per seed', () => {
+    expect(createGame(123, 'stredni').spies[0].room).toBe(createGame(123, 'stredni').spies[0].room);
+    const rooms = SEEDS.map((seed) => createGame(seed, 'velka').spies[0].room);
+    expect(new Set(rooms).size).toBeGreaterThan(1);
   });
 
   it('is deterministic per seed', () => {

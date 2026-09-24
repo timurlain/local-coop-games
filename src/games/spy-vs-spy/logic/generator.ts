@@ -41,16 +41,16 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
   if (rooms.length * RULES.furniturePerRoom.min < neededPieces) {
     throw new Error(`embassy ${size} too small: needs room for ${neededPieces} hidden things`);
   }
-  const last = rooms.length - 1;
   const state: GameState = {
     seed, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
-    spies: [createSpy(0, 0, 40, rooms.length, clock), createSpy(1, last, 160, rooms.length, clock)],
+    spies: [createSpy(0, 0, 40, rooms.length, clock), createSpy(1, 0, 160, rooms.length, clock)],
     rng: makeRng(seed), time: 0, tick: 0, result: null,
   };
   carveDoors(state);
   placeFurniture(state);
   placeFixtures(state);
   placeExit(state);
+  placeSpawn(state);
   placeThings(state);
   for (const room of rooms) decorate(room, room.furniture.map((id) => state.furniture[id]), looks);
   return state;
@@ -152,10 +152,24 @@ function placeFixtureKind(state: GameState, kind: FixtureKind, count: number): v
 }
 
 function placeExit(state: GameState): void {
-  const starts = [0, state.rooms.length - 1];
-  const candidates = state.rooms.filter((r) => !starts.includes(r.id) && outwardDirs(state, r.id).length > 0);
+  const candidates = state.rooms.filter((r) => outwardDirs(state, r.id).length > 0);
   const room = pick(state.rng, candidates);
   room.exit = pick(state.rng, outwardDirs(state, room.id));
+}
+
+/**
+ * Both spies start in the same room, chosen after the exit among rooms that are not the exit
+ * room (spec §2). Bílý (0) at x=40, Černý (1) at x=160 — already set by `createSpy` — facing
+ * each other, z=20; the room counts as visited for both.
+ */
+function placeSpawn(state: GameState): void {
+  const candidates = state.rooms.filter((r) => r.exit === null).map((r) => r.id);
+  const room = pick(state.rng, candidates);
+  for (const spy of state.spies) {
+    spy.room = room;
+    spy.visited.fill(false);
+    spy.visited[room] = true;
+  }
 }
 
 function placeThings(state: GameState): void {

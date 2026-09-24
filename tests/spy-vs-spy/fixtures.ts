@@ -1,4 +1,5 @@
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
 import {
   DIRS, NO_INPUT, neighbor,
@@ -7,7 +8,9 @@ import {
 
 /**
  * 3×3 embassy with every internal door open, the exit on room 2's east wall,
- * nothing hidden, no sources, no traps. Spy 0 in room 0, spy 1 in room 8.
+ * nothing hidden, no sources, no traps. Spy 0 in room 0, spy 1 in room 8, apart
+ * (createGame's own R3 shared start would otherwise put both in the same room) —
+ * most tests here only place one spy and rely on the other being harmlessly far away.
  *
  *   0 1 2→exit
  *   3 4 5
@@ -25,6 +28,9 @@ export function openGame(): GameState {
     f.source = null;
     f.trap = null;
   }
+  for (const spy of s.spies) spy.visited.fill(false);
+  place(s, 0, 0, 40, RULES.roomD / 2);
+  place(s, 1, 8, 160, RULES.roomD / 2);
   return s;
 }
 

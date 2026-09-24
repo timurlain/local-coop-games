@@ -268,6 +268,7 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'searchStart': return 'search';
     case 'found': return e.thing ? 'found' : null;
     case 'hidden': return 'hide';
+    case 'dropped': return e.thing ? 'fail' : null;
     case 'trapSet': return 'trapSet';
     case 'trapFailed': return 'fail';
     case 'disarmed': return 'found';
