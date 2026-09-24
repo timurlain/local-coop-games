@@ -34,15 +34,21 @@ export class InputManager {
   }
 
   update(): void {
+    this.tickPresses = this.pendingPresses;
+    this.pendingPresses = new Set();
+
+    // A key that was pressed and released between two update() calls never appears in
+    // `this.keys` at this instant, but it did happen this tick — hold it for one tick so
+    // pressed()/get().action can see it instead of silently dropping the tap.
+    const effectiveKeys = new Set([...this.keys, ...this.tickPresses]);
+
     this.previous = this.current;
     this.current = new Map();
-    this.current.set('kb-left', keyboardActions(this.keys, KEYBOARD_LEFT));
-    this.current.set('kb-right', keyboardActions(this.keys, KEYBOARD_RIGHT));
+    this.current.set('kb-left', keyboardActions(effectiveKeys, KEYBOARD_LEFT));
+    this.current.set('kb-right', keyboardActions(effectiveKeys, KEYBOARD_RIGHT));
     for (const pad of this.win.navigator.getGamepads?.() ?? []) {
       if (pad && pad.connected) this.current.set(`pad-${pad.index}`, gamepadActions(pad));
     }
-    this.tickPresses = this.pendingPresses;
-    this.pendingPresses = new Set();
   }
 
   devices(): DeviceId[] {
