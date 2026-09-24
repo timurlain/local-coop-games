@@ -1,10 +1,11 @@
 import { cs } from '../../../shared/i18n/cs';
 import { RULES } from '../logic/rules';
-import { MENU_MAP, TRAPS, type DoorTrapKind, type FurnitureTrapKind, type GameState, type Spy } from '../logic/state';
+import { backArrows, showsBreadcrumbs } from '../logic/trail';
+import { MENU_MAP, TRAPS, type Dir, type DoorTrapKind, type FurnitureTrapKind, type GameState, type Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { r, roundRect, text } from './draw';
 import { VIEW } from './geometry';
-import { FRAME, ROOM, UNDER, UNDER_PARTS } from './layout';
+import { FRAME, ROOM, UNDER, UNDER_PARTS, UNDER_TOAST } from './layout';
 import type { Toast } from './toast';
 
 type Ctx = CanvasRenderingContext2D;
@@ -51,23 +52,55 @@ export function armedTrapHint(trap: FurnitureTrapKind | DoorTrapKind): string {
   return trap === 'bomba' || trap === 'pruzina' ? T.trapArmedFurniture(label) : T.trapArmedDoor(label);
 }
 
-/** Strip under the frame: player name, room name (or Trapulator/armed-trap guidance), toast, health pips. */
+/** 5×5 pixel arrows for the breadcrumb strip ('#' = lit). */
+export const ARROW_PIXELS: Readonly<Record<Dir, readonly string[]>> = {
+  N: ['..#..', '.###.', '#.#.#', '..#..', '..#..'],
+  S: ['..#..', '..#..', '#.#.#', '.###.', '..#..'],
+  W: ['..#..', '.#...', '#####', '.#...', '..#..'],
+  E: ['..#..', '...#.', '#####', '...#.', '..#..'],
+};
+/** Horizontal distance between two breadcrumb arrows, px. */
+export const TRAIL_STEP = 6;
+/** Most recent arrow first, older ones dimmer. */
+const TRAIL_COLORS = ['#f4e3a8', '#c9b27a', '#9a8a60'];
+
+/** The arrows the viewer's strip shows (spec §9): the way back, most recent first; none on levels 7-8. */
+export function breadcrumbArrows(state: GameState, spy: Spy): Dir[] {
+  return showsBreadcrumbs(state.level) ? backArrows(spy.trail) : [];
+}
+
+function drawArrow(ctx: Ctx, dir: Dir, x: number, y: number, color: string): void {
+  ARROW_PIXELS[dir].forEach((row, dy) => {
+    for (let dx = 0; dx < row.length; dx++) if (row[dx] === '#') r(ctx, x + dx, y + dy, 1, 1, color);
+  });
+}
+
+/** Strip under the frame: player name, room name (or Trapulator/armed-trap guidance), breadcrumbs or a toast, health pips. */
 export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | null): void {
   r(ctx, UNDER.x, UNDER.y, UNDER.w, UNDER.h, '#0c0c12');
   const p = UNDER_PARTS;
   const name = (spy.id === 0 ? T.white : T.black).toUpperCase();
   text(ctx, name, p.name.x, p.name.y + 8, spy.id === 0 ? '#f4f4f4' : '#9a9aae', 7);
 
+  // The Trapulator/armed-trap guidance is longer than the room slot and runs on over the breadcrumbs.
+  let guidance = true;
   if (spy.menuOpen) {
     text(ctx, trapMenuLabel(spy.menuCursor), p.room.x, p.room.y + 8, '#ffe27a', 6);
   } else if (spy.armed !== null && spy.armed !== 'casovana') {
     text(ctx, armedTrapHint(spy.armed), p.room.x, p.room.y + 8, '#ffe27a', 6);
   } else {
     text(ctx, T.rooms[state.rooms[spy.room].theme], p.room.x, p.room.y + 8, '#9a9ab0', 6);
+    guidance = false;
+  }
+
+  if (!toast && !guidance) {
+    const arrows = breadcrumbArrows(state, spy);
+    const y = p.trail.y + Math.floor((p.trail.h - ARROW_PIXELS.N.length) / 2);
+    arrows.forEach((d, i) => drawArrow(ctx, d, p.trail.x + 2 + i * TRAIL_STEP, y, TRAIL_COLORS[Math.min(i, TRAIL_COLORS.length - 1)]));
   }
 
   if (toast) {
-    const b = p.toast;
+    const b = UNDER_TOAST;
     const color = HAND_COLORS[toast.kind];
     r(ctx, b.x, b.y, b.w, b.h, color);
     r(ctx, b.x, b.y + b.h - 1, b.w, 1, '#00000060');

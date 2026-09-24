@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LEVELS, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import {
-  DEV, DEVICE, FRAME, HALF_H, HALF_W, ROOM, UNDER, UNDER_PARTS,
+  DEV, DEVICE, FRAME, HALF_H, HALF_W, ROOM, UNDER, UNDER_PARTS, UNDER_TOAST,
   bigMapLayout, contains, minimapLayout, overlaps, type GridLayout, type Rect,
 } from '../../src/games/spy-vs-spy/render/layout';
 
@@ -17,7 +17,7 @@ const deviceParts: Rect[] = [DEV.led, DEV.warn, ...DEV.traps, DEV.map, DEV.remed
 
 describe('half layout', () => {
   it('keeps every rectangle inside the 320×100 half', () => {
-    for (const r of [FRAME, ROOM, UNDER, DEVICE, ...Object.values(UNDER_PARTS), ...deviceParts]) {
+    for (const r of [FRAME, ROOM, UNDER, DEVICE, ...Object.values(UNDER_PARTS), UNDER_TOAST, ...deviceParts]) {
       expect(contains(HALF, r), JSON.stringify(r)).toBe(true);
     }
   });
@@ -38,6 +38,13 @@ describe('half layout', () => {
     const parts = Object.values(UNDER_PARTS);
     for (const p of parts) expect(contains(UNDER, p)).toBe(true);
     noOverlaps('strip', parts);
+  });
+
+  it('a toast covers the breadcrumb slot only, never the name, the room or the pips', () => {
+    const { name, room, trail, pips } = UNDER_PARTS;
+    expect(contains(UNDER, UNDER_TOAST)).toBe(true);
+    expect(contains(trail, UNDER_TOAST) && contains(UNDER_TOAST, trail)).toBe(true);
+    for (const p of [name, room, pips]) expect(overlaps(UNDER_TOAST, p)).toBe(false);
   });
 
   it('buttons and slots sit inside the Trapulator without overlapping', () => {

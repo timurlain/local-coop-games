@@ -22,13 +22,16 @@ export const FRAME_BORDER = 4;
 export const ROOM = rect(FRAME.x + FRAME_BORDER, FRAME.y + FRAME_BORDER, FRAME.w - 2 * FRAME_BORDER, FRAME.h - 2 * FRAME_BORDER);
 /** Label strip under the frame. */
 export const UNDER = rect(1, 86, 216, 13);
-/** Parts of the under-frame strip. */
+/** Parts of the under-frame strip. The room slot fits the longest room name („Velvyslancova pracovna"). */
 export const UNDER_PARTS = {
   name: rect(3, 87, 24, 11),
-  room: rect(29, 87, 84, 11),
-  toast: rect(115, 87, 62, 11),
+  room: rect(29, 87, 86, 11),
+  /** breadcrumbs (spec §9): up to 9 small arrows pointing the way back */
+  trail: rect(117, 87, 60, 11),
   pips: rect(179, 88, 36, 9),
 } as const;
+/** A toast (spec §5) shows over the breadcrumb slot for its 1.5 s; the breadcrumbs are hidden meanwhile. */
+export const UNDER_TOAST = UNDER_PARTS.trail;
 
 /** The Trapulator: a calculator-like device on the right. */
 export const DEVICE = rect(222, 1, 97, 98);

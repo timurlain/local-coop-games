@@ -2,6 +2,7 @@ import { dropHand } from './death';
 import { hasAllSecrets } from './hand';
 import { doorAt, doorKeyFor } from './places';
 import { RULES } from './rules';
+import { recordTrail } from './trail';
 import { neighbor, type Dir, type GameEvent, type GameState, type Spy, type SpyInput } from './state';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -65,6 +66,7 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): b
   const next = neighbor(state, spy.room, dir)!;
   spy.room = next;
   spy.visited[next] = true;
+  recordTrail(spy.trail, dir);
   switch (dir) {
     case 'N':
       spy.x = RULES.roomW / 2;

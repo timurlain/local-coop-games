@@ -181,6 +181,8 @@ export interface Spy {
   /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */
   doorOpening: string | null;
   visited: boolean[];
+  /** internal doors passed, most recent last, at most `RULES.trailLength`; kept across death (spec §9) */
+  trail: Dir[];
   prev: SpyInput;
 }
 
@@ -192,6 +194,8 @@ export interface GameState {
   host: HostCountry;
   /** visual only: the year shown on the title card, YEAR_MIN..YEAR_MAX */
   year: number;
+  /** 1-8 (spec §4) */
+  level: number;
   cols: number;
   rows: number;
   /** „Skrýt letiště": the exit is hidden from a spy until it holds the full kufřík (see `exitVisibleTo`) */
