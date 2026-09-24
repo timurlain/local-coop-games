@@ -2,6 +2,7 @@ import { HALVES, withViewport } from '../../../shared/splitscreen';
 import { furnitureAt } from '../logic/places';
 import type { GameState } from '../logic/state';
 import { drawDebug } from './debug';
+import { drawEffects, effectPose, type EffectQueue } from './effects';
 import { drawFrame, drawMessages, drawUnder } from './hud';
 import { ROOM } from './layout';
 import { drawBigMap } from './map';
@@ -18,7 +19,7 @@ export interface DebugInfo {
 /** Draws both halves: room (or big map) in the TV frame, the strip under it and the Trapulator. `now` is in seconds. */
 export function renderGame(
   ctx: CanvasRenderingContext2D, scale: number, state: GameState, now: number, debug: DebugInfo,
-  toasts: readonly ToastQueue[],
+  toasts: readonly ToastQueue[], effects: EffectQueue = [],
 ): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#000000';
@@ -37,7 +38,8 @@ export function renderGame(
         const near = viewer.mode === 'normal' ? furnitureAt(state, viewer) : null;
         drawRoom(ctx, state, viewer.room, near?.id ?? null, now);
         const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
-        for (const s of here) drawSpy(ctx, state, s, now);
+        for (const s of here) drawSpy(ctx, state, s, now, effectPose(effects, s.id, now));
+        drawEffects(ctx, state, effects, viewer.room, now);
         if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
       }
       drawMessages(ctx, viewer);

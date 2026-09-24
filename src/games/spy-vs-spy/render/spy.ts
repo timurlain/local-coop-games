@@ -4,6 +4,7 @@ import { isActive, type GameState, type Spy } from '../logic/state';
 import { line, r, text } from './draw';
 import { project } from './geometry';
 import { SPY_H, SPY_W, type SpyFrame, type SpyPalette } from './sprite-data';
+import type { EffectPose } from './effects';
 import { drawKufrikInHand, drawSprite, spyImage } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
@@ -26,16 +27,13 @@ function baseColor(spy: Spy): SpyPalette {
   return spy.id === 0 ? 'white' : 'black';
 }
 
-/** Frames that only visual effects (search/hide feedback) show; nothing in drawSpy picks them. */
-export const EFFECT_FRAMES = { hidePut: 'hidePut', shrug: 'shrug', liftFind: 'liftFind' } as const satisfies Record<string, SpyFrame>;
-
-
 /** True while an active opponent shares the spy's room: the spy stands ready to fight. */
 export function inFight(state: GameState, spy: Spy): boolean {
   return isActive(spy) && sameRoomOpponent(state, spy) !== null;
 }
 
-export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number): void {
+/** `pose` is the search/hide feedback override from the effect queue (see effects.ts). */
+export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose: EffectPose | null = null): void {
   if (spy.mode === 'out' || spy.mode === 'escaped') return;
   const { sx, sy } = project(spy.x, spy.z);
   if (spy.mode === 'dead') {
@@ -43,7 +41,7 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number): void
     return;
   }
   const moving = spy.mode === 'normal' && (movingUntil.get(spy.id) ?? 0) > now;
-  const frame = pickFrame(spy, inFight(state, spy), moving, now);
+  const frame = pickFrame(spy, inFight(state, spy), moving, now, pose);
   const flip = spy.facing < 0;
   drawSprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
   if (spy.hand?.kind === 'kufrik') drawKufrikInHand(ctx, frame, sx, sy, flip);
@@ -62,12 +60,14 @@ export function digFrame(now: number): SpyFrame {
 }
 
 /**
- * Swing and block always show; a running search keeps digging (it completes even when the opponent walks in);
- * otherwise an active opponent in the room puts the spy on guard, else walk or stand.
+ * Swing and block always show; then a search/hide feedback pose (`liftFind`, `shrug`, `hidePut`); a running
+ * search keeps digging (it completes even when the opponent walks in); otherwise an active opponent in the room
+ * puts the spy on guard, else walk or stand.
  */
-export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: number): SpyFrame {
+export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: number, pose: EffectPose | null = null): SpyFrame {
   if (spy.swingAnim > 0) return spy.swingAnim > RULES.swingAnim - RULES.swingWindup ? 'swingWind' : 'swingStrike';
   if (spy.blocking) return 'block';
+  if (pose !== null) return pose;
   if (spy.mode === 'searching') return digFrame(now);
   if (fighting) return 'fightStand';
   return moving ? walkFrame(now) : 'stand';

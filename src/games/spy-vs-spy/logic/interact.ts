@@ -26,8 +26,9 @@ export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: nu
       if (spy.holdTime >= RULES.hideHold) {
         spy.holdTarget = null;
         if (canHide(spy, f)) {
+          const thing = spy.hand!;
           hide(spy, f);
-          events.push({ type: 'hidden', spy: spy.id });
+          events.push({ type: 'hidden', spy: spy.id, thing, furniture: f.id });
         } else {
           startSearch(state, spy, f, events);
         }
@@ -89,17 +90,17 @@ export function updateSearching(state: GameState, spy: Spy, dt: number, events: 
   switch (outcome) {
     case 'nothing':
     case 'putBack':
-      events.push({ type: 'found', spy: spy.id, thing: null });
+      events.push({ type: 'found', spy: spy.id, thing: null, furniture: f.id });
       break;
     case 'took':
-      events.push({ type: 'found', spy: spy.id, thing: found });
+      events.push({ type: 'found', spy: spy.id, thing: found, furniture: f.id });
       break;
     case 'stored':
       // `found` is always the secret that went into the kufřík (spec §7).
-      if (found?.kind === 'secret') events.push({ type: 'stored', spy: spy.id, secret: found.secret });
+      if (found?.kind === 'secret') events.push({ type: 'stored', spy: spy.id, secret: found.secret, furniture: f.id });
       break;
     case 'swapped':
-      events.push({ type: 'swapped', spy: spy.id, gave: gave!, took: found! });
+      events.push({ type: 'swapped', spy: spy.id, gave: gave!, took: found!, furniture: f.id });
       break;
   }
 }

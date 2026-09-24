@@ -1,5 +1,6 @@
 export type SfxName =
   | 'join' | 'search' | 'found' | 'hide' | 'trapSet' | 'fail'
+  | 'nothing' | 'thud' | 'swap' | 'clatter'
   | 'bomb' | 'zap' | 'boing' | 'shot'
   | 'swing' | 'hit' | 'block' | 'door' | 'locked' | 'tick' | 'win' | 'draw'
   | 'step'
@@ -59,6 +60,13 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   search: (c) => noise(c, { dur: 0.25, vol: 0.12, lowpass: 1200 }),
   found: (c) => { tone(c, { freq: 660, dur: 0.08 }); tone(c, { freq: 990, dur: 0.12, delay: 0.08 }); },
   hide: (c) => tone(c, { freq: 500, to: 300, dur: 0.12 }),
+  nothing: (c) => { tone(c, { freq: 330, to: 260, dur: 0.14, type: 'triangle', vol: 0.18 }); tone(c, { freq: 247, to: 150, dur: 0.28, delay: 0.14, type: 'triangle', vol: 0.18 }); },
+  thud: (c) => { tone(c, { freq: 140, to: 60, dur: 0.12, type: 'sine', vol: 0.35 }); noise(c, { dur: 0.06, vol: 0.12, lowpass: 500 }); },
+  swap: (c) => { noise(c, { dur: 0.22, vol: 0.12, lowpass: 3500 }); tone(c, { freq: 300, to: 900, dur: 0.2, type: 'sine', vol: 0.08 }); },
+  clatter: (c) => [0, 0.05, 0.11, 0.18].forEach((delay, i) => {
+    tone(c, { freq: 1100 - i * 170, dur: 0.04, delay, type: 'square', vol: 0.08 });
+    noise(c, { dur: 0.04, vol: 0.12, delay, lowpass: 5000 });
+  }),
   trapSet: (c) => { tone(c, { freq: 300, dur: 0.05 }); tone(c, { freq: 300, dur: 0.05, delay: 0.1 }); },
   fail: (c) => tone(c, { freq: 150, dur: 0.15, type: 'sawtooth' }),
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },

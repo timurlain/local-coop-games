@@ -10,6 +10,7 @@ import { createGame } from './logic/generator';
 import { RULES } from './logic/rules';
 import type { EmbassySize, GameEvent, GameState, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
+import { spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
 import { pushToast, toastFor, type ToastQueue } from './render/toast';
 import { LOW_TIME } from './render/trapulator';
@@ -53,6 +54,8 @@ const stepTimers: [number, number] = [0, 0];
 let victoryT = 0;
 /** Render-side toasts under each frame, fed from logic events. */
 let toasts: [ToastQueue, ToastQueue] = [[], []];
+/** Render-side search / hide / swap / drop feedback, fed from logic events. */
+let effects: EffectQueue = [];
 /** Whole second of each clock at which the low-time beep last sounded. */
 const lastBeep: [number, number] = [-1, -1];
 
@@ -127,6 +130,7 @@ function startGame(): void {
   stepTimers[0] = 0;
   stepTimers[1] = 0;
   toasts = [[], []];
+  effects = [];
   lastBeep[0] = -1;
   lastBeep[1] = -1;
   screen = 'play';
@@ -238,11 +242,13 @@ function updatePlay(dt: number): void {
   const before: [string, string] = [posKey(s.spies[0]), posKey(s.spies[1])];
   const inputs: [SpyInput, SpyInput] = [toSpyInput(input.get(slots[0]!)), toSpyInput(input.get(slots[1]!))];
   const now = performance.now() / 1000;
-  for (const e of step(s, inputs, dt)) {
+  const events = step(s, inputs, dt);
+  for (const e of events) {
     const name = soundFor(e);
     if (name) sfx.play(name);
     toastOn(e, now);
   }
+  spawnEffects(effects, s, events, now);
   for (const spy of s.spies) lowTimeBeep(spy);
   for (const spy of s.spies) {
     if (spy.mode !== 'normal') continue;
@@ -302,11 +308,11 @@ function lowTimeBeep(spy: Spy): void {
 function soundFor(e: GameEvent): SfxName | null {
   switch (e.type) {
     case 'searchStart': return 'search';
-    case 'found': return e.thing ? 'found' : null;
+    case 'found': return e.thing ? 'found' : 'nothing';
     case 'stored': return 'found';
-    case 'swapped': return 'hide';
-    case 'hidden': return 'hide';
-    case 'dropped': return e.thing ? 'fail' : null;
+    case 'swapped': return 'swap';
+    case 'hidden': return 'thud';
+    case 'dropped': return e.thing ? 'clatter' : null;
     case 'trapSet': return 'trapSet';
     case 'trapFailed': return 'fail';
     case 'disarmed': return 'found';
@@ -347,7 +353,7 @@ function render(): void {
   if (screen === 'victory' && state?.result?.kind === 'win') {
     renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
   } else if (state && screen !== 'menu') {
-    renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts);
+    renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts, effects);
   } else {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000000';

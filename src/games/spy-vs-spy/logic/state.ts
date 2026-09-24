@@ -173,10 +173,10 @@ export interface GameState {
 
 export type GameEvent =
   | { type: 'searchStart'; spy: PlayerId }
-  | { type: 'found'; spy: PlayerId; thing: Thing | null }
-  | { type: 'stored'; spy: PlayerId; secret: SecretKind }
-  | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing }
-  | { type: 'hidden'; spy: PlayerId }
+  | { type: 'found'; spy: PlayerId; thing: Thing | null; furniture: number }
+  | { type: 'stored'; spy: PlayerId; secret: SecretKind; furniture: number }
+  | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing; furniture: number }
+  | { type: 'hidden'; spy: PlayerId; thing: Thing; furniture: number }
   | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
   | { type: 'trapFailed'; spy: PlayerId }

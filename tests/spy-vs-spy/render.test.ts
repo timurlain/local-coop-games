@@ -192,6 +192,16 @@ describe('pickFrame', () => {
     expect(WALK_CYCLE).toContain(pickFrame(spy(), false, true, 0.3));
     expect(pickFrame(spy(), false, true, 0)).toBe(walkFrame(0));
   });
+
+  it('an effect pose overrides search, fight and walk but not swing or block', () => {
+    expect(pickFrame(spy(), false, false, 0, 'liftFind')).toBe('liftFind');
+    expect(pickFrame(spy(), false, true, 0, 'shrug')).toBe('shrug');
+    expect(pickFrame(spy(), true, false, 0, 'hidePut')).toBe('hidePut');
+    expect(pickFrame(spy({ mode: 'searching' }), false, false, 0, 'shrug')).toBe('shrug');
+    expect(pickFrame(spy({ blocking: true }), true, false, 0, 'liftFind')).toBe('block');
+    expect(pickFrame(spy({ swingAnim: RULES.swingAnim }), true, false, 0, 'liftFind')).toBe('swingWind');
+    expect(pickFrame(spy(), false, false, 0, null)).toBe('stand');
+  });
 });
 
 describe('formatClock', () => {

@@ -203,7 +203,7 @@ describe('meeting: shared room (spec §3)', () => {
     place(s, 1, 0, f.x + 50, 20); // opponent walks into the room mid-search
     const ev = run(s, [IDLE, IDLE], RULES.searchTime + 0.1);
     expect(spy.mode).toBe('normal');
-    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: secret('pas') });
+    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: secret('pas'), furniture: f.id });
   });
 
   it('normal behaviour returns once the opponent leaves the room', () => {
