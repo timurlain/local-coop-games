@@ -193,6 +193,16 @@ function update(dt: number): void {
       updateMenu();
       break;
     case 'title':
+      if (slotDevices().some((d) => !input.isConnected(d))) {
+        beginPlay();
+        pause(T.padLost);
+        break;
+      }
+      if (slotPressed('pause')) {
+        beginPlay();
+        pause(T.paused);
+        break;
+      }
       titleT += dt;
       if (titleT >= TITLE_CARD_TIME || slotPressed('action')) beginPlay();
       break;
@@ -391,6 +401,10 @@ function resize(): void {
 window.addEventListener('resize', resize);
 window.addEventListener('blur', () => {
   if (screen === 'play') pause(T.paused);
+  else if (screen === 'title') {
+    beginPlay();
+    pause(T.paused);
+  }
 });
 window.addEventListener('pointerdown', () => sfx.unlock());
 
