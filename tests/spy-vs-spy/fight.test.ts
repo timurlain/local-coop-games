@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { trySwing, updateBlocking } from '../../src/games/spy-vs-spy/logic/fight';
+import { trySwing, updateBlocking, updateHealthRegen } from '../../src/games/spy-vs-spy/logic/fight';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import { input, openGame, place } from './fixtures';
@@ -19,6 +19,7 @@ describe('trySwing', () => {
     expect(b.health).toBe(RULES.health - 1);
     expect(b.x).toBe(110 + RULES.knockback);
     expect(a.swingCooldown).toBe(RULES.swingCooldown);
+    expect(b.sinceHit).toBe(0);
     expect(ev).toEqual([{ type: 'swing', spy: 0 }, { type: 'hit', spy: 1 }]);
   });
 
@@ -72,5 +73,57 @@ describe('trySwing', () => {
     const { s, a, b } = duel();
     b.mode = 'dead';
     expect(trySwing(s, a, [])).toBe(false);
+  });
+});
+
+describe('updateHealthRegen', () => {
+  it('does not recover before the delay has passed', () => {
+    const { b } = duel();
+    b.health = RULES.health - 3;
+    b.sinceHit = 0;
+    updateHealthRegen(b, RULES.regenDelay - 0.01);
+    expect(b.health).toBe(RULES.health - 3);
+  });
+
+  it('recovers +1 exactly at the delay after the last hit, then +1 every interval', () => {
+    const { b } = duel();
+    b.health = RULES.health - 3;
+    b.sinceHit = 0;
+    updateHealthRegen(b, RULES.regenDelay);
+    expect(b.health).toBe(RULES.health - 2);
+    updateHealthRegen(b, RULES.regenInterval - 0.01);
+    expect(b.health).toBe(RULES.health - 2);
+    updateHealthRegen(b, 0.01);
+    expect(b.health).toBe(RULES.health - 1);
+  });
+
+  it('caps recovery at max health', () => {
+    const { b } = duel();
+    b.health = RULES.health;
+    b.sinceHit = 0;
+    updateHealthRegen(b, RULES.regenDelay + RULES.regenInterval * 5);
+    expect(b.health).toBe(RULES.health);
+  });
+
+  it('does not run while dead or out', () => {
+    const { b } = duel();
+    b.health = RULES.health - 3;
+    b.sinceHit = 0;
+    b.mode = 'dead';
+    updateHealthRegen(b, RULES.regenDelay + 1);
+    expect(b.health).toBe(RULES.health - 3);
+    b.mode = 'out';
+    updateHealthRegen(b, RULES.regenDelay + 1);
+    expect(b.health).toBe(RULES.health - 3);
+  });
+
+  it('a new hit restarts the delay (covered by trySwing resetting sinceHit)', () => {
+    const { s, a, b } = duel();
+    b.health = RULES.health - 3;
+    b.sinceHit = RULES.regenDelay - 0.1; // about to recover
+    trySwing(s, a, []); // hits b, resetting sinceHit
+    expect(b.sinceHit).toBe(0);
+    updateHealthRegen(b, RULES.regenDelay - 0.01);
+    expect(b.health).toBe(RULES.health - 3 - 1); // the hit itself, no recovery yet
   });
 });

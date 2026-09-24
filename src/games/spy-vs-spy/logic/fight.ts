@@ -31,9 +31,26 @@ export function trySwing(state: GameState, spy: Spy, events: GameEvent[]): boole
     return true;
   }
   o.health -= 1;
+  o.sinceHit = 0;
   events.push({ type: 'hit', spy: o.id });
   const push = Math.sign(o.x - spy.x) || spy.facing;
   o.x = Math.max(0, Math.min(RULES.roomW, o.x + push * RULES.knockback));
   if (o.health <= 0) kill(state, o, 'fight', events);
   return true;
+}
+
+/** How many +1 recovery ticks have elapsed for a given time since the last hit. */
+function regenTicksFor(sinceHit: number): number {
+  if (sinceHit < RULES.regenDelay) return 0;
+  return Math.floor((sinceHit - RULES.regenDelay) / RULES.regenInterval) + 1;
+}
+
+/** Strength recovery: +1 every `regenInterval`, starting `regenDelay` after the last hit, capped at max.
+ *  Does not run while dead or out (spec §4); `sinceHit` is reset on hit and on respawn. */
+export function updateHealthRegen(spy: Spy, dt: number): void {
+  if (spy.mode === 'dead' || spy.mode === 'out') return;
+  const before = regenTicksFor(spy.sinceHit);
+  spy.sinceHit += dt;
+  const after = regenTicksFor(spy.sinceHit);
+  if (after > before) spy.health = Math.min(RULES.health, spy.health + (after - before));
 }

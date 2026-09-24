@@ -115,6 +115,8 @@ export interface Spy {
   /** seconds left */
   clock: number;
   health: number;
+  /** seconds since the last hit taken; drives strength recovery, reset on hit and on respawn */
+  sinceHit: number;
   mode: SpyMode;
   /** countdown for 'searching' and 'dead' */
   modeTimer: number;

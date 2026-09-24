@@ -114,40 +114,59 @@ describe('remedies disarm every trap (spec §8)', () => {
 });
 
 describe('placing traps', () => {
-  it('places a furniture trap, spends stock and disarms the hand', () => {
+  it('places a furniture trap, spends stock, disarms the hand and costs clock', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     const spy = atFurniture(s, 0, f);
     spy.armed = 'bomba';
+    const clock = spy.clock;
     const ev: GameEvent[] = [];
     placeFurnitureTrap(spy, f, 'bomba', ev);
     expect(f.trap).toEqual({ kind: 'bomba', owner: 0 });
     expect(spy.stock.bomba).toBe(RULES.trapStock.bomba - 1);
     expect(spy.armed).toBeNull();
+    expect(spy.clock).toBe(clock - RULES.trapSetCost);
     expect(ev).toEqual([{ type: 'trapSet', spy: 0, trap: 'bomba' }]);
   });
 
-  it('refuses an occupied target without spending stock', () => {
+  it('refuses an occupied target without spending stock or clock', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     f.trap = { kind: 'pruzina', owner: 1 };
     const spy = atFurniture(s, 0, f);
     spy.armed = 'bomba';
+    const clock = spy.clock;
     const ev: GameEvent[] = [];
     placeFurnitureTrap(spy, f, 'bomba', ev);
     expect(f.trap).toEqual({ kind: 'pruzina', owner: 1 });
     expect(spy.stock.bomba).toBe(RULES.trapStock.bomba);
     expect(spy.armed).toBe('bomba');
+    expect(spy.clock).toBe(clock);
     expect(ev).toEqual([{ type: 'trapFailed', spy: 0 }]);
   });
 
-  it('places a door trap on the shared door key', () => {
+  it('places a door trap on the shared door key and costs clock', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 0);
     spy.armed = 'elektrina';
+    const clock = spy.clock;
     placeDoorTrap(s, spy, doorKey(4, 1), 'elektrina', []);
     expect(s.doorTraps[doorKey(1, 4)]).toEqual({ kind: 'elektrina', owner: 0 });
     expect(spy.stock.elektrina).toBe(RULES.trapStock.elektrina - 1);
+    expect(spy.clock).toBe(clock - RULES.trapSetCost);
+  });
+
+  it('refuses a door trap on an occupied key without spending clock', () => {
+    const s = openGame();
+    const key = doorKey(4, 1);
+    const spy = place(s, 0, 4, 100, 0);
+    spy.armed = 'elektrina';
+    s.doorTraps[key] = { kind: 'pistole', owner: 1 };
+    const clock = spy.clock;
+    const ev: GameEvent[] = [];
+    placeDoorTrap(s, spy, key, 'elektrina', ev);
+    expect(spy.clock).toBe(clock);
+    expect(ev).toEqual([{ type: 'trapFailed', spy: 0 }]);
   });
 });
 
@@ -186,25 +205,29 @@ describe('Trapulator menu', () => {
     expect(ev).toEqual([{ type: 'trapFailed', spy: 0 }]);
   });
 
-  it('picking the armed trap again unarms it', () => {
+  it('picking the armed trap again unarms it without spending clock', () => {
     const s = openGame();
     const spy = s.spies[0];
+    const clock = spy.clock;
     menu(s, spy, input({ trap: true, action: true }), []); // arm bomba (cursor 0)
     expect(spy.armed).toBe('bomba');
     menu(s, spy, input({ trap: true }), []); // release Akce
     menu(s, spy, input({ trap: true, action: true }), []); // press Akce again
     expect(spy.armed).toBeNull();
     expect(spy.stock.bomba).toBe(RULES.trapStock.bomba);
+    expect(spy.clock).toBe(clock);
   });
 
-  it('places the time bomb immediately', () => {
+  it('places the time bomb immediately and costs clock', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 80, 30);
     spy.menuCursor = 4;
+    const clock = spy.clock;
     menu(s, spy, input({ trap: true, action: true }), []);
     expect(s.timeBombs).toEqual([{ room: 4, x: 80, z: 30, fuse: RULES.timeBombFuse, owner: 0 }]);
     expect(spy.stock.casovana).toBe(RULES.trapStock.casovana - 1);
     expect(spy.armed).toBeNull();
+    expect(spy.clock).toBe(clock - RULES.trapSetCost);
   });
 });
 
@@ -215,8 +238,10 @@ describe('time bombs', () => {
     place(s, 1, 4, 150, 20);
     s.timeBombs.push({ room: 4, x: 100, z: 20, fuse: RULES.timeBombFuse, owner: 0 });
     const ev: GameEvent[] = [];
-    for (let i = 0; i < 19; i++) updateTimeBombs(s, 0.5, ev);
-    expect(ev.filter((e) => e.type === 'tick')).toHaveLength(9);
+    // Ticks fire on each whole-second crossing; the last half-second before the fuse ends explodes instead.
+    const stepsBeforeExplosion = RULES.timeBombFuse * 2 - 1;
+    for (let i = 0; i < stepsBeforeExplosion; i++) updateTimeBombs(s, 0.5, ev);
+    expect(ev.filter((e) => e.type === 'tick')).toHaveLength(RULES.timeBombFuse - 1);
     expect(s.spies[0].mode).toBe('normal');
     updateTimeBombs(s, 0.5, ev);
     expect(ev).toContainEqual({ type: 'explode', room: 4 });

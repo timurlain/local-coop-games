@@ -21,14 +21,22 @@ export const RULES = {
   searchTime: 0.5,
   hideHold: 0.4,
   trapStock: { bomba: 3, pruzina: 3, elektrina: 3, pistole: 3, casovana: 2 } as Readonly<Record<TrapKind, number>>,
-  timeBombFuse: 10,
+  timeBombFuse: 15,
+  /** clock cost to the placer of any successfully-placed trap (incl. the time bomb) */
+  trapSetCost: 3,
   deathPenalty: 30,
   respawnTime: 3,
-  health: 4,
+  health: 7,
+  /** seconds after the last hit before strength recovery starts */
+  regenDelay: 2.5,
+  /** seconds between each +1 strength recovery tick once it has started */
+  regenInterval: 2.5,
   fightRangeX: 24,
   fightRangeZ: 8,
   swingCooldown: 0.4,
-  swingAnim: 0.2,
+  swingAnim: 0.35,
+  /** portion of swingAnim spent winding up before the strike lands; rendering only */
+  swingWindup: 0.15,
   knockback: 12,
   clockOptions: [300, 480, 720] as readonly number[],
   defaultClock: 480,

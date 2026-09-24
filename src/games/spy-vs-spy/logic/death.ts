@@ -72,6 +72,7 @@ export function updateDead(spy: Spy, dt: number, events: GameEvent[]): void {
   spy.mode = 'normal';
   spy.modeTimer = 0;
   spy.health = RULES.health;
+  spy.sinceHit = 0;
   spy.deathCause = null;
   spy.x = RULES.roomW / 2;
   spy.z = RULES.roomD / 2;

@@ -38,6 +38,11 @@ export function triggerDoorTrap(state: GameState, spy: Spy, key: string, events:
   return spring(state, spy, trap.kind, events);
 }
 
+/** Successful placement costs the placer clock (spec §4); never applied on failure or unarm. */
+function chargeTrapSetCost(spy: Spy): void {
+  spy.clock = Math.max(0, spy.clock - RULES.trapSetCost);
+}
+
 export function placeFurnitureTrap(spy: Spy, f: Furniture, kind: FurnitureTrapKind, events: GameEvent[]): void {
   if (f.trap !== null) {
     events.push({ type: 'trapFailed', spy: spy.id });
@@ -46,6 +51,7 @@ export function placeFurnitureTrap(spy: Spy, f: Furniture, kind: FurnitureTrapKi
   f.trap = { kind, owner: spy.id };
   spy.stock[kind]--;
   spy.armed = null;
+  chargeTrapSetCost(spy);
   events.push({ type: 'trapSet', spy: spy.id, trap: kind });
 }
 
@@ -57,6 +63,7 @@ export function placeDoorTrap(state: GameState, spy: Spy, key: string, kind: Doo
   state.doorTraps[key] = { kind, owner: spy.id };
   spy.stock[kind]--;
   spy.armed = null;
+  chargeTrapSetCost(spy);
   events.push({ type: 'trapSet', spy: spy.id, trap: kind });
 }
 
@@ -64,6 +71,7 @@ export function placeTimeBomb(state: GameState, spy: Spy, events: GameEvent[]): 
   state.timeBombs.push({ room: spy.room, x: spy.x, z: spy.z, fuse: RULES.timeBombFuse, owner: spy.id });
   spy.stock.casovana--;
   spy.armed = null;
+  chargeTrapSetCost(spy);
   events.push({ type: 'trapSet', spy: spy.id, trap: 'casovana' });
 }
 

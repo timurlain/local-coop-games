@@ -125,6 +125,35 @@ describe('orchestration', () => {
   });
 });
 
+describe('health recovery', () => {
+  it('recovers health over time after a hit, via step', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    spy.health = RULES.health - 2;
+    spy.sinceHit = 0;
+    run(s, [IDLE, IDLE], RULES.regenDelay + 0.01);
+    expect(spy.health).toBe(RULES.health - 1);
+  });
+
+  it('resets sinceHit on respawn so recovery starts fresh', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.trap = { kind: 'bomba', owner: 1 };
+    atFurniture(s, 0, f);
+    step(s, [input({ action: true }), IDLE], 1 / 60);
+    step(s, [IDLE, IDLE], 1 / 60);
+    expect(s.spies[0].mode).toBe('dead');
+    // Step tick-by-tick and check right on the respawn tick, before further ticks grow sinceHit again.
+    const dt = 1 / 60;
+    for (let elapsed = 0; s.spies[0].mode === 'dead' && elapsed < RULES.respawnTime + 1; elapsed += dt) {
+      step(s, [IDLE, IDLE], dt);
+    }
+    expect(s.spies[0].mode).toBe('normal');
+    expect(s.spies[0].sinceHit).toBe(0);
+    expect(s.spies[0].health).toBe(RULES.health);
+  });
+});
+
 describe('fairness', () => {
   it('alternates processing order each tick so neither spy always wins a simultaneous trade', () => {
     function duel(burnIdleTick: boolean): ReturnType<typeof openGame> {

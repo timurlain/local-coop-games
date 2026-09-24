@@ -13,7 +13,7 @@ export function createSpy(id: PlayerId, room: number, x: number, roomCount: numb
   visited[room] = true;
   return {
     id, room, x, z: RULES.roomD / 2, facing: id === 0 ? 1 : -1,
-    hand: null, clock, health: RULES.health,
+    hand: null, clock, health: RULES.health, sinceHit: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
     menuOpen: false, menuCursor: 0, armed: null, stock: { ...RULES.trapStock },
     swingCooldown: 0, swingAnim: 0, blocking: false, lockedMsg: 0,

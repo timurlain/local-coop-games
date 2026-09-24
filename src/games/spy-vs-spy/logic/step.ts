@@ -1,5 +1,5 @@
 import { dropHand, updateDead } from './death';
-import { updateBlocking } from './fight';
+import { updateBlocking, updateHealthRegen } from './fight';
 import { updateAction, updateSearching } from './interact';
 import { updateMovement } from './movement';
 import { updateTimeBombs, updateTrapMenu } from './traps';
@@ -25,6 +25,7 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     spy.swingCooldown = Math.max(0, spy.swingCooldown - dt);
     spy.swingAnim = Math.max(0, spy.swingAnim - dt);
     spy.lockedMsg = Math.max(0, spy.lockedMsg - dt);
+    updateHealthRegen(spy, dt);
     switch (spy.mode) {
       case 'dead':
         updateDead(spy, dt, events);
