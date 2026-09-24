@@ -164,6 +164,15 @@ describe('meeting: shared room (spec §3)', () => {
     expect(spy.armed).toBeNull();
   });
 
+  it('holding the Trapulator never walks, even next to the opponent', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 130, 20);
+    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.5);
+    expect(spy.x).toBe(100);
+    expect(spy.menuOpen).toBe(false);
+  });
+
   it('the map cannot be opened while sharing a room (spec §3, §5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);

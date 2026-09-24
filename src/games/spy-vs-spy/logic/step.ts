@@ -92,6 +92,9 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
   if (spy.mode !== 'normal' || spy.holdTarget !== null) return false;
+  // v1: holding the Trapulator button never moves the spy, even when the shared room
+  // above ignores it for menu/map purposes (spec §3).
+  if (input.trap) return false;
   return updateMovement(state, spy, input, dt, events);
 }
 
