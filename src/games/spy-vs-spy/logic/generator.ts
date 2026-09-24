@@ -15,7 +15,7 @@ export function createSpy(
   visited[room] = true;
   return {
     id, room, x, z: RULES.roomD / 2, facing: id === 0 ? 1 : -1,
-    hand: null, clock, health: RULES.health, sinceHit: 0,
+    hand: null, clock, health: RULES.health, sinceHit: 0, score: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
     menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...stock },
     swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, lockedMsg: 0, doorOpening: null,
@@ -201,7 +201,7 @@ function placeThings(state: GameState): void {
   const eligible = state.furniture.filter((f) => !isFixture(f)).map((f) => f.id);
   const ids = shuffle(state.rng, eligible);
   SECRETS.forEach((secret, i) => {
-    state.furniture[ids[i]].hidden = { kind: 'secret', secret };
+    state.furniture[ids[i]].hidden = { kind: 'secret', secret, lastHolder: null };
   });
-  state.furniture[ids[SECRETS.length]].hidden = { kind: 'kufrik', contents: [] };
+  state.furniture[ids[SECRETS.length]].hidden = { kind: 'kufrik', contents: [], lastHolder: null };
 }

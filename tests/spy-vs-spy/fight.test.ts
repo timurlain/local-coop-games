@@ -198,7 +198,7 @@ describe('updateSwing: the strike (spec §8)', () => {
       updateSwing(s, a, RULES.strikeAnim, ev);
     }
     expect(b.mode).toBe('dead');
-    expect(ev).toContainEqual({ type: 'died', spy: 1, cause: 'fight' });
+    expect(ev).toContainEqual({ type: 'died', spy: 1, cause: 'fight', killer: 0 });
     expect(ev.filter((e) => e.type === 'hit')).toHaveLength(Math.ceil(RULES.health / 2));
   });
 });

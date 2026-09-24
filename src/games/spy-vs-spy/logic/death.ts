@@ -2,10 +2,11 @@ import { pick } from '../../../shared/rng';
 import { RULES } from './rules';
 import {
   DIRS, isActive, neighbor,
-  type DeathCause, type Furniture, type GameEvent, type GameState, type Spy,
+  type DeathCause, type Furniture, type GameEvent, type GameState, type PlayerId, type Spy,
 } from './state';
 
-export function kill(state: GameState, spy: Spy, cause: DeathCause, events: GameEvent[]): void {
+/** `killer` is the opponent who landed the strike (spec §7); only meaningful for cause 'fight'. */
+export function kill(state: GameState, spy: Spy, cause: DeathCause, events: GameEvent[], killer?: PlayerId): void {
   if (!isActive(spy)) return;
   spy.mode = 'dead';
   spy.modeTimer = RULES.respawnTime;
@@ -20,7 +21,7 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   cancelSwing(spy);
   cancelDoorOpening(state, spy);
   dropHand(state, spy);
-  events.push({ type: 'died', spy: spy.id, cause });
+  events.push({ type: 'died', spy: spy.id, cause, killer });
 }
 
 /** Drops a swing in progress, so a spy that is out of the fight never strikes (spec §8). */

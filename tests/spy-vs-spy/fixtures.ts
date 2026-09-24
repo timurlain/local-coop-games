@@ -69,9 +69,14 @@ export function atFurniture(s: GameState, id: PlayerId, f: Furniture): Spy {
 }
 
 export const input = (p: Partial<SpyInput> = {}): SpyInput => ({ ...NO_INPUT, ...p });
-export const secret = (k: SecretKind): Thing => ({ kind: 'secret', secret: k });
-export const kufrik = (...contents: SecretKind[]): Thing => ({ kind: 'kufrik', contents: [...contents] });
+export const secret = (k: SecretKind): Thing => ({ kind: 'secret', secret: k, lastHolder: null });
+export const kufrik = (...contents: SecretKind[]): Thing => ({ kind: 'kufrik', contents: [...contents], lastHolder: null });
 export const remedy = (k: RemedyKind): Thing => ({ kind: 'remedy', remedy: k });
+
+/** `thing` as last held by `by` (spec §7) — a copy, for asserting the result of a take. */
+export function taken<T extends Thing>(thing: T, by: PlayerId): T {
+  return thing.kind === 'remedy' ? thing : ({ ...thing, lastHolder: by } as T);
+}
 
 /** Runs the full step for `seconds` with fixed inputs; returns all events. */
 export function run(s: GameState, inputs: [SpyInput, SpyInput], seconds: number, dt = 1 / 60): GameEvent[] {

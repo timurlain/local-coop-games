@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
-import { OPEN_RULES, atFurniture, firstFurniture, input, kufrik, openDoor, openGame, place, remedy, run, secret } from './fixtures';
+import { OPEN_RULES, atFurniture, firstFurniture, input, kufrik, openDoor, openGame, place, remedy, run, secret, taken } from './fixtures';
 
 const IDLE = input();
 
@@ -48,6 +48,42 @@ describe('result', () => {
   });
 });
 
+describe('score (spec §7): step applies scoreDeltas after events', () => {
+  it('a placed trap credits the placer\'s running score', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    const spy = atFurniture(s, 0, f);
+    spy.armed = 'bomba';
+    const ev = step(s, [input({ action: true }), IDLE], 1 / 60);
+    expect(ev).toContainEqual({ type: 'trapSet', spy: 0, trap: 'bomba' });
+    expect(s.spies[0].score).toBe(30);
+    expect(s.spies[1].score).toBe(0);
+  });
+
+  it('escaping credits the full win bonus, computed from the clock at the moment of escape', () => {
+    const s = openGame();
+    const spy = place(s, 1, 2, 200, 20);
+    openDoor(s, 1, 'E');
+    spy.hand = kufrik('pas', 'klic', 'penize', 'plany');
+    const dt = 1 / 60;
+    const clockAtEscape = Math.floor(s.spies[1].clock - dt);
+    step(s, [IDLE, input({ moveX: 1 })], dt);
+    expect(s.spies[1].score).toBe(1000 + 5 * clockAtEscape);
+  });
+
+  it('a steal on take credits the taker once the search resolves', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = { kind: 'secret', secret: 'klic', lastHolder: 1 };
+    const spy = atFurniture(s, 0, f);
+    step(s, [input({ action: true }), IDLE], 1 / 60); // press: hold starts
+    step(s, [IDLE, IDLE], 1 / 60); // release: search starts
+    run(s, [IDLE, IDLE], RULES.searchTime + 0.1);
+    expect(spy.hand).toEqual(taken(secret('klic'), 0));
+    expect(s.spies[0].score).toBe(60);
+  });
+});
+
 describe('orchestration', () => {
   it('holding Akce searches only once', () => {
     const s = openGame();
@@ -64,7 +100,7 @@ describe('orchestration', () => {
     atFurniture(s, 0, f);
     step(s, [input({ action: true }), IDLE], 1 / 60);
     run(s, [IDLE, IDLE], 1);
-    expect(s.spies[0].hand).toEqual(secret('plany'));
+    expect(s.spies[0].hand).toEqual(taken(secret('plany'), 0));
   });
 
   it('the spy cannot walk while the Trapulator is open', () => {
@@ -229,7 +265,7 @@ describe('meeting: shared room (spec §3)', () => {
     place(s, 1, 0, f.x + 50, 20); // opponent walks into the room mid-search
     const ev = run(s, [IDLE, IDLE], RULES.searchTime + 0.1);
     expect(spy.mode).toBe('normal');
-    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: secret('pas'), furniture: f.id });
+    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: taken(secret('pas'), 0), furniture: f.id });
   });
 
   it('normal behaviour returns once the opponent leaves the room', () => {

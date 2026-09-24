@@ -29,14 +29,15 @@ function gameplayFingerprint(s: GameState): string {
   return h.toString(16).padStart(8, '0');
 }
 
-/** Recorded at b944621, before the host country and year existed. */
+/** Recorded at 73210df, after `Thing` (secret/kufřík) gained `lastHolder` (spec §7, round 3 L4) —
+ *  a schema-only change to the JSON the fingerprint hashes; door/furniture/spawn RNG is untouched. */
 const RECORDED: Record<string, string> = {
-  'mala:1': '813ba75c', 'mala:7': 'bbc97d2a', 'mala:42': '8970a15b', 'mala:1234': '87ca148a',
-  'mala:99999': '71ade0d5', 'mala:3735928559': '00728c28',
-  'stredni:1': 'bea2f814', 'stredni:7': 'ced0688e', 'stredni:42': '666f32bf', 'stredni:1234': '598c7a06',
-  'stredni:99999': '5782b289', 'stredni:3735928559': '6f4e8491',
-  'velka:1': '133806f4', 'velka:7': 'e1e72e94', 'velka:42': 'db3abaa9', 'velka:1234': '3ffb1ee2',
-  'velka:99999': '96beed54', 'velka:3735928559': '78aebbca',
+  'mala:1': 'e584ee3d', 'mala:7': '34be63b7', 'mala:42': '38e3e668', 'mala:1234': 'a2aa38b1',
+  'mala:99999': '077729e0', 'mala:3735928559': 'e510f3b5',
+  'stredni:1': 'b2a35305', 'stredni:7': 'a423e899', 'stredni:42': 'c4e36a34', 'stredni:1234': 'fe4c64c3',
+  'stredni:99999': 'd2e69f12', 'stredni:3735928559': 'c1c6322a',
+  'velka:1': '5c7b9c6f', 'velka:7': '50622f23', 'velka:42': '2152838c', 'velka:1234': 'f55fae2d',
+  'velka:99999': 'aa713a41', 'velka:3735928559': 'aae6b0cf',
 };
 
 describe('host embassy and year', () => {

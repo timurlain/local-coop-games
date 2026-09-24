@@ -69,7 +69,7 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
     case 'swapped':
       return { kind: 'swapped', spy: e.spy, thing: e.gave, took: e.took, furniture: e.furniture };
     case 'stored':
-      return { kind: 'stored', spy: e.spy, thing: { kind: 'secret', secret: e.secret }, furniture: e.furniture };
+      return { kind: 'stored', spy: e.spy, thing: { kind: 'secret', secret: e.secret, lastHolder: null }, furniture: e.furniture };
     case 'dropped': {
       if (e.thing === null) return null;
       if (e.furniture === null) return { kind: 'poof', spy: e.spy, thing: e.thing };

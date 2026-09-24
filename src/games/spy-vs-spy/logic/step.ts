@@ -2,6 +2,7 @@ import { cancelDoorOpening, cancelSwing, dropHand, updateDead } from './death';
 import { sharesRoom, updateBlocking, updateDucking, updateHealthRegen, updateSwing } from './fight';
 import { updateAction, updateDoorOpening, updateSearching } from './interact';
 import { dropOnEntering, updateMovement } from './movement';
+import { scoreDeltas } from './score';
 import { updateTimeBombs, updateTrapMenu } from './traps';
 import { isActive, type GameEvent, type GameState, type PlayerId, type Spy, type SpyInput } from './state';
 
@@ -63,6 +64,9 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
   updateTimeBombs(state, dt, events);
   updateDoors(state, dt);
   updateResult(state, events);
+  const [d0, d1] = scoreDeltas(state, events);
+  state.spies[0].score += d0;
+  state.spies[1].score += d1;
   return events;
 }
 

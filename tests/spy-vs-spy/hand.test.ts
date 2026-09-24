@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canHide, hasAllSecrets, hide, resolveSearch } from '../../src/games/spy-vs-spy/logic/hand';
-import { atFurniture, firstFurniture, kufrik, openGame, remedy, secret } from './fixtures';
+import { atFurniture, firstFurniture, kufrik, openGame, remedy, secret, taken } from './fixtures';
 
 function setup() {
   const s = openGame();
@@ -21,8 +21,8 @@ describe('resolveSearch — normal furniture', () => {
   it('empty hand takes the thing', () => {
     const { f, spy } = setup();
     f.hidden = secret('klic');
-    expect(resolveSearch(spy, f)).toEqual({ outcome: 'took', found: secret('klic') });
-    expect(spy.hand).toEqual(secret('klic'));
+    expect(resolveSearch(spy, f)).toEqual({ outcome: 'took', found: taken(secret('klic'), 0) });
+    expect(spy.hand).toEqual(taken(secret('klic'), 0));
     expect(f.hidden).toBeNull();
   });
 
@@ -40,7 +40,7 @@ describe('resolveSearch — normal furniture', () => {
     spy.hand = secret('penize');
     f.hidden = kufrik('plany');
     expect(resolveSearch(spy, f)).toEqual({ outcome: 'stored', found: secret('penize') });
-    expect(spy.hand).toEqual(kufrik('plany', 'penize'));
+    expect(spy.hand).toEqual(taken(kufrik('plany', 'penize'), 0));
     expect(f.hidden).toBeNull();
   });
 
@@ -48,8 +48,8 @@ describe('resolveSearch — normal furniture', () => {
     const { f, spy } = setup();
     spy.hand = secret('pas');
     f.hidden = secret('klic');
-    expect(resolveSearch(spy, f)).toEqual({ outcome: 'swapped', found: secret('klic') });
-    expect(spy.hand).toEqual(secret('klic'));
+    expect(resolveSearch(spy, f)).toEqual({ outcome: 'swapped', found: taken(secret('klic'), 0) });
+    expect(spy.hand).toEqual(taken(secret('klic'), 0));
     expect(f.hidden).toEqual(secret('pas'));
   });
 
@@ -60,6 +60,56 @@ describe('resolveSearch — normal furniture', () => {
     expect(resolveSearch(spy, f)).toEqual({ outcome: 'swapped', found: remedy('destnik') });
     expect(spy.hand).toEqual(remedy('destnik'));
     expect(f.hidden).toEqual(kufrik('pas', 'klic'));
+  });
+});
+
+describe('resolveSearch — steals (spec §7)', () => {
+  it('taking back your own secret is not a steal', () => {
+    const { f, spy } = setup();
+    f.hidden = taken(secret('klic'), 0);
+    expect(resolveSearch(spy, f).stolenFrom).toBeUndefined();
+  });
+
+  it('taking a secret the opponent held last is a steal', () => {
+    const { f, spy } = setup();
+    f.hidden = taken(secret('klic'), 1);
+    expect(resolveSearch(spy, f).stolenFrom).toBe(1);
+    expect((spy.hand as { lastHolder: number }).lastHolder).toBe(0);
+  });
+
+  it('taking a kufrik the opponent held last is a steal, whatever it contains', () => {
+    const { f, spy } = setup();
+    f.hidden = taken(kufrik('pas', 'klic'), 1);
+    expect(resolveSearch(spy, f).stolenFrom).toBe(1);
+  });
+
+  it('a fresh (never-held) secret or kufrik is not a steal', () => {
+    const { f, spy } = setup();
+    f.hidden = secret('klic');
+    expect(resolveSearch(spy, f).stolenFrom).toBeUndefined();
+  });
+
+  it('storing a found secret into your own held kufrik steals only if the opponent held that secret', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    const spy = atFurniture(s, 0, f);
+    spy.hand = kufrik('pas');
+    f.hidden = taken(secret('klic'), 1);
+    const result = resolveSearch(spy, f);
+    expect(result.outcome).toBe('stored');
+    expect(result.stolenFrom).toBe(1);
+  });
+
+  it('taking a kufrik the opponent held last while holding a secret counts once for the kufrik', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    const spy = atFurniture(s, 0, f);
+    spy.hand = secret('penize');
+    f.hidden = taken(kufrik('plany'), 1);
+    const result = resolveSearch(spy, f);
+    expect(result.outcome).toBe('stored');
+    expect(result.stolenFrom).toBe(1);
+    expect(spy.hand).toEqual(taken(kufrik('plany', 'penize'), 0));
   });
 });
 
@@ -86,8 +136,8 @@ describe('resolveSearch — remedy sources', () => {
     const { f, spy } = setup();
     f.source = 'voda';
     f.hidden = secret('plany');
-    expect(resolveSearch(spy, f)).toEqual({ outcome: 'took', found: secret('plany') });
-    expect(spy.hand).toEqual(secret('plany'));
+    expect(resolveSearch(spy, f)).toEqual({ outcome: 'took', found: taken(secret('plany'), 0) });
+    expect(spy.hand).toEqual(taken(secret('plany'), 0));
     expect(f.hidden).toBeNull();
   });
 

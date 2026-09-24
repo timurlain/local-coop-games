@@ -77,7 +77,7 @@ function strike(state: GameState, spy: Spy, kind: AttackKind, events: GameEvent[
   events.push({ type: 'hit', spy: o.id });
   const push = Math.sign(o.x - spy.x) || spy.facing;
   o.x = Math.max(0, Math.min(RULES.roomW, o.x + push * RULES.knockback));
-  if (o.health <= 0) kill(state, o, 'fight', events);
+  if (o.health <= 0) kill(state, o, 'fight', events, spy.id);
 }
 
 /** How many +1 recovery ticks have elapsed for a given time since the last hit. */

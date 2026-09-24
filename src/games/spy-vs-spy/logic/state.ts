@@ -64,8 +64,8 @@ export const OPPOSITE: Readonly<Record<Dir, Dir>> = { N: 'S', S: 'N', E: 'W', W:
 export const EXIT_KEY = 'exit';
 
 export type Thing =
-  | { kind: 'secret'; secret: SecretKind }
-  | { kind: 'kufrik'; contents: SecretKind[] }
+  | { kind: 'secret'; secret: SecretKind; lastHolder: PlayerId | null }
+  | { kind: 'kufrik'; contents: SecretKind[]; lastHolder: PlayerId | null }
   | { kind: 'remedy'; remedy: RemedyKind };
 
 export interface FurnitureTrap {
@@ -148,6 +148,8 @@ export interface Spy {
   health: number;
   /** seconds since the last hit taken; drives strength recovery, reset on hit and on respawn */
   sinceHit: number;
+  /** running total from `scoreDeltas` (spec §7); can go negative */
+  score: number;
   mode: SpyMode;
   /** countdown for 'searching' and 'dead' */
   modeTimer: number;
@@ -209,16 +211,17 @@ export interface GameState {
 
 export type GameEvent =
   | { type: 'searchStart'; spy: PlayerId }
-  | { type: 'found'; spy: PlayerId; thing: Thing | null; furniture: number }
-  | { type: 'stored'; spy: PlayerId; secret: SecretKind; furniture: number }
-  | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing; furniture: number }
+  | { type: 'found'; spy: PlayerId; thing: Thing | null; furniture: number; stolenFrom?: PlayerId }
+  | { type: 'stored'; spy: PlayerId; secret: SecretKind; furniture: number; stolenFrom?: PlayerId }
+  | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing; furniture: number; stolenFrom?: PlayerId }
   | { type: 'hidden'; spy: PlayerId; thing: Thing; furniture: number }
   | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
   | { type: 'trapFailed'; spy: PlayerId }
   | { type: 'trapBlocked'; spy: PlayerId }
   | { type: 'disarmed'; spy: PlayerId; trap: TrapKind }
-  | { type: 'died'; spy: PlayerId; cause: DeathCause }
+  /** `killer` is set only for cause 'fight': the opponent who landed the strike (spec §7). */
+  | { type: 'died'; spy: PlayerId; cause: DeathCause; killer?: PlayerId }
   | { type: 'respawn'; spy: PlayerId }
   | { type: 'swing'; spy: PlayerId }
   | { type: 'hit'; spy: PlayerId }

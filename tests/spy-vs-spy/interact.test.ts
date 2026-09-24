@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { updateAction, updateSearching } from '../../src/games/spy-vs-spy/logic/interact';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { doorKey, type GameEvent, type GameState, type Spy, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
-import { atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, secret } from './fixtures';
+import { atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, secret, taken } from './fixtures';
 
 function act(s: GameState, spy: Spy, inp: SpyInput, dt: number, ev: GameEvent[]) {
   updateAction(s, spy, inp, dt, ev);
@@ -23,8 +23,8 @@ describe('tap = search', () => {
     expect(ev).toContainEqual({ type: 'searchStart', spy: 0 });
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(spy.mode).toBe('normal');
-    expect(spy.hand).toEqual(secret('pas'));
-    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: secret('pas'), furniture: f.id });
+    expect(spy.hand).toEqual(taken(secret('pas'), 0));
+    expect(ev).toContainEqual({ type: 'found', spy: 0, thing: taken(secret('pas'), 0), furniture: f.id });
   });
 
   it('searching a trapped furniture kills at the start of the search', () => {
@@ -88,7 +88,7 @@ describe('hold = hide', () => {
     act(s, spy, input({ action: true }), 0.25, ev);
     expect(spy.mode).toBe('searching');
     updateSearching(s, spy, RULES.searchTime, ev);
-    expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: secret('klic'), furniture: f.id });
+    expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: taken(secret('klic'), 0), furniture: f.id });
     expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
   });
 });
@@ -115,7 +115,7 @@ describe('search outcome events (spec §7)', () => {
     act(s, spy, input({ action: true }), 1 / 60, ev);
     act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
-    expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: secret('klic'), furniture: f.id });
+    expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: taken(secret('klic'), 0), furniture: f.id });
     expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
   });
 
@@ -144,7 +144,7 @@ describe('search outcome events (spec §7)', () => {
     act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'stored', spy: 0, secret: 'penize', furniture: f.id });
-    expect(spy.hand).toEqual(kufrik('plany', 'penize'));
+    expect(spy.hand).toEqual(taken(kufrik('plany', 'penize'), 0));
   });
 
   it('putting back a source own remedy emits found with a null thing', () => {

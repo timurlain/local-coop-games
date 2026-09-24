@@ -49,6 +49,8 @@ export const cs = {
     rematchHint: 'Akce = odveta · Esc = menu',
     timeLeft: (clock: string) => `Zbývající čas: ${clock}`,
     seed: 'Seed',
+    /** Result screen (spec §7): one line per spy, winner (or Bílý on a draw) first. */
+    scoreLine: (name: string, score: number, rank: string) => `${name}: ${score} b. · ${rank}`,
     rooms: {
       kancelar: 'Kancelář',
       knihovna: 'Knihovna',

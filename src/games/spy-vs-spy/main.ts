@@ -8,7 +8,8 @@ import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
 import { createGame } from './logic/generator';
 import { LEVELS, levelRules } from './logic/rules';
-import type { GameEvent, GameState, Spy, SpyInput } from './logic/state';
+import { rankFor } from './logic/score';
+import type { GameEvent, GameState, PlayerId, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
 import { spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
@@ -166,12 +167,19 @@ function pause(reason: string): void {
   show('pause');
 }
 
+/** Result screen (spec §7): both spies' score and rank, winner first — Bílý then Černý on a draw. */
 function finish(s: GameState): void {
   const r = s.result!;
   $('result-title').textContent = r.kind === 'win' ? T.winner(r.winner === 0 ? T.white : T.black) : T.draw;
   $('result-time').textContent = r.kind === 'win' ? T.timeLeft(formatClock(s.spies[r.winner].clock)) : '';
   $('result-host').textContent = T.titleCard(s.host, s.year);
   $('result-seed').textContent = `${T.seed}: ${s.seed}`;
+  const order: [PlayerId, PlayerId] = r.kind === 'win' && r.winner === 1 ? [1, 0] : [0, 1];
+  order.forEach((id, i) => {
+    const spy = s.spies[id];
+    const name = id === 0 ? T.white : T.black;
+    $(`result-score-${i}`).textContent = T.scoreLine(name, spy.score, rankFor(spy.score));
+  });
   $('result-hint').textContent = T.rematchHint;
   screen = 'result';
   show('result');
@@ -320,7 +328,7 @@ function toastOn(e: GameEvent, now: number): void {
       pushToast(toasts[e.spy], toastFor(e.took), now);
       break;
     case 'stored':
-      pushToast(toasts[e.spy], toastFor({ kind: 'secret', secret: e.secret }), now);
+      pushToast(toasts[e.spy], toastFor({ kind: 'secret', secret: e.secret, lastHolder: null }), now);
       break;
     case 'trapBlocked':
       pushToast(toasts[e.spy], { text: T.trapBlocked, kind: 'trap' }, now);
