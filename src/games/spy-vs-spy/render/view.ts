@@ -25,6 +25,20 @@ export function darkHalf(state: GameState, viewerId: PlayerId): boolean {
   return me.enteredAt > other.enteredAt || (me.enteredAt === other.enteredAt && viewerId === 1);
 }
 
+/**
+ * Whether the exit is shown to a viewer (hidden airport, spec §4). In a shared room only the
+ * visible half is ever drawn, and it draws both spies together, so the exit is shown there if
+ * EITHER active spy in the room can see it (L3 review) — not just the viewer whose half it is.
+ * Outside a shared room nothing changes: per-viewer, as before.
+ */
+export function exitShownIn(state: GameState, viewerId: PlayerId): boolean {
+  const [white, black] = state.spies;
+  if (white.room === black.room && isActive(white) && isActive(black)) {
+    return exitVisibleTo(state, white) || exitVisibleTo(state, black);
+  }
+  return exitVisibleTo(state, state.spies[viewerId]);
+}
+
 /** The dark room area of a merged view: near-black with a stepped vignette and a small „SOUBOJ" label. */
 function drawDarkRoom(ctx: CanvasRenderingContext2D): void {
   r(ctx, ROOM.x, ROOM.y, ROOM.w, ROOM.h, '#0d0d10');
@@ -69,7 +83,7 @@ export function renderGame(
           viewer.armed === 'bomba' || viewer.armed === 'pruzina' ? (near?.id ?? null) : null;
         const armedDoor =
           viewer.armed === 'elektrina' || viewer.armed === 'pistole' ? doorAt(state, viewer) : null;
-        drawRoom(ctx, state, viewer.room, near?.id ?? null, now, armedFurnitureId, armedDoor, exitVisibleTo(state, viewer));
+        drawRoom(ctx, state, viewer.room, near?.id ?? null, now, armedFurnitureId, armedDoor, exitShownIn(state, viewer.id));
         const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
         for (const s of here) drawSpy(ctx, state, s, now, effectPose(effects, s.id, now));
         drawEffects(ctx, state, effects, viewer.room, now);

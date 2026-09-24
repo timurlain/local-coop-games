@@ -367,7 +367,7 @@ describe('two attacks and ducking (spec §8)', () => {
 
   it('holding down in a shared room with the opponent out of fight range walks towards the '
     + 'front and out the S door instead of ducking (L3 review)', () => {
-    const { s, a, b } = duel();
+    const { s, b } = duel();
     b.x = RULES.roomW - 5; // far from a in x: out of fight range even though sharing the room
     b.z = 10;
     openDoor(s, 1, 'S');
@@ -378,7 +378,7 @@ describe('two attacks and ducking (spec §8)', () => {
   });
 
   it('a bash misses a far opponent holding down in the same room: they walk instead of ducking', () => {
-    const { s, a, b } = duel();
+    const { s, b } = duel();
     b.x = RULES.roomW - 5;
     b.z = 20;
     step(s, [input({ action: true, moveY: -1 }), input({ moveY: 1 })], 1 / 60);
