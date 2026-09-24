@@ -8,7 +8,9 @@ export type RemedyKind = 'voda' | 'kleste' | 'destnik' | 'nuzky';
 export type FurnitureTrapKind = 'bomba' | 'pruzina';
 export type DoorTrapKind = 'elektrina' | 'pistole';
 export type TrapKind = FurnitureTrapKind | DoorTrapKind | 'casovana';
-export type FurnitureKind = 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak';
+export type FurnitureKind =
+  | 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak'
+  | 'kartoteka' | 'televize' | 'globus' | 'lednice' | 'radio' | 'kvetina' | 'krb';
 export type DeathCause = TrapKind | 'fight';
 
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
@@ -17,6 +19,7 @@ export const REMEDIES: readonly RemedyKind[] = ['voda', 'kleste', 'destnik', 'nu
 export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana'];
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
+  'kartoteka', 'televize', 'globus', 'lednice', 'radio', 'kvetina', 'krb',
 ];
 export const OPPOSITE: Readonly<Record<Dir, Dir>> = { N: 'S', S: 'N', E: 'W', W: 'E' };
 /** Door-trap key used for the airport exit door. */

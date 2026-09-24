@@ -39,3 +39,11 @@ export function shade(hex: string, factor: number): string {
   const [rr, gg, bb] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * factor));
   return `rgb(${rr},${gg},${bb})`;
 }
+
+/** Filled pixel circle (row by row, so it stays crisp when scaled). */
+export function disc(ctx: Ctx, cx: number, cy: number, radius: number, color: string): void {
+  for (let dy = -radius; dy <= radius; dy++) {
+    const half = Math.floor(Math.sqrt(radius * radius - dy * dy) + 0.3);
+    r(ctx, cx - half, cy + dy, half * 2 + 1, 1, color);
+  }
+}
