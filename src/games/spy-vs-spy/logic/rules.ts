@@ -53,6 +53,9 @@ export const RULES = {
   swingWindup: 0.15,
   knockback: 12,
   lockedMsgTime: 1,
+  /** Akce at a closed door (spec §5): immobile while it swings open, then open for both spies. */
+  doorOpenTime: 0.3,
+  doorOpenDuration: 1.5,
   /** Levels 1-8, index = level - 1 (spec §4). Stock order: bomba/pružina/elektřina/pistole/časovaná. */
   levels: [
     level(3, 2, 5, [1, 1, 1, 1, 1]),

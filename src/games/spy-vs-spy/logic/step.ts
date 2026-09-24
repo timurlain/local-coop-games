@@ -1,6 +1,6 @@
-import { dropHand, updateDead } from './death';
+import { cancelDoorOpening, dropHand, updateDead } from './death';
 import { sharesRoom, updateBlocking, updateHealthRegen } from './fight';
-import { updateAction, updateSearching } from './interact';
+import { updateAction, updateDoorOpening, updateSearching } from './interact';
 import { dropOnEntering, updateMovement } from './movement';
 import { updateTimeBombs, updateTrapMenu } from './traps';
 import { isActive, type GameEvent, type GameState, type PlayerId, type Spy, type SpyInput } from './state';
@@ -58,8 +58,20 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
   }
 
   updateTimeBombs(state, dt, events);
+  updateDoors(state, dt);
   updateResult(state, events);
   return events;
+}
+
+/** Closes a door once its 1.5 s open window elapses (spec §5); the 0.3 s opening countdown is
+ *  driven per-spy by `updateDoorOpening`, since only the opener is immobile meanwhile. */
+function updateDoors(state: GameState, dt: number): void {
+  for (const key of Object.keys(state.doorOpen)) {
+    const d = state.doorOpen[key];
+    if (d.phase !== 'open') continue;
+    d.timer -= dt;
+    if (d.timer <= 0) delete state.doorOpen[key];
+  }
 }
 
 function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]): void {
@@ -75,11 +87,18 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
+  cancelDoorOpening(state, spy);
   events.push({ type: 'timeout', spy: spy.id });
 }
 
 /** Returns true when the spy passed through an internal door into a new room this tick. */
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
+  // Opening a door (spec §5): the spy is fully immobile for the 0.3 s swing — no movement, no
+  // Trapulator, no fighting — same idea as a search or a hide-hold taking over the tick.
+  if (spy.doorOpening !== null) {
+    updateDoorOpening(state, spy, dt, events);
+    return false;
+  }
   // Shared room (spec §3): the Trapulator cannot be opened, input for it is ignored. Tell the
   // player why (edge-triggered: once per fresh press, not every tick the button stays held).
   if (input.trap && sharesRoom(state, spy) && !spy.prev.trap) events.push({ type: 'trapBlocked', spy: spy.id });

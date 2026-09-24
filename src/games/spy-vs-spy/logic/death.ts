@@ -17,8 +17,16 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
+  cancelDoorOpening(state, spy);
   dropHand(state, spy);
   events.push({ type: 'died', spy: spy.id, cause });
+}
+
+/** A door this spy was opening never finishes (spec §5): drop it, freeing the door key. */
+export function cancelDoorOpening(state: GameState, spy: Spy): void {
+  if (spy.doorOpening === null) return;
+  delete state.doorOpen[spy.doorOpening];
+  spy.doorOpening = null;
 }
 
 /**

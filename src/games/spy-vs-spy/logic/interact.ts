@@ -2,8 +2,8 @@ import { sharesRoom, trySwing } from './fight';
 import { canHide, hide, resolveSearch } from './hand';
 import { doorAt, doorKeyFor, furnitureAt } from './places';
 import { RULES } from './rules';
-import { placeDoorTrap, placeFurnitureTrap, triggerFurnitureTrap } from './traps';
-import type { Furniture, GameEvent, GameState, Spy, SpyInput } from './state';
+import { placeDoorTrap, placeFurnitureTrap, triggerDoorTrap, triggerFurnitureTrap } from './traps';
+import type { Dir, Furniture, GameEvent, GameState, Spy, SpyInput } from './state';
 
 /**
  * Akce handling for a spy in 'normal' mode. While the opponent shares this room (spec §3), Akce
@@ -39,6 +39,18 @@ export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: nu
 
   if (!input.action || spy.prev.action) return;
   if (trySwing(state, spy, events)) return;
+
+  // A door in reach (spec §5): Akce opens it — doors still work in a shared room, out of fight
+  // range — unless a door trap is armed, which places the trap as before (blocked while shared,
+  // like every other trap/hide/search action).
+  const d = doorAt(state, spy);
+  if (d !== null) {
+    const doorTrapArmed = !shared && (spy.armed === 'elektrina' || spy.armed === 'pistole');
+    if (doorTrapArmed) placeArmed(state, spy, events);
+    else tryOpenDoor(state, spy, d, events);
+    return;
+  }
+
   if (shared) return;
   if (spy.armed !== null) {
     placeArmed(state, spy, events);
@@ -49,6 +61,37 @@ export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: nu
     spy.holdTarget = f.id;
     spy.holdTime = 0;
   }
+}
+
+/** Starts opening the door at `dir`, unless it is already opening or open (a second Akce press
+ *  there just waits it out). The 0.3 s countdown lives on `state.doorOpen[key]` so both spies can
+ *  see it; `spy.doorOpening` only marks which spy is immobile meanwhile (spec §5). */
+function tryOpenDoor(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): void {
+  const key = doorKeyFor(state, spy.room, dir);
+  if (state.doorOpen[key]) return;
+  state.doorOpen[key] = { phase: 'opening', timer: RULES.doorOpenTime };
+  spy.doorOpening = key;
+}
+
+/** Advances the 0.3 s opening countdown for the spy who pressed Akce at a door; called every tick
+ *  while `spy.doorOpening` is set, in place of movement/fighting/menu (spec §5). */
+export function updateDoorOpening(state: GameState, spy: Spy, dt: number, events: GameEvent[]): void {
+  const key = spy.doorOpening!;
+  const d = state.doorOpen[key];
+  if (!d || d.phase !== 'opening') {
+    // Defensive: the entry vanished from under us (should not happen outside tests poking state).
+    spy.doorOpening = null;
+    return;
+  }
+  d.timer -= dt;
+  if (d.timer > 0) return;
+  spy.doorOpening = null;
+  d.phase = 'open';
+  d.timer = RULES.doorOpenDuration;
+  events.push({ type: 'doorOpened', spy: spy.id, key });
+  // Door traps trigger on opening, never on passing (spec §5); remedy logic unchanged. The door
+  // leaf has already swung, whatever happens to the opener next.
+  triggerDoorTrap(state, spy, key, events);
 }
 
 function placeArmed(state: GameState, spy: Spy, events: GameEvent[]): void {

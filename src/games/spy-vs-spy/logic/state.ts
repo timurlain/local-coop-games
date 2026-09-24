@@ -105,6 +105,15 @@ export interface DoorTrap {
   owner: PlayerId;
 }
 
+/** Runtime state of one door's Akce-opened cycle (spec §5): absent from `GameState.doorOpen` = closed. */
+export type DoorPhase = 'opening' | 'open';
+
+export interface DoorRuntimeState {
+  phase: DoorPhase;
+  /** seconds left in this phase */
+  timer: number;
+}
+
 export interface TimeBomb {
   room: number;
   x: number;
@@ -157,6 +166,8 @@ export interface Spy {
   blocking: boolean;
   /** >0 while "Zamčeno" is shown */
   lockedMsg: number;
+  /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */
+  doorOpening: string | null;
   visited: boolean[];
   prev: SpyInput;
 }
@@ -176,6 +187,8 @@ export interface GameState {
   rooms: Room[];
   furniture: Furniture[];
   doorTraps: Record<string, DoorTrap>;
+  /** open/opening state of internal doors and the exit, keyed like `doorTraps` (incl. `EXIT_KEY`); spec §5 */
+  doorOpen: Record<string, DoorRuntimeState>;
   timeBombs: TimeBomb[];
   spies: [Spy, Spy];
   rng: RngState;
@@ -201,6 +214,8 @@ export type GameEvent =
   | { type: 'hit'; spy: PlayerId }
   | { type: 'blocked'; spy: PlayerId }
   | { type: 'door'; spy: PlayerId }
+  | { type: 'doorOpened'; spy: PlayerId; key: string }
+  | { type: 'bump'; spy: PlayerId }
   | { type: 'locked'; spy: PlayerId }
   | { type: 'tick'; room: number }
   | { type: 'explode'; room: number }

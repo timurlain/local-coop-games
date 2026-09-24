@@ -2,7 +2,6 @@ import { dropHand } from './death';
 import { hasAllSecrets } from './hand';
 import { doorAt, doorKeyFor } from './places';
 import { RULES } from './rules';
-import { triggerDoorTrap } from './traps';
 import { neighbor, type Dir, type GameEvent, type GameState, type Spy, type SpyInput } from './state';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -10,8 +9,8 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 /**
  * Advances one spy's position and door-crossing for this tick.
  * Returns true when the spy just passed an internal door into a new room (not the exit, not
- * blocked, not killed by a door trap) — the caller (`step`) uses this to judge entering-drops
- * only after BOTH spies have moved this tick (spec §3; see step.ts for why).
+ * blocked by a closed door) — the caller (`step`) uses this to judge entering-drops only after
+ * BOTH spies have moved this tick (spec §3; see step.ts for why).
  */
 export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
   if (input.moveX !== 0) spy.facing = input.moveX;
@@ -19,6 +18,12 @@ export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: 
   spy.z = clamp(spy.z + input.moveY * RULES.speedZ * dt, 0, RULES.roomD);
   const dir = pushingDoor(state, spy, input);
   if (dir === null) return false;
+  const key = doorKeyFor(state, spy.room, dir);
+  if (state.doorOpen[key]?.phase !== 'open') {
+    // Closed door (spec §5): no pass, just a bump — once per fresh push, not every tick held.
+    if (isFreshPush(spy, input, dir)) events.push({ type: 'bump', spy: spy.id });
+    return false;
+  }
   return goThrough(state, spy, dir, events);
 }
 
@@ -32,9 +37,18 @@ function pushingDoor(state: GameState, spy: Spy, input: SpyInput): Dir | null {
   return null;
 }
 
-function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): boolean {
-  const key = doorKeyFor(state, spy.room, dir);
+/** True only on the tick the relevant direction was newly pressed into this door, so a held
+ *  direction against a closed door bumps once, not every tick (spec §5, "once per push"). */
+function isFreshPush(spy: Spy, input: SpyInput, dir: Dir): boolean {
+  switch (dir) {
+    case 'N': return spy.prev.moveY !== -1;
+    case 'S': return spy.prev.moveY !== 1;
+    case 'W': return spy.prev.moveX !== -1;
+    case 'E': return spy.prev.moveX !== 1;
+  }
+}
 
+function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): boolean {
   if (state.rooms[spy.room].exit === dir) {
     if (!hasAllSecrets(spy.hand)) {
       if (spy.lockedMsg <= 0) {
@@ -43,13 +57,11 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): b
       }
       return false;
     }
-    if (!triggerDoorTrap(state, spy, key, events)) return false;
     spy.mode = 'escaped';
     events.push({ type: 'escaped', spy: spy.id });
     return false;
   }
 
-  if (!triggerDoorTrap(state, spy, key, events)) return false;
   const next = neighbor(state, spy.room, dir)!;
   spy.room = next;
   spy.visited[next] = true;

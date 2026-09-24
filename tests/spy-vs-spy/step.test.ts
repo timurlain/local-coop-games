@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
-import { OPEN_RULES, atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, run, secret } from './fixtures';
+import { OPEN_RULES, atFurniture, firstFurniture, input, kufrik, openDoor, openGame, place, remedy, run, secret } from './fixtures';
 
 const IDLE = input();
 
@@ -38,6 +38,7 @@ describe('result', () => {
   it('a spy escaping wins and the game stops', () => {
     const s = openGame();
     const spy = place(s, 1, 2, 200, 20);
+    openDoor(s, 1, 'E');
     spy.hand = kufrik('pas', 'klic', 'penize', 'plany');
     step(s, [IDLE, input({ moveX: 1 })], 1 / 60);
     expect(s.result).toEqual({ kind: 'win', winner: 1 });
@@ -249,6 +250,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     const a = place(s, 0, 4, RULES.roomW, RULES.roomD / 2);
     const b = place(s, 1, 5, 0, RULES.roomD / 2);
+    openDoor(s, 0, 'E'); // shared key with room 5's W door
     a.hand = secret('klic');
     b.hand = secret('pas');
     const ev = step(s, [input({ moveX: 1 }), input({ moveX: -1 })], 1 / 60);
@@ -263,6 +265,8 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     const a = place(s, 0, 1, RULES.roomW / 2, RULES.roomD);
     const b = place(s, 1, 3, RULES.roomW, RULES.roomD / 2);
+    openDoor(s, 0, 'S');
+    openDoor(s, 1, 'E');
     a.hand = secret('klic');
     b.hand = secret('pas');
     const ev = step(s, [input({ moveY: 1 }), input({ moveX: 1 })], 1 / 60);
@@ -277,6 +281,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = secret('pas');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
@@ -288,6 +293,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = secret('pas');
     spy.armed = 'bomba';
     const stockBefore = spy.stock.bomba;
@@ -304,6 +310,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = remedy('voda');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
@@ -315,6 +322,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
     expect(ev).toContainEqual({ type: 'dropped', spy: 0, thing: null, furniture: null });
@@ -323,6 +331,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
   it('does not drop when entering an empty room', () => {
     const s = openGame();
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = secret('pas');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
@@ -336,6 +345,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     other.mode = 'dead';
     other.modeTimer = RULES.respawnTime;
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = secret('pas');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
@@ -348,6 +358,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const other = place(s, 1, 1, 100, 20);
     other.mode = 'out';
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = secret('pas');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
@@ -359,6 +370,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
     spy.hand = kufrik('pas', 'klic');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);

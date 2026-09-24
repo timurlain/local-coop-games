@@ -1,9 +1,10 @@
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { doorKeyFor } from '../../src/games/spy-vs-spy/logic/places';
 import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
 import {
   DIRS, NO_INPUT, neighbor,
-  type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing,
+  type Dir, type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing,
 } from '../../src/games/spy-vs-spy/logic/state';
 
 /** Level of `openGame`: the one with the 3×3 grid. */
@@ -46,6 +47,17 @@ export function place(s: GameState, id: PlayerId, room: number, x: number, z: nu
   spy.z = z;
   spy.visited[room] = true;
   return spy;
+}
+
+/**
+ * Marks the door (or exit) at `dir` of `spy`'s current room as open, skipping the 0.3 s Akce
+ * animation — for tests written before closed doors (spec §5) that only care about passing
+ * through. Stays open for the full `doorOpenDuration`.
+ */
+export function openDoor(s: GameState, spyId: PlayerId, dir: Dir): void {
+  const spy = s.spies[spyId];
+  const key = doorKeyFor(s, spy.room, dir);
+  s.doorOpen[key] = { phase: 'open', timer: RULES.doorOpenDuration };
 }
 
 export function firstFurniture(s: GameState, room: number): Furniture {

@@ -18,7 +18,7 @@ export function createSpy(
     hand: null, clock, health: RULES.health, sinceHit: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
     menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...stock },
-    swingCooldown: 0, swingAnim: 0, blocking: false, lockedMsg: 0,
+    swingCooldown: 0, swingAnim: 0, blocking: false, lockedMsg: 0, doorOpening: null,
     visited, prev: { ...NO_INPUT },
   };
 }
@@ -47,7 +47,7 @@ export function createGame(seed: number, level: number, opts: GameOptions = {}):
   }
   const minPieces = minFurniturePerRoom(rooms.length);
   const state: GameState = {
-    seed, host, year, cols, rows, hideAirport: opts.hideAirport ?? false, rooms, furniture: [], doorTraps: {}, timeBombs: [],
+    seed, host, year, cols, rows, hideAirport: opts.hideAirport ?? false, rooms, furniture: [], doorTraps: {}, doorOpen: {}, timeBombs: [],
     spies: [
       createSpy(0, 0, 40, rooms.length, clockSeconds, trapStockPerSpy),
       createSpy(1, 0, 160, rooms.length, clockSeconds, trapStockPerSpy),

@@ -6,7 +6,7 @@ import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { EXIT_KEY, type Dir, type GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import { knownDoors } from '../../src/games/spy-vs-spy/render/map';
 import { doorsToDraw } from '../../src/games/spy-vs-spy/render/room';
-import { input, kufrik, openGame, place, run, secret } from './fixtures';
+import { input, kufrik, openDoor, openGame, place, run, secret } from './fixtures';
 
 const TICK = 1 / 60;
 const key = (d: { room: number; dir: Dir }) => `${d.room}${d.dir}`;
@@ -101,6 +101,7 @@ describe('hidden exit in logic', () => {
     const s = hiddenGame();
     const spy = place(s, 0, 2, 200, 20);
     spy.hand = FULL();
+    openDoor(s, 0, 'E');
     const ev: GameEvent[] = [];
     updateMovement(s, spy, input({ moveX: 1 }), TICK, ev);
     expect(spy.mode).toBe('escaped');
@@ -119,6 +120,7 @@ describe('hidden exit in logic', () => {
   it('works as before when the option is off', () => {
     const s = openGame();
     const spy = place(s, 0, 2, 200, 20);
+    openDoor(s, 0, 'E');
     const ev: GameEvent[] = [];
     updateMovement(s, spy, input({ moveX: 1 }), TICK, ev);
     expect(ev).toEqual([{ type: 'locked', spy: 0 }]);
