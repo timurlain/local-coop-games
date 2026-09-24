@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
-import { DIRS, ROOM_THEMES, neighbor, type EmbassySize, type GameState } from '../../src/games/spy-vs-spy/logic/state';
+import {
+  DIRS, FURNITURE_KINDS, ROOM_THEMES, neighbor, type EmbassySize, type GameState,
+} from '../../src/games/spy-vs-spy/logic/state';
 import { cs } from '../../src/shared/i18n/cs';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { DECOR_KINDS, DECOR_W, TALL_FURNITURE, THEME_FURNITURE } from '../../src/games/spy-vs-spy/logic/themes';
@@ -36,6 +38,11 @@ describe('room themes', () => {
     forAll((s) => {
       for (const f of s.furniture) expect(THEME_FURNITURE[s.rooms[f.room].theme]).toContain(f.kind);
     });
+  });
+
+  it('covers every furniture kind across the theme pools (a forgotten kind fails loudly)', () => {
+    const pooled = new Set(Object.values(THEME_FURNITURE).flat());
+    expect([...pooled].sort()).toEqual([...FURNITURE_KINDS].sort());
   });
 
   it('never gives two neighbouring rooms the same theme', () => {
