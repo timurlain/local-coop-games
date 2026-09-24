@@ -10,7 +10,7 @@ import {
   ICONS, ICON_PALETTE, SPY_CENTER_X, SPY_FRAMES, SPY_H, SPY_HANDS, SPY_PALETTES, SPY_W, type SpyFrame,
 } from '../../src/games/spy-vs-spy/render/sprite-data';
 import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
-import { WALK_CYCLE, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
+import { WALK_CYCLE, digFrame, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
 
 describe('project', () => {
   it('maps the floor corners onto the trapezoid inside the room view', () => {
@@ -193,14 +193,23 @@ describe('pickFrame', () => {
     expect(pickFrame(spy(), false, true, 0)).toBe(walkFrame(0));
   });
 
-  it('an effect pose overrides search, fight and walk but not swing or block', () => {
+  it('an effect pose overrides search, fight and stand while not moving, but not swing or block', () => {
     expect(pickFrame(spy(), false, false, 0, 'liftFind')).toBe('liftFind');
-    expect(pickFrame(spy(), false, true, 0, 'shrug')).toBe('shrug');
     expect(pickFrame(spy(), true, false, 0, 'hidePut')).toBe('hidePut');
     expect(pickFrame(spy({ mode: 'searching' }), false, false, 0, 'shrug')).toBe('shrug');
     expect(pickFrame(spy({ blocking: true }), true, false, 0, 'liftFind')).toBe('block');
     expect(pickFrame(spy({ swingAnim: RULES.swingAnim }), true, false, 0, 'liftFind')).toBe('swingWind');
     expect(pickFrame(spy(), false, false, 0, null)).toBe('stand');
+  });
+
+  it('walking cancels the effect pose so the spy shows a walk frame instead', () => {
+    expect(pickFrame(spy(), false, true, 0, 'shrug')).toBe(walkFrame(0));
+    expect(WALK_CYCLE).toContain(pickFrame(spy(), false, true, 0.3, 'liftFind'));
+    expect(pickFrame(spy(), true, true, 0, 'liftFind')).toBe('fightStand');
+  });
+
+  it('a running search still digs over a pose even while moving, per the frame priority', () => {
+    expect(pickFrame(spy({ mode: 'searching' }), false, true, 0, 'hidePut')).toBe(digFrame(0));
   });
 });
 

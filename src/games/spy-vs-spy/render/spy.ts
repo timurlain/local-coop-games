@@ -60,14 +60,15 @@ export function digFrame(now: number): SpyFrame {
 }
 
 /**
- * Swing and block always show; then a search/hide feedback pose (`liftFind`, `shrug`, `hidePut`); a running
- * search keeps digging (it completes even when the opponent walks in); otherwise an active opponent in the room
- * puts the spy on guard, else walk or stand.
+ * Swing and block always show; then a search/hide feedback pose (`liftFind`, `shrug`, `hidePut`) while the spy
+ * isn't moving — walking away cancels the pose so the spy doesn't glide frozen; a running search keeps digging
+ * (it completes even when the opponent walks in); otherwise an active opponent in the room puts the spy on
+ * guard, else walk or stand.
  */
 export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: number, pose: EffectPose | null = null): SpyFrame {
   if (spy.swingAnim > 0) return spy.swingAnim > RULES.swingAnim - RULES.swingWindup ? 'swingWind' : 'swingStrike';
   if (spy.blocking) return 'block';
-  if (pose !== null) return pose;
+  if (pose !== null && !moving) return pose;
   if (spy.mode === 'searching') return digFrame(now);
   if (fighting) return 'fightStand';
   return moving ? walkFrame(now) : 'stand';

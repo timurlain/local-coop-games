@@ -56,6 +56,16 @@ describe('spawnEffects (spec §7 table)', () => {
     expect(q[0]).toMatchObject({ kind: 'dropped', room: 1, furniture: other.id, thing: secret('plany') });
   });
 
+  it('a cross-room drop is anchored to the receiving room, not the spy, and falls from above', () => {
+    const { s } = setup(); // spy 0 stays in room 0
+    const other = firstFurniture(s, 1); // furniture in room 1
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [{ type: 'dropped', spy: 0, thing: secret('plany'), furniture: other.id }], 0);
+    expect(q[0]).toMatchObject({ kind: 'dropped', room: 1, furniture: other.id, fromSpy: false });
+    expect(effectsIn(q, 1, 0.1).map((e) => e.kind)).toEqual(['dropped']);
+    expect(effectsIn(q, 0, 0.1)).toEqual([]);
+  });
+
   it('a drop with nothing in hand shows nothing; a secret with no furniture poofs', () => {
     const { s } = setup();
     const q: EffectQueue = [];
