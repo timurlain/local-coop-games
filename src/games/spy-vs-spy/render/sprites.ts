@@ -57,11 +57,36 @@ export function handPoint(frame: SpyFrame, x: number, y: number, flip = false): 
   return { hx: left + (flip ? w - 1 - px : px), hy: top + py };
 }
 
+/** What a spy visibly carries in hand: the kufřík, or a loose secret in a satchel (spec §6); remedies stay undrawn. */
+export type HeldIcon = 'kufrik' | 'satchel';
+
+export function heldIcon(t: Thing | null): HeldIcon | null {
+  if (t === null) return null;
+  switch (t.kind) {
+    case 'kufrik':
+      return 'kufrik';
+    case 'secret':
+      return 'satchel';
+    case 'remedy':
+      return null;
+  }
+}
+
+/** Icon row of the handle / strap top that sits on the hand pixel. */
+export const HANDLE_ROW: Readonly<Record<HeldIcon, number>> = { kufrik: 1, satchel: 0 };
+
+/** Draws a held item hanging from the frame's hand (its handle row sits on the hand pixel). */
+export function drawInHand(
+  ctx: CanvasRenderingContext2D, icon: HeldIcon, frame: SpyFrame, x: number, y: number, flip = false,
+): void {
+  const { hx, hy } = handPoint(frame, x, y, flip);
+  // icons are 8×8 anchored bottom-centre: row HANDLE_ROW lands on hy
+  drawIcon(ctx, icon, hx, hy + 8 - HANDLE_ROW[icon]);
+}
+
 /** Draws the kufřík hanging from the frame's hand (the handle sits on the hand pixel). */
 export function drawKufrikInHand(ctx: CanvasRenderingContext2D, frame: SpyFrame, x: number, y: number, flip = false): void {
-  const { hx, hy } = handPoint(frame, x, y, flip);
-  // icon is 8×8 anchored bottom-centre; its handle top is at icon row 1, columns 2..5
-  drawIcon(ctx, 'kufrik', hx, hy + 7);
+  drawInHand(ctx, 'kufrik', frame, x, y, flip);
 }
 
 export function drawIcon(ctx: CanvasRenderingContext2D, name: IconName, cx: number, bottomY: number): void {

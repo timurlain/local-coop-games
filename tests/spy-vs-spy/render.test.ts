@@ -9,7 +9,7 @@ import type { Spy } from '../../src/games/spy-vs-spy/logic/state';
 import {
   ICONS, ICON_PALETTE, SPY_CENTER_X, SPY_FRAMES, SPY_H, SPY_HANDS, SPY_PALETTES, SPY_W, type SpyFrame,
 } from '../../src/games/spy-vs-spy/render/sprite-data';
-import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
+import { HANDLE_ROW, handPoint, heldIcon } from '../../src/games/spy-vs-spy/render/sprites';
 import { WALK_CYCLE, digFrame, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
 import { leafFraction } from '../../src/games/spy-vs-spy/render/room';
 
@@ -163,6 +163,31 @@ describe('sprite data', () => {
       expect(rows).toHaveLength(8);
       expect(rows[0].length).toBe(8);
     }
+  });
+});
+
+describe('satchel (spec §6)', () => {
+  it('is a light leather bag with a brown strap on top and a brass clasp', () => {
+    const rows = ICONS.satchel;
+    expect(rows).toHaveLength(8);
+    expect(rows[0].length).toBe(8);
+    const count = (ch: string) => rows.join('').split(ch).length - 1;
+    expect(count('w') + count('m'), 'white/cream body').toBeGreaterThanOrEqual(20);
+    expect(count('y'), 'brass clasp').toBeGreaterThanOrEqual(2);
+    expect(rows[HANDLE_ROW.satchel], 'the strap is the top row it hangs from').toMatch(/n/);
+    const clasp = rows.findIndex((r) => r.includes('y'));
+    expect(clasp).toBeGreaterThan(HANDLE_ROW.satchel + 1);
+  });
+
+  it('the kufřík hangs from its handle row', () => {
+    expect(ICONS.kufrik[HANDLE_ROW.kufrik]).toMatch(/n/);
+  });
+
+  it('a loose secret is carried in the satchel, the kufřík as itself, remedies undrawn', () => {
+    expect(heldIcon(null)).toBeNull();
+    expect(heldIcon({ kind: 'secret', secret: 'pas', lastHolder: null })).toBe('satchel');
+    expect(heldIcon({ kind: 'kufrik', contents: ['klic'], lastHolder: 0 })).toBe('kufrik');
+    expect(heldIcon({ kind: 'remedy', remedy: 'voda' })).toBeNull();
   });
 });
 

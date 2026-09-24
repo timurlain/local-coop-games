@@ -456,7 +456,7 @@ export type SpyPalette = keyof typeof SPY_PALETTES;
 
 export const ICON_PALETTE: Record<string, string> = {
   k: '#111111', w: '#f4f4f4', g: '#9a9a9a', y: '#e8c547', G: '#3fa34d',
-  u: '#3a78d8', r: '#d23c3c', n: '#8b5a2b', c: '#6cc6e8', o: '#ff9a3c',
+  u: '#3a78d8', r: '#d23c3c', n: '#8b5a2b', c: '#6cc6e8', o: '#ff9a3c', m: '#d8c9a3',
 };
 
 export const ICONS = {
@@ -474,6 +474,8 @@ export const ICONS = {
   elektrina: ['...yyy..', '..yyy...', '...yy...', '...y....', 'gccccccg', 'guuuuuug', '.gggggg.', '..gggg..'],
   pistole: ['........', 'gkkkkkkk', 'kkkkkkkk', '.kk.n...', '.kk..n..', 'kkk...n.', 'kk.....n', '........'],
   casovana: ['......o.', '.....k..', '..kkkk..', '.kwwwwk.', 'kwwkwwwk', 'kwwkkwwk', '.kwwwwk.', '..kkkk..'],
+  // a loose secret carried in hand (spec §6): cream leather bag, brown strap, brass clasp on the flap
+  satchel: ['..nnnn..', '.n....n.', 'gwwwwwwg', 'gwwwwwwg', 'gmmyymmg', 'gwwyywwg', 'gwwwwwwg', '.gggggg.'],
   plane: ['...w....', '...ww...', 'wwwwwww.', '.wwwwwww', '...ww...', '...w....', '..www...', '........'],
 } satisfies Record<string, readonly string[]>;
 

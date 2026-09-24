@@ -5,7 +5,7 @@ import { line, r, text } from './draw';
 import { project } from './geometry';
 import { SPY_H, SPY_W, type SpyFrame, type SpyPalette } from './sprite-data';
 import type { EffectPose } from './effects';
-import { drawKufrikInHand, drawSprite, spyImage } from './sprites';
+import { drawInHand, drawSprite, heldIcon, spyImage } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -49,7 +49,8 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
   const frame = pickFrame(spy, inFight(state, spy), moving, now, pose);
   const flip = spy.facing < 0;
   drawSprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
-  if (spy.hand?.kind === 'kufrik') drawKufrikInHand(ctx, frame, sx, sy, flip);
+  const held = heldIcon(spy.hand);
+  if (held !== null) drawInHand(ctx, held, frame, sx, sy, flip);
 }
 
 export const WALK_CYCLE: readonly SpyFrame[] = ['walk1', 'walk2', 'walk3', 'walk4'];
