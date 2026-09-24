@@ -17,9 +17,18 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
+  cancelSwing(spy);
   cancelDoorOpening(state, spy);
   dropHand(state, spy);
   events.push({ type: 'died', spy: spy.id, cause });
+}
+
+/** Drops a swing in progress, so a spy that is out of the fight never strikes (spec §8). */
+export function cancelSwing(spy: Spy): void {
+  spy.attack = null;
+  spy.strikeIn = 0;
+  spy.swingAnim = 0;
+  spy.ducking = false;
 }
 
 /** A door this spy was opening never finishes (spec §5): drop it, freeing the door key. */

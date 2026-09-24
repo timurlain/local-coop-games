@@ -1,5 +1,5 @@
-import { cancelDoorOpening, dropHand, updateDead } from './death';
-import { sharesRoom, updateBlocking, updateHealthRegen } from './fight';
+import { cancelDoorOpening, cancelSwing, dropHand, updateDead } from './death';
+import { sharesRoom, updateBlocking, updateDucking, updateHealthRegen, updateSwing } from './fight';
 import { updateAction, updateDoorOpening, updateSearching } from './interact';
 import { dropOnEntering, updateMovement } from './movement';
 import { updateTimeBombs, updateTrapMenu } from './traps';
@@ -29,7 +29,10 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     const spy = state.spies[id];
     const input = inputs[spy.id];
     spy.swingCooldown = Math.max(0, spy.swingCooldown - dt);
-    spy.swingAnim = Math.max(0, spy.swingAnim - dt);
+    // A strike lands in this spy's turn of the alternating order (fairness above), judged against
+    // the opponent's stance as last set; ducking is re-decided below only if the spy is free to.
+    updateSwing(state, spy, dt, events);
+    spy.ducking = false;
     spy.lockedMsg = Math.max(0, spy.lockedMsg - dt);
     updateHealthRegen(spy, dt);
     switch (spy.mode) {
@@ -87,6 +90,7 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
+  cancelSwing(spy);
   cancelDoorOpening(state, spy);
   events.push({ type: 'timeout', spy: spy.id });
 }
@@ -112,6 +116,9 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   spy.mapOpen = false;
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
+  // Duck (spec §8): shared room + holding down + not swinging; a ducking spy doesn't move.
+  updateDucking(state, spy, input);
+  if (spy.ducking) return false;
   if (spy.mode !== 'normal' || spy.holdTarget !== null) return false;
   // v1: holding the Trapulator button never moves the spy, even when the shared room
   // above ignores it for menu/map purposes (spec §3).

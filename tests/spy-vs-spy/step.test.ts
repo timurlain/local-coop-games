@@ -150,6 +150,7 @@ describe('orchestration', () => {
     // spy 1 steps into range and swings while spy 0 is searching
     place(s, 1, 0, f.x + 10, 0);
     const ev = step(s, [IDLE, input({ action: true })], 1 / 60);
+    ev.push(...run(s, [IDLE, IDLE], RULES.swingWindup + 0.05)); // the jab lands at the end of its wind-up
     expect(ev).toContainEqual({ type: 'hit', spy: 0 });
     expect(ev).not.toContainEqual({ type: 'blocked', spy: 0 });
   });
@@ -242,6 +243,102 @@ describe('meeting: shared room (spec §3)', () => {
     step(s, [IDLE, IDLE], 1 / 60); // release Akce so the next press is a fresh edge
     const ev = run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
     expect(ev.filter((e) => e.type === 'searchStart')).toHaveLength(1);
+  });
+});
+
+describe('two attacks and ducking (spec §8)', () => {
+  function duel() {
+    const s = openGame();
+    const a = place(s, 0, 4, 100, 20);
+    const b = place(s, 1, 4, 110, 20);
+    return { s, a, b };
+  }
+
+  it('Akce is a jab: 1 damage, only after the wind-up', () => {
+    const { s, a, b } = duel();
+    step(s, [input({ action: true }), IDLE], 1 / 60);
+    expect(a.attack).toBe('jab');
+    expect(b.health).toBe(RULES.health);
+    const ev = run(s, [IDLE, IDLE], RULES.swingWindup + 0.02);
+    expect(ev).toContainEqual({ type: 'hit', spy: 1 });
+    expect(b.health).toBe(RULES.health - 1);
+  });
+
+  it('Akce while holding up is a head bash: 2 damage after 0.3 s, through a block', () => {
+    const { s, a, b } = duel();
+    // pinned against the east wall so holding away can't walk it out of range
+    place(s, 0, 4, RULES.roomW - 15, 20);
+    place(s, 1, 4, RULES.roomW - 5, 20);
+    const away = input({ moveX: 1 });
+    step(s, [input({ action: true, moveY: -1 }), away], 1 / 60);
+    expect(a.attack).toBe('bash');
+    run(s, [IDLE, away], RULES.swingWindup + 0.02);
+    expect(b.health).toBe(RULES.health);
+    expect(b.blocking).toBe(true);
+    run(s, [IDLE, away], RULES.bashWindup - RULES.swingWindup);
+    expect(b.health).toBe(RULES.health - 2);
+  });
+
+  it('holding down in a shared room ducks: no movement, and the head bash is stopped', () => {
+    const { s, a, b } = duel();
+    const duck = input({ moveY: 1 });
+    step(s, [input({ action: true, moveY: -1 }), duck], 1 / 60);
+    const ev = run(s, [IDLE, duck], RULES.bashWindup + 0.05);
+    expect(b.ducking).toBe(true);
+    expect(b.z).toBe(20);
+    expect(b.health).toBe(RULES.health);
+    expect(ev).toContainEqual({ type: 'blocked', spy: 1 });
+    expect(a.swingCooldown).toBeGreaterThan(0);
+  });
+
+  it('ducking does not stop a jab', () => {
+    const { s, b } = duel();
+    const duck = input({ moveY: 1 });
+    step(s, [input({ action: true }), duck], 1 / 60);
+    run(s, [IDLE, duck], RULES.swingWindup + 0.05);
+    expect(b.health).toBe(RULES.health - 1);
+  });
+
+  it('a ducking spy that stands up is hit by the bash', () => {
+    const { s, b } = duel();
+    step(s, [input({ action: true, moveY: -1 }), input({ moveY: 1 })], 1 / 60);
+    run(s, [IDLE, IDLE], RULES.bashWindup + 0.05);
+    expect(b.ducking).toBe(false);
+    expect(b.health).toBe(RULES.health - 2);
+  });
+
+  it('holding down outside a shared room still walks towards the front', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 10);
+    run(s, [input({ moveY: 1 }), IDLE], 0.2);
+    expect(spy.ducking).toBe(false);
+    expect(spy.z).toBeGreaterThan(10);
+  });
+
+  it('a spy swinging while holding down is not ducking', () => {
+    const { s, a } = duel();
+    step(s, [input({ action: true, moveY: 1 }), IDLE], 1 / 60);
+    expect(a.attack).toBe('jab');
+    expect(a.ducking).toBe(false);
+  });
+
+  it('the cooldown runs from the strike, not the press', () => {
+    const { s, a } = duel();
+    step(s, [input({ action: true, moveY: -1 }), IDLE], 1 / 60);
+    run(s, [IDLE, IDLE], RULES.bashWindup + 1 / 60);
+    expect(a.swingCooldown).toBeGreaterThan(RULES.swingCooldown - 0.05);
+  });
+
+  it('a spy killed during its wind-up never strikes', () => {
+    const { s, a, b } = duel();
+    b.health = 1;
+    a.health = 1;
+    step(s, [input({ action: true, moveY: -1 }), IDLE], 1 / 60); // slow bash
+    step(s, [IDLE, input({ action: true })], 1 / 60); // quick jab answers
+    run(s, [IDLE, IDLE], RULES.bashWindup + 0.05);
+    expect(a.mode).toBe('dead');
+    expect(b.mode).toBe('normal');
+    expect(b.health).toBe(1);
   });
 });
 
@@ -442,6 +539,7 @@ describe('fairness', () => {
       if (burnIdleTick) step(s, [IDLE, IDLE], 1 / 60);
       const swing = input({ action: true });
       step(s, [swing, swing], 1 / 60);
+      run(s, [IDLE, IDLE], RULES.swingWindup + 0.05); // both strikes land on the same tick
       return s;
     }
     const game1 = duel(false);

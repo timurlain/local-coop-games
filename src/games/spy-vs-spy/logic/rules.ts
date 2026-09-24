@@ -47,10 +47,16 @@ export const RULES = {
   regenInterval: 2.5,
   fightRangeX: 24,
   fightRangeZ: 8,
+  /** after the strike lands, before another swing may start (spec §8) */
   swingCooldown: 0.4,
-  swingAnim: 0.35,
-  /** portion of swingAnim spent winding up before the strike lands; rendering only */
+  /** jab (Akce) wind-up; the damage lands at its end (spec §8) */
   swingWindup: 0.15,
+  /** head bash (Akce + up) wind-up; the damage lands at its end (spec §8) */
+  bashWindup: 0.3,
+  /** how long the strike frame shows after the wind-up; rendering only */
+  strikeAnim: 0.2,
+  jabDamage: 1,
+  bashDamage: 2,
   knockback: 12,
   lockedMsgTime: 1,
   /** Akce at a closed door (spec §5): immobile while it swings open, then open for both spies. */

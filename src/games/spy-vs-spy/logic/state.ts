@@ -13,6 +13,8 @@ export type FurnitureKind =
   | 'hasicak' | 'naradi' | 'lekarnicka';
 /** Furniture kinds that are always an infinite source of exactly one remedy (never ordinary theme pool pieces). */
 export type FixtureKind = 'vesak' | 'hasicak' | 'naradi' | 'lekarnicka';
+/** Spec §8: a jab (Akce) or a head bash (Akce while holding up). */
+export type AttackKind = 'jab' | 'bash';
 export type DeathCause = TrapKind | 'fight';
 /** Visual theme of a room: wall colour, floor style and the furniture pool. */
 export type RoomTheme =
@@ -160,10 +162,18 @@ export interface Spy {
   mapOpen: boolean;
   armed: TrapKind | null;
   stock: Record<TrapKind, number>;
+  /** seconds until another swing may start; set at the strike (spec §8) */
   swingCooldown: number;
-  /** >0 while the club swing animation shows */
+  /** >0 while the club swing animation shows (wind-up + strike) */
   swingAnim: number;
+  /** the swing in progress (spec §8): Akce = jab, Akce + up = head bash; null once the animation ends */
+  attack: AttackKind | null;
+  /** seconds of wind-up left before the strike lands; 0 once it has struck */
+  strikeIn: number;
+  /** holding away from the opponent: stops a jab */
   blocking: boolean;
+  /** holding down in a shared room while not swinging (spec §8): stops a head bash, can't move */
+  ducking: boolean;
   /** >0 while "Zamčeno" is shown */
   lockedMsg: number;
   /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */

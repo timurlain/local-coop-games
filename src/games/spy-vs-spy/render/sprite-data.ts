@@ -254,6 +254,50 @@ const ARM_READY: Layer = [17, 20, ['oooooo', 'obbbbbo', 'oooooo']];
 // The club is a bludgeon: thin handle in the fist, fat end.
 const CLUB_READY: Layer = [21, 16, ['....ccc', '...cccc', '..ccc..', '.cc....', 'cc.....']];
 
+// Head bash (spec §8): the club arm is thrown up behind the head (hiding the brim's back curl) and the
+// club comes over the crown, its fat end dropping in front of the brim.
+const BASH_ARM: Layer = [2, 0, [
+  '.oo.', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo',
+  'obbo', 'obbo', 'obbo',
+  '.obbo', '..obbo', '...obbo', '....obbbbb', '.....oo',
+]];
+const BASH_CLUB: Layer = [6, 1, [
+  'ccccc',
+  '....cccccccc',
+  '............cccc',
+  '...............cccccc',
+  '.................ccccc',
+  '.................cccccc',
+  '..................ccccc',
+  '...................ccc',
+]];
+
+// Duck (spec §8): squatting low, the club held flat over the hat as a roof; kufrik hand at the back hip.
+const DUCK_COAT = [
+  '..........oobbbbboo',
+  '.........obbbbbbbbbo',
+  '........oobbbbbbbbbo',
+  '.......obobbbbbbbbbo',
+  '........ooooooooooo',
+];
+const DUCK_LEGS = [
+  '........obo.....obo',
+  '.......obo.......obo',
+  '......obo.........obo',
+  '.......obbo......obbo',
+  '........ooo......oooo',
+];
+const DUCK_ARM: Layer = [1, 7, [
+  'oooo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo', 'obbo',
+  'obbo', 'obbo', 'obbo', 'obbo',
+  '.obbo', '..obbo', '...obbo', '....obbbbb', '.....ooo',
+]];
+const DUCK_CLUB: Layer = [5, 7, [
+  '.............cccccc',
+  'cccccccccccccccccccc',
+  '.............cccccc',
+]];
+
 // Laughing arm held straight out in front, square to the up-pointing nose (never parallel to it).
 const LAUGH_ARM: Layer = [17, 15, ['ooooooooooo', 'obbbbbbbbbbo', 'ooooooooooo']];
 
@@ -284,6 +328,11 @@ export const SPY_FRAMES = {
     [16, 21, ['oooooo', 'obbbbbo', '.oooooo']],
     [21, 8, ['ccc', 'ccc', 'ccc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc', '.cc']],
   ),
+
+  // head bash: club brought over the top, fat end coming down in front of the head
+  bashStrike: frame([...blank(3), ...HAT, ...FACE, ...FIGHT_COAT, ...LEGS.lunge], BASH_ARM, BASH_CLUB),
+  // ducking low under the club held flat over the hat
+  duck: frame([...blank(10), ...HAT, ...FACE, ...DUCK_COAT, ...DUCK_LEGS], DUCK_ARM, DUCK_CLUB),
 
   // bent over, rummaging forward with alternating arms
   searchDig1: frame([...blank(5), ...shift(HAT, 2), ...shift(FACE_DOWN, 2), ...shift(DIG_COAT, 1), ...DIG_LEGS], ARM_LOW),
@@ -384,6 +433,8 @@ export const SPY_HANDS: Record<SpyFrame, readonly [number, number]> = {
   swingWind: [8, 26],
   swingStrike: [8, 26],
   block: [8, 26],
+  bashStrike: [8, 26],
+  duck: [8, 29],
   searchDig1: [23, 25],
   searchDig2: [23, 23],
   hidePut: [23, 26],

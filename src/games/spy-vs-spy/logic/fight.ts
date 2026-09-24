@@ -1,6 +1,6 @@
 import { kill } from './death';
 import { RULES } from './rules';
-import { isActive, opponentOf, type GameEvent, type GameState, type Spy, type SpyInput } from './state';
+import { isActive, opponentOf, type AttackKind, type GameEvent, type GameState, type Spy, type SpyInput } from './state';
 
 export function sameRoomOpponent(state: GameState, spy: Spy): Spy | null {
   const o = opponentOf(state, spy);
@@ -22,26 +22,62 @@ export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): voi
   spy.blocking = o !== null && spy.mode === 'normal' && input.moveX !== 0 && input.moveX === -Math.sign(o.x - spy.x);
 }
 
-/** Returns true when the Akce press was used for fighting (even during cooldown). */
-export function trySwing(state: GameState, spy: Spy, events: GameEvent[]): boolean {
+/**
+ * Holding down in a shared room while not swinging = duck (spec §8): stops a head bash, and the
+ * spy doesn't move that tick. Outside a shared room down still just walks towards the front.
+ */
+export function updateDucking(state: GameState, spy: Spy, input: SpyInput): void {
+  spy.ducking = spy.mode === 'normal' && input.moveY === 1 && spy.attack === null && sharesRoom(state, spy);
+}
+
+/**
+ * Akce in a fight (spec §8): starts a jab, or a head bash while holding up. The press only starts
+ * the wind-up; `updateSwing` lands the strike at its end. Returns true when the press was used for
+ * fighting (even during a wind-up or the cooldown).
+ */
+export function trySwing(state: GameState, spy: Spy, kind: AttackKind, events: GameEvent[]): boolean {
   const o = sameRoomOpponent(state, spy);
   if (o === null || spy.mode !== 'normal' || !inFightRange(spy, o)) return false;
-  if (spy.swingCooldown > 0) return true;
-  spy.swingCooldown = RULES.swingCooldown;
-  spy.swingAnim = RULES.swingAnim;
+  if (spy.attack !== null || spy.swingCooldown > 0) return true;
+  const windup = kind === 'bash' ? RULES.bashWindup : RULES.swingWindup;
+  spy.attack = kind;
+  spy.strikeIn = windup;
+  spy.swingAnim = windup + RULES.strikeAnim;
+  spy.ducking = false;
   spy.facing = o.x >= spy.x ? 1 : -1;
   events.push({ type: 'swing', spy: spy.id });
-  if (o.blocking) {
-    events.push({ type: 'blocked', spy: o.id });
-    return true;
+  return true;
+}
+
+/** Runs a swing's clock: the strike lands when the wind-up runs out, the swing ends with its animation. */
+export function updateSwing(state: GameState, spy: Spy, dt: number, events: GameEvent[]): void {
+  spy.swingAnim = Math.max(0, spy.swingAnim - dt);
+  if (spy.attack === null) return;
+  if (spy.strikeIn > 0) {
+    spy.strikeIn -= dt;
+    if (spy.strikeIn <= 1e-9) {
+      spy.strikeIn = 0;
+      strike(state, spy, spy.attack, events);
+    }
   }
-  o.health -= 1;
+  if (spy.swingAnim === 0) spy.attack = null;
+}
+
+/** Spec §8: judged now, against the opponent's range and stance at this moment. */
+function strike(state: GameState, spy: Spy, kind: AttackKind, events: GameEvent[]): void {
+  spy.swingCooldown = RULES.swingCooldown;
+  const o = sameRoomOpponent(state, spy);
+  if (spy.mode !== 'normal' || o === null || !inFightRange(spy, o)) return;
+  if (kind === 'jab' ? o.blocking : o.ducking) {
+    events.push({ type: 'blocked', spy: o.id });
+    return;
+  }
+  o.health -= kind === 'bash' ? RULES.bashDamage : RULES.jabDamage;
   o.sinceHit = 0;
   events.push({ type: 'hit', spy: o.id });
   const push = Math.sign(o.x - spy.x) || spy.facing;
   o.x = Math.max(0, Math.min(RULES.roomW, o.x + push * RULES.knockback));
   if (o.health <= 0) kill(state, o, 'fight', events);
-  return true;
 }
 
 /** How many +1 recovery ticks have elapsed for a given time since the last hit. */

@@ -38,7 +38,8 @@ export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: nu
   }
 
   if (!input.action || spy.prev.action) return;
-  if (trySwing(state, spy, events)) return;
+  // Spec §8: Akce while holding up is the head bash, otherwise a jab.
+  if (trySwing(state, spy, input.moveY === -1 ? 'bash' : 'jab', events)) return;
 
   // A door in reach (spec §5): Akce opens it — doors still work in a shared room, out of fight
   // range — unless a door trap is armed, which places the trap as before (blocked while shared,
@@ -115,6 +116,7 @@ function placeArmed(state: GameState, spy: Spy, events: GameEvent[]): void {
 export function startSearch(state: GameState, spy: Spy, f: Furniture, events: GameEvent[]): void {
   events.push({ type: 'searchStart', spy: spy.id });
   spy.blocking = false;
+  spy.ducking = false;
   if (!triggerFurnitureTrap(state, spy, f, events)) return;
   spy.mode = 'searching';
   spy.modeTimer = RULES.searchTime;

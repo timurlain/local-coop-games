@@ -50,7 +50,7 @@ function checkSprite(name: string, rows: readonly string[], palette: Record<stri
 
 const FRAMES = [
   'stand', 'walk1', 'walk2', 'walk3', 'walk4',
-  'fightStand', 'swingWind', 'swingStrike', 'block',
+  'fightStand', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck',
   'searchDig1', 'searchDig2', 'hidePut', 'shrug', 'liftFind',
   'laugh1', 'laugh2',
 ];
@@ -109,7 +109,7 @@ describe('sprite data', () => {
   });
 
   it('only the fight frames draw the club', () => {
-    const club = new Set(['fightStand', 'swingWind', 'swingStrike', 'block']);
+    const club = new Set(['fightStand', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck']);
     for (const frame of FRAMES) {
       const has = SPY_FRAMES[frame as SpyFrame].some((row) => row.includes('c'));
       expect(has, `${frame} club`).toBe(club.has(frame));
@@ -126,7 +126,7 @@ describe('sprite data', () => {
   });
 
   it('carries the kufrik in the front hand, at the back hip in a fight, and raised when lifting or laughing', () => {
-    for (const f of ['fightStand', 'swingWind', 'swingStrike', 'block'] as SpyFrame[]) {
+    for (const f of ['fightStand', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck'] as SpyFrame[]) {
       expect(SPY_HANDS[f][0], `${f} back hand`).toBeLessThan(SPY_CENTER_X);
     }
     for (const f of ['stand', 'walk1', 'walk2', 'walk4', 'searchDig1', 'searchDig2', 'hidePut'] as SpyFrame[]) {
@@ -135,6 +135,26 @@ describe('sprite data', () => {
     for (const f of ['liftFind', 'laugh1', 'laugh2'] as SpyFrame[]) {
       expect(SPY_HANDS[f][1], `${f} raised hand`).toBeLessThan(SPY_HANDS.stand[1] - 6);
     }
+  });
+
+  it('the head bash brings the club down in front of the head, above the nose', () => {
+    const rows = SPY_FRAMES.bashStrike;
+    const hatTop = rows.findIndex((r) => r.includes('o'));
+    const noseRow = rows.findIndex((r) => r.lastIndexOf('o') >= SPY_W - 2);
+    const clubInFront = rows.flatMap((r, y) => [...r].flatMap((ch, x) => (ch === 'c' && x > SPY_CENTER_X + 6 ? [y] : [])));
+    expect(clubInFront.length).toBeGreaterThan(8);
+    expect(Math.max(...clubInFront)).toBeLessThan(noseRow);
+    expect(Math.min(...clubInFront)).toBeGreaterThanOrEqual(hatTop);
+  });
+
+  it('the duck is lower than the fight stance, with the club flat above the hat', () => {
+    const top = (f: SpyFrame) => SPY_FRAMES[f].findIndex((r) => /[ob]/.test(r));
+    const clubRows = (f: SpyFrame) => SPY_FRAMES[f].flatMap((r, y) => (r.includes('c') ? [y] : []));
+    const hatTop = SPY_FRAMES.duck.findIndex((r) => /[ob]/.test(r.slice(SPY_CENTER_X - 4, SPY_CENTER_X + 5)));
+    expect(hatTop).toBeGreaterThanOrEqual(top('fightStand') + 5);
+    expect(Math.max(...clubRows('duck'))).toBeLessThan(hatTop);
+    const widest = Math.max(...SPY_FRAMES.duck.map((r) => (r.match(/c/g) ?? []).length));
+    expect(widest, 'held flat: one long row of club').toBeGreaterThanOrEqual(15);
   });
 
   it('icons are 8×8 and use only palette characters', () => {
@@ -176,9 +196,19 @@ describe('pickFrame', () => {
     expect(pickFrame(spy(), true, false, 0)).toBe('fightStand');
     expect(pickFrame(spy(), true, true, 0)).toBe('fightStand');
     expect(pickFrame(spy({ blocking: true }), true, false, 0)).toBe('block');
-    expect(pickFrame(spy({ swingAnim: RULES.swingAnim }), true, false, 0)).toBe('swingWind');
-    expect(pickFrame(spy({ swingAnim: RULES.swingAnim - RULES.swingWindup + 0.01 }), true, false, 0)).toBe('swingWind');
-    expect(pickFrame(spy({ swingAnim: Math.min(0.01, RULES.swingAnim - RULES.swingWindup) }), true, false, 0)).toBe('swingStrike');
+    expect(pickFrame(spy({ ducking: true }), true, false, 0)).toBe('duck');
+    expect(pickFrame(spy({ ducking: true, blocking: true }), true, false, 0)).toBe('block');
+  });
+
+  it('winds up for both attacks, then strikes with the frame of the attack (spec §8)', () => {
+    const jab = { attack: 'jab' as const, swingAnim: RULES.swingWindup + RULES.strikeAnim, strikeIn: RULES.swingWindup };
+    const bash = { attack: 'bash' as const, swingAnim: RULES.bashWindup + RULES.strikeAnim, strikeIn: RULES.bashWindup };
+    expect(pickFrame(spy(jab), true, false, 0)).toBe('swingWind');
+    expect(pickFrame(spy(bash), true, false, 0)).toBe('swingWind');
+    expect(pickFrame(spy({ ...jab, swingAnim: 0.1, strikeIn: 0 }), true, false, 0)).toBe('swingStrike');
+    expect(pickFrame(spy({ ...bash, swingAnim: 0.1, strikeIn: 0 }), true, false, 0)).toBe('bashStrike');
+    // the swing shows over block and duck
+    expect(pickFrame(spy({ ...bash, swingAnim: 0.1, strikeIn: 0, blocking: true, ducking: true }), true, false, 0)).toBe('bashStrike');
   });
 
   it('digs while searching, alternating at about 6 fps', () => {
@@ -199,7 +229,8 @@ describe('pickFrame', () => {
     expect(pickFrame(spy(), true, false, 0, 'hidePut')).toBe('hidePut');
     expect(pickFrame(spy({ mode: 'searching' }), false, false, 0, 'shrug')).toBe('shrug');
     expect(pickFrame(spy({ blocking: true }), true, false, 0, 'liftFind')).toBe('block');
-    expect(pickFrame(spy({ swingAnim: RULES.swingAnim }), true, false, 0, 'liftFind')).toBe('swingWind');
+    expect(pickFrame(spy({ attack: 'jab', swingAnim: 0.3, strikeIn: 0.1 }), true, false, 0, 'liftFind')).toBe('swingWind');
+    expect(pickFrame(spy({ ducking: true }), true, false, 0, 'liftFind')).toBe('duck');
     expect(pickFrame(spy(), false, false, 0, null)).toBe('stand');
   });
 
