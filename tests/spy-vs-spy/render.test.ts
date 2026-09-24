@@ -9,7 +9,7 @@ import {
   ICONS, ICON_PALETTE, SPY_CENTER_X, SPY_FRAMES, SPY_H, SPY_HANDS, SPY_PALETTES, SPY_W, type SpyFrame,
 } from '../../src/games/spy-vs-spy/render/sprite-data';
 import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
-import { SWING_WINDUP, WALK_CYCLE, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
+import { WALK_CYCLE, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
 
 describe('project', () => {
   it('maps the floor corners onto the trapezoid', () => {
@@ -164,8 +164,8 @@ describe('pickFrame', () => {
     expect(pickFrame(spy(), true, true, 0)).toBe('fightStand');
     expect(pickFrame(spy({ blocking: true }), true, false, 0)).toBe('block');
     expect(pickFrame(spy({ swingAnim: RULES.swingAnim }), true, false, 0)).toBe('swingWind');
-    expect(pickFrame(spy({ swingAnim: RULES.swingAnim - SWING_WINDUP + 0.01 }), true, false, 0)).toBe('swingWind');
-    expect(pickFrame(spy({ swingAnim: Math.min(0.01, RULES.swingAnim - SWING_WINDUP) }), true, false, 0)).toBe('swingStrike');
+    expect(pickFrame(spy({ swingAnim: RULES.swingAnim - RULES.swingWindup + 0.01 }), true, false, 0)).toBe('swingWind');
+    expect(pickFrame(spy({ swingAnim: Math.min(0.01, RULES.swingAnim - RULES.swingWindup) }), true, false, 0)).toBe('swingStrike');
   });
 
   it('digs while searching, alternating at about 6 fps', () => {

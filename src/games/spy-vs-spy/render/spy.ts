@@ -29,11 +29,6 @@ function baseColor(spy: Spy): SpyPalette {
 /** Frames that only visual effects (search/hide feedback) show; nothing in drawSpy picks them. */
 export const EFFECT_FRAMES = { hidePut: 'hidePut', shrug: 'shrug', liftFind: 'liftFind' } as const satisfies Record<string, SpyFrame>;
 
-/**
- * Seconds of the swing animation spent winding up before the strike.
- * TODO: switch to RULES.swingWindup once the round-2 tuning (R1) is merged into this branch.
- */
-export const SWING_WINDUP = 0.15;
 
 /** True while an active opponent shares the spy's room: the spy stands ready to fight. */
 export function inFight(state: GameState, spy: Spy): boolean {
@@ -71,7 +66,7 @@ export function digFrame(now: number): SpyFrame {
  * otherwise an active opponent in the room puts the spy on guard, else walk or stand.
  */
 export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: number): SpyFrame {
-  if (spy.swingAnim > 0) return spy.swingAnim > RULES.swingAnim - SWING_WINDUP ? 'swingWind' : 'swingStrike';
+  if (spy.swingAnim > 0) return spy.swingAnim > RULES.swingAnim - RULES.swingWindup ? 'swingWind' : 'swingStrike';
   if (spy.blocking) return 'block';
   if (spy.mode === 'searching') return digFrame(now);
   if (fighting) return 'fightStand';
