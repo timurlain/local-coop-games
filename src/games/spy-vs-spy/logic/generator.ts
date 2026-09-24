@@ -1,9 +1,12 @@
 import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
 import { RULES } from './rules';
+import { THEME_FURNITURE, assignThemes } from './themes';
 import {
-  DIRS, FURNITURE_KINDS, NO_INPUT, OPPOSITE, REMEDIES, SECRETS, neighbor,
+  DIRS, NO_INPUT, OPPOSITE, REMEDIES, SECRETS, neighbor,
   type Dir, type EmbassySize, type GameState, type PlayerId, type Room, type Spy,
 } from './state';
+
+const LOOKS_SALT = 0x5eed7e3a;
 
 export function createSpy(id: PlayerId, room: number, x: number, roomCount: number, clock: number): Spy {
   const visited = Array<boolean>(roomCount).fill(false);
@@ -20,13 +23,16 @@ export function createSpy(id: PlayerId, room: number, x: number, roomCount: numb
 
 export function createGame(seed: number, size: EmbassySize, clock: number = RULES.defaultClock): GameState {
   const { cols, rows } = RULES.sizes[size];
+  // Looks come from their own stream so the gameplay stream (doors, slots, hidden things) is untouched.
+  const looks = makeRng((seed ^ LOOKS_SALT) >>> 0);
+  const themes = assignThemes({ cols, rows }, looks);
   const rooms: Room[] = [];
   for (let gy = 0; gy < rows; gy++) {
     for (let gx = 0; gx < cols; gx++) {
       rooms.push({
         id: gy * cols + gx, gx, gy,
         doors: { N: false, S: false, E: false, W: false },
-        exit: null, furniture: [],
+        exit: null, furniture: [], theme: themes[gy * cols + gx],
       });
     }
   }
@@ -95,7 +101,7 @@ function placeFurniture(state: GameState): void {
     for (const x of slots) {
       const id = state.furniture.length;
       state.furniture.push({
-        id, room: room.id, kind: pick(state.rng, FURNITURE_KINDS), x,
+        id, room: room.id, kind: pick(state.rng, THEME_FURNITURE[room.theme]), x,
         hidden: null, source: null, trap: null,
       });
       room.furniture.push(id);

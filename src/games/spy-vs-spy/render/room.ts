@@ -1,31 +1,47 @@
 import { RULES } from '../logic/rules';
-import { DIRS, type Dir, type Furniture, type GameState } from '../logic/state';
+import { DIRS, type Dir, type Furniture, type GameState, type RoomTheme } from '../logic/state';
 import { disc, line, poly, r, shade, text } from './draw';
 import { VIEW, project } from './geometry';
 import { drawIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
-const WALL_COLORS = ['#6b4f8a', '#4f6b8a', '#8a6b4f', '#4f8a6b', '#8a4f5d', '#5d7a8a'];
+type FloorStyle = 'parquet' | 'carpet' | 'tiles' | 'checker';
+
+interface ThemeLook {
+  wall: string;
+  floor: FloorStyle;
+  /** main floor colour */
+  base: string;
+  /** joints / border / second checker colour */
+  accent: string;
+}
+
+const LOOKS: Readonly<Record<RoomTheme, ThemeLook>> = {
+  kancelar: { wall: '#5d6f82', floor: 'parquet', base: '#7a5638', accent: '#5e412a' },
+  knihovna: { wall: '#2f5a40', floor: 'carpet', base: '#7a2f2f', accent: '#c9a36b' },
+  salonek: { wall: '#7e2f40', floor: 'parquet', base: '#8a5e3a', accent: '#6a452a' },
+  archiv: { wall: '#9a7a36', floor: 'tiles', base: '#8a8478', accent: '#6a655c' },
+  konferencni: { wall: '#35598f', floor: 'carpet', base: '#4a4a58', accent: '#8a8aa0' },
+  kuchynka: { wall: '#c2b489', floor: 'checker', base: '#e6e2d6', accent: '#2e2e36' },
+  radiostanice: { wall: '#747244', floor: 'tiles', base: '#5e6258', accent: '#474a42' },
+  pracovna: { wall: '#5e3f7e', floor: 'carpet', base: '#2f4a3a', accent: '#c9a36b' },
+};
 const BG = '#101018';
-const FLOOR = '#5a4636';
 
 /** Draws one room in logical coordinates of a half-viewport. `highlightId` marks furniture in reach of the viewer. */
 export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId: number | null, now: number): void {
   const room = state.rooms[roomId];
-  const wall = WALL_COLORS[roomId % WALL_COLORS.length];
+  const look = LOOKS[room.theme];
+  const wall = look.wall;
 
   r(ctx, 0, 0, 320, VIEW.viewH, BG);
   poly(ctx, [[0, 0], [320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backLeft, VIEW.wallTop]], shade(wall, 0.45));
   r(ctx, VIEW.backLeft, VIEW.wallTop, VIEW.backRight - VIEW.backLeft, VIEW.backY - VIEW.wallTop, wall);
+  r(ctx, VIEW.backLeft, VIEW.backY - 3, VIEW.backRight - VIEW.backLeft, 3, shade(wall, 0.6));
   poly(ctx, [[0, 0], [VIEW.backLeft, VIEW.wallTop], [VIEW.backLeft, VIEW.backY], [VIEW.frontLeft, VIEW.frontY], [0, VIEW.viewH]], shade(wall, 0.7));
   poly(ctx, [[320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [320, VIEW.viewH]], shade(wall, 0.7));
-  poly(ctx, [[VIEW.backLeft, VIEW.backY], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [VIEW.frontLeft, VIEW.frontY]], FLOOR);
-  for (let i = 1; i < 4; i++) {
-    const a = project(0, (RULES.roomD * i) / 4);
-    const b = project(RULES.roomW, (RULES.roomD * i) / 4);
-    line(ctx, a.sx, a.sy, b.sx, b.sy, '#4a382b');
-  }
+  drawFloor(ctx, look);
   r(ctx, 0, VIEW.frontY, 320, VIEW.viewH - VIEW.frontY, BG);
 
   for (const dir of DIRS) {
@@ -40,6 +56,52 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId
     const p = project(bomb.x, bomb.z);
     drawIcon(ctx, 'casovana', p.sx, p.sy);
     if (Math.floor(now * 2) % 2 === 0) text(ctx, String(Math.ceil(bomb.fuse)), p.sx, p.sy - 10, '#ff5050', 7, 'center');
+  }
+}
+
+/** Floor quad between two (x, z) corners, projected onto the trapezoid. */
+function floorQuad(ctx: Ctx, x0: number, z0: number, x1: number, z1: number, color: string): void {
+  const a = project(x0, z0), b = project(x1, z0), c = project(x1, z1), d = project(x0, z1);
+  poly(ctx, [[a.sx, a.sy], [b.sx, b.sy], [c.sx, c.sy], [d.sx, d.sy]], color);
+}
+
+function floorLineX(ctx: Ctx, x: number, z0: number, z1: number, color: string): void {
+  const a = project(x, z0), b = project(x, z1);
+  line(ctx, a.sx, a.sy, b.sx, b.sy, color);
+}
+
+function floorLineZ(ctx: Ctx, z: number, x0: number, x1: number, color: string): void {
+  const a = project(x0, z), b = project(x1, z);
+  line(ctx, a.sx, a.sy, b.sx, b.sy, color);
+}
+
+function drawFloor(ctx: Ctx, look: ThemeLook): void {
+  const W = RULES.roomW, D = RULES.roomD;
+  floorQuad(ctx, 0, 0, W, D, look.base);
+  switch (look.floor) {
+    case 'parquet': {
+      // planks run into the room; joints staggered row by row
+      const rows = 5;
+      for (let i = 1; i < rows; i++) floorLineZ(ctx, (D * i) / rows, 0, W, look.accent);
+      for (let i = 0; i < rows; i++) {
+        const off = i % 2 === 0 ? 0 : 12.5;
+        for (let x = off + 25; x < W; x += 25) floorLineX(ctx, x, (D * i) / rows, (D * (i + 1)) / rows, look.accent);
+      }
+      break;
+    }
+    case 'carpet':
+      floorQuad(ctx, 5, 2, W - 5, D - 2, look.accent);
+      floorQuad(ctx, 8, 4, W - 8, D - 4, look.base);
+      break;
+    case 'tiles':
+      for (let x = 20; x < W; x += 20) floorLineX(ctx, x, 0, D, look.accent);
+      for (let z = 8; z < D; z += 8) floorLineZ(ctx, z, 0, W, look.accent);
+      break;
+    case 'checker':
+      for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 5; j++) if ((i + j) % 2 === 1) floorQuad(ctx, i * 20, j * 8, (i + 1) * 20, (j + 1) * 8, look.accent);
+      }
+      break;
   }
 }
 

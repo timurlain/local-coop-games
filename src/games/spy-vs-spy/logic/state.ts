@@ -12,6 +12,9 @@ export type FurnitureKind =
   | 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak'
   | 'kartoteka' | 'televize' | 'globus' | 'lednice' | 'radio' | 'kvetina' | 'krb';
 export type DeathCause = TrapKind | 'fight';
+/** Visual theme of a room: wall colour, floor style and the furniture pool. */
+export type RoomTheme =
+  | 'kancelar' | 'knihovna' | 'salonek' | 'archiv' | 'konferencni' | 'kuchynka' | 'radiostanice' | 'pracovna';
 
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
 export const SECRETS: readonly SecretKind[] = ['klic', 'penize', 'pas', 'plany'];
@@ -20,6 +23,9 @@ export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pis
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
   'kartoteka', 'televize', 'globus', 'lednice', 'radio', 'kvetina', 'krb',
+];
+export const ROOM_THEMES: readonly RoomTheme[] = [
+  'kancelar', 'knihovna', 'salonek', 'archiv', 'konferencni', 'kuchynka', 'radiostanice', 'pracovna',
 ];
 export const OPPOSITE: Readonly<Record<Dir, Dir>> = { N: 'S', S: 'N', E: 'W', W: 'E' };
 /** Door-trap key used for the airport exit door. */
@@ -56,6 +62,8 @@ export interface Room {
   /** side of this room that holds the airport exit door, if any */
   exit: Dir | null;
   furniture: number[];
+  /** visual only */
+  theme: RoomTheme;
 }
 
 export interface DoorTrap {
