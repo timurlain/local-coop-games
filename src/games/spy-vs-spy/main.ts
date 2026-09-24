@@ -69,6 +69,7 @@ function setupMenu(): void {
   document.fonts?.load('14px "Limelight"').catch(() => undefined);
   document.fonts?.load('8px "Poiret One"').catch(() => undefined);
   $('level-label').textContent = T.levelLabel;
+  $('hide-airport-label').textContent = T.hideAirport;
   $('mute-label').textContent = T.mute;
   $('controls').textContent = T.controls;
   $('back').textContent = T.back;
@@ -84,6 +85,13 @@ function setupMenu(): void {
   level.onchange = () => {
     settings.level = Number(level.value);
     readout.textContent = levelReadout(settings.level);
+    saveJson(SETTINGS_KEY, settings);
+  };
+
+  const hideAirport = $<HTMLInputElement>('hide-airport');
+  hideAirport.checked = settings.hideAirport;
+  hideAirport.onchange = () => {
+    settings.hideAirport = hideAirport.checked;
     saveJson(SETTINGS_KEY, settings);
   };
 
@@ -120,7 +128,7 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
-  state = createGame(urlSeed ?? randomSeed(), settings.level);
+  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport });
   state.spies.forEach((spy, i) => {
     spy.prev = toSpyInput(input.get(slots[i]!));
   });

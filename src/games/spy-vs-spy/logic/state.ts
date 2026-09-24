@@ -171,6 +171,8 @@ export interface GameState {
   year: number;
   cols: number;
   rows: number;
+  /** „Skrýt letiště": the exit is hidden from a spy until it holds the full kufřík (see `exitVisibleTo`) */
+  hideAirport: boolean;
   rooms: Room[];
   furniture: Furniture[];
   doorTraps: Record<string, DoorTrap>;

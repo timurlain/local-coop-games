@@ -1,5 +1,5 @@
 import { HALVES, withViewport } from '../../../shared/splitscreen';
-import { doorAt, furnitureAt } from '../logic/places';
+import { doorAt, exitVisibleTo, furnitureAt } from '../logic/places';
 import type { GameState } from '../logic/state';
 import { drawDebug } from './debug';
 import { drawEffects, effectPose, type EffectQueue } from './effects';
@@ -41,7 +41,7 @@ export function renderGame(
           viewer.armed === 'bomba' || viewer.armed === 'pruzina' ? (near?.id ?? null) : null;
         const armedDoor =
           viewer.armed === 'elektrina' || viewer.armed === 'pistole' ? doorAt(state, viewer) : null;
-        drawRoom(ctx, state, viewer.room, near?.id ?? null, now, armedFurnitureId, armedDoor);
+        drawRoom(ctx, state, viewer.room, near?.id ?? null, now, armedFurnitureId, armedDoor, exitVisibleTo(state, viewer));
         const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
         for (const s of here) drawSpy(ctx, state, s, now, effectPose(effects, s.id, now));
         drawEffects(ctx, state, effects, viewer.room, now);

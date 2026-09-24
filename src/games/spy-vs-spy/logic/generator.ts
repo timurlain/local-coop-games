@@ -23,8 +23,13 @@ export function createSpy(
   };
 }
 
+export interface GameOptions {
+  /** „Skrýt letiště" (spec §4), default off */
+  hideAirport?: boolean;
+}
+
 /** A new match on `level` (1-8, spec §4): grid, clock and trap stock come from `RULES.levels`. */
-export function createGame(seed: number, level: number): GameState {
+export function createGame(seed: number, level: number, opts: GameOptions = {}): GameState {
   const { cols, rows, clockSeconds, trapStockPerSpy } = levelRules(level);
   // Looks come from their own stream so the gameplay stream (doors, slots, hidden things) is untouched.
   const looks = makeRng((seed ^ LOOKS_SALT) >>> 0);
@@ -42,7 +47,7 @@ export function createGame(seed: number, level: number): GameState {
   }
   const minPieces = minFurniturePerRoom(rooms.length);
   const state: GameState = {
-    seed, host, year, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
+    seed, host, year, cols, rows, hideAirport: opts.hideAirport ?? false, rooms, furniture: [], doorTraps: {}, timeBombs: [],
     spies: [
       createSpy(0, 0, 40, rooms.length, clockSeconds, trapStockPerSpy),
       createSpy(1, 0, 160, rooms.length, clockSeconds, trapStockPerSpy),

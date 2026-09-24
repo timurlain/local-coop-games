@@ -1,4 +1,5 @@
 import { cs } from '../../../shared/i18n/cs';
+import { exitVisibleTo } from '../logic/places';
 import { DIRS, OPPOSITE, neighbor, type Dir, type GameState, type Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { r, text } from './draw';
@@ -13,17 +14,19 @@ export interface KnownDoor {
 }
 
 /**
- * Doors the spy knows: every door (and the exit) of a room the spy has visited. An internal door is reported
- * once, always from its north/west room as an S/E door; the exit is reported from its own room.
+ * Doors the spy knows: every door (and the exit, unless hidden from this spy — `exitVisibleTo`) of a room the spy
+ * has visited. An internal door is reported once, always from its north/west room as an S/E door; the exit is
+ * reported from its own room.
  */
 export function knownDoors(state: GameState, spy: Spy): KnownDoor[] {
   const seen = new Set<string>();
   const out: KnownDoor[] = [];
+  const showExit = exitVisibleTo(state, spy);
   for (const room of state.rooms) {
     if (!spy.visited[room.id]) continue;
     for (const dir of DIRS) {
       if (room.exit === dir) {
-        out.push({ room: room.id, dir });
+        if (showExit) out.push({ room: room.id, dir });
         continue;
       }
       if (!room.doors[dir]) continue;

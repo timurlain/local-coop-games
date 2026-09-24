@@ -6,6 +6,7 @@ export const cs = {
     levelLabel: 'Úroveň',
     levelOption: (level: number, cols: number, rows: number) => `${level} (${cols}×${rows})`,
     levelReadout: (rooms: number, traps: number, minutes: number) => `${rooms} místností · ${traps} pastí · ${minutes} min`,
+    hideAirport: 'Skrýt letiště',
     mute: 'Ztlumit zvuk',
     waiting: 'čeká…',
     joinHint: 'Každý hráč stiskne svou Akci (F / Enter / A na gamepadu)',

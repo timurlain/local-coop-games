@@ -1,5 +1,5 @@
 import { RULES } from '../logic/rules';
-import { DIRS, type Dir, type GameState, type RoomTheme } from '../logic/state';
+import { DIRS, type Dir, type GameState, type Room, type RoomTheme } from '../logic/state';
 import { line, poly, r, shade, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawDecor } from './decor';
@@ -68,13 +68,24 @@ function background(ctx: Ctx, theme: RoomTheme, rug: boolean): HTMLCanvasElement
   return bg;
 }
 
+/** Door openings to draw in a room; the exit only when `showExit` (hidden airport, spec §4). */
+export function doorsToDraw(room: Room, showExit: boolean): { dir: Dir; isExit: boolean }[] {
+  const out: { dir: Dir; isExit: boolean }[] = [];
+  for (const dir of DIRS) {
+    const isExit = showExit && room.exit === dir;
+    if (room.doors[dir] || isExit) out.push({ dir, isExit });
+  }
+  return out;
+}
+
 /**
  * Draws one room in logical coordinates of a half-viewport. `highlightId` marks furniture in reach of the viewer
  * (white); `armedFurnitureId` / `armedDoor` mark where an armed trap can be placed right now (red), spec §5.
+ * `showExit` false leaves the airport exit out (hidden from this viewer, spec §4).
  */
 export function drawRoom(
   ctx: Ctx, state: GameState, roomId: number, highlightId: number | null, now: number,
-  armedFurnitureId: number | null = null, armedDoor: Dir | null = null,
+  armedFurnitureId: number | null = null, armedDoor: Dir | null = null, showExit = true,
 ): void {
   const room = state.rooms[roomId];
   const look = LOOKS[room.theme];
@@ -84,10 +95,7 @@ export function drawRoom(
 
   for (const d of room.decor) drawDecor(ctx, d, now);
 
-  for (const dir of DIRS) {
-    const isExit = room.exit === dir;
-    if (room.doors[dir] || isExit) drawDoor(ctx, dir, isExit, dir === armedDoor);
-  }
+  for (const { dir, isExit } of doorsToDraw(room, showExit)) drawDoor(ctx, dir, isExit, dir === armedDoor);
   if (look.light === 'chandelier') drawChandelier(ctx, now);
 
   for (const id of room.furniture) {

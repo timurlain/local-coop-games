@@ -24,13 +24,19 @@ describe('level readout (spec §4)', () => {
 
 describe('migrateSettings', () => {
   it('uses the defaults for nothing saved', () => {
-    expect(migrateSettings({})).toEqual({ level: RULES.defaultLevel, muted: false });
-    expect(migrateSettings(null)).toEqual({ level: RULES.defaultLevel, muted: false });
-    expect(migrateSettings('junk')).toEqual({ level: RULES.defaultLevel, muted: false });
+    expect(migrateSettings({})).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false });
+    expect(migrateSettings(null)).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false });
+    expect(migrateSettings('junk')).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false });
   });
 
   it('keeps a saved level and mute', () => {
-    expect(migrateSettings({ level: 7, muted: true })).toEqual({ level: 7, muted: true });
+    expect(migrateSettings({ level: 7, muted: true, hideAirport: true })).toEqual({ level: 7, muted: true, hideAirport: true });
+  });
+
+  it('keeps „Skrýt letiště" off unless saved as on', () => {
+    expect(migrateSettings({ level: 4 }).hideAirport).toBe(false);
+    expect(migrateSettings({ level: 4, hideAirport: 'yes' }).hideAirport).toBe(false);
+    expect(migrateSettings({ level: 4, hideAirport: true }).hideAirport).toBe(true);
   });
 
   it('replaces an invalid level with the default', () => {
@@ -40,9 +46,9 @@ describe('migrateSettings', () => {
   });
 
   it('maps round-2 sizes to the level with the same grid', () => {
-    expect(migrateSettings({ size: 'mala', clock: 300, muted: true })).toEqual({ level: 2, muted: true });
-    expect(migrateSettings({ size: 'stredni', clock: 480 })).toEqual({ level: 3, muted: false });
-    expect(migrateSettings({ size: 'velka', clock: 720 })).toEqual({ level: 5, muted: false });
+    expect(migrateSettings({ size: 'mala', clock: 300, muted: true })).toEqual({ level: 2, muted: true, hideAirport: false });
+    expect(migrateSettings({ size: 'stredni', clock: 480 })).toEqual({ level: 3, muted: false, hideAirport: false });
+    expect(migrateSettings({ size: 'velka', clock: 720 })).toEqual({ level: 5, muted: false, hideAirport: false });
   });
 
   it('falls back to level 3 for any other round-2 setting', () => {
@@ -52,7 +58,7 @@ describe('migrateSettings', () => {
 
   it('prefers a saved level over leftover round-2 keys and drops the old keys', () => {
     const s = migrateSettings({ level: 8, size: 'mala', clock: 300 });
-    expect(s).toEqual({ level: 8, muted: false });
-    expect(Object.keys(s).sort()).toEqual(['level', 'muted']);
+    expect(s).toEqual({ level: 8, muted: false, hideAirport: false });
+    expect(Object.keys(s).sort()).toEqual(['hideAirport', 'level', 'muted']);
   });
 });
