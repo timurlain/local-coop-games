@@ -33,4 +33,11 @@ describe('mobPositions', () => {
     const later = mobPositions(2.5, 160)[0].x;
     expect(later).toBeGreaterThan(early);
   });
+
+  it('stays on screen when the loser stands near a side wall', () => {
+    for (const m of mobPositions(20, 20)) {
+      expect(m.x).toBeGreaterThan(0);
+      expect(m.x).toBeLessThan(320);
+    }
+  });
 });

@@ -38,7 +38,8 @@ export function mobPositions(t: number, loserX: number): MobMember[] {
     const fromLeft = i % 2 === 0;
     const rank = Math.floor(i / 2);
     const start = fromLeft ? -12 - rank * MOB_GAP : LOGICAL_W + 12 + rank * MOB_GAP;
-    const stop = fromLeft ? loserX - MOB_CLEARANCE - rank * MOB_GAP : loserX + MOB_CLEARANCE + rank * MOB_GAP;
+    const rawStop = fromLeft ? loserX - MOB_CLEARANCE - rank * MOB_GAP : loserX + MOB_CLEARANCE + rank * MOB_GAP;
+    const stop = Math.min(LOGICAL_W - 6, Math.max(6, rawStop));
     const x = fromLeft ? Math.min(stop, start + walked) : Math.max(stop, start - walked);
     mob.push({ x, facing: fromLeft ? 1 : -1, color: MOB_COLORS[i % MOB_COLORS.length], torch: i % 3 === 0 });
   }
