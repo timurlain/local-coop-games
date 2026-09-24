@@ -2,7 +2,8 @@ type Ctx = CanvasRenderingContext2D;
 
 export function r(ctx: Ctx, x: number, y: number, w: number, h: number, color: string): void {
   ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x), Math.round(y), w, h);
+  const x0 = Math.round(x), y0 = Math.round(y);
+  ctx.fillRect(x0, y0, Math.round(x + w) - x0, Math.round(y + h) - y0);
 }
 
 export function poly(ctx: Ctx, pts: readonly (readonly [number, number])[], color: string): void {
