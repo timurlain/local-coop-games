@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { shade } from '../../src/games/spy-vs-spy/render/draw';
 import { project } from '../../src/games/spy-vs-spy/render/geometry';
 import { formatClock } from '../../src/games/spy-vs-spy/render/hud';
-import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_HANDS, SPY_PALETTES } from '../../src/games/spy-vs-spy/render/sprite-data';
+import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type SpyFrame } from '../../src/games/spy-vs-spy/render/sprite-data';
+import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
 
 describe('project', () => {
   it('maps the floor corners onto the trapezoid', () => {
@@ -48,6 +49,7 @@ describe('sprite data', () => {
     for (const [frame, [x, y]] of Object.entries(SPY_HANDS)) {
       expect(Number.isInteger(x) && x >= 0 && x < 21, `${frame} hand x`).toBe(true);
       expect(Number.isInteger(y) && y >= 0 && y < 24, `${frame} hand y`).toBe(true);
+      expect(SPY_FRAMES[frame as SpyFrame][y][x], `${frame} hand pixel is drawn`).not.toBe('.');
     }
   });
 
@@ -57,6 +59,22 @@ describe('sprite data', () => {
       expect(rows).toHaveLength(8);
       expect(rows[0].length).toBe(8);
     }
+  });
+});
+
+describe('handPoint', () => {
+  it('maps the stand hand to screen pixels, mirroring x when flipped', () => {
+    const [px, py] = SPY_HANDS.stand;
+    const x = 123.4;
+    const y = 70.6;
+    const left = Math.round(x - 21 / 2);
+    const top = Math.round(y - 24);
+    const plain = handPoint('stand', x, y);
+    const flipped = handPoint('stand', x, y, true);
+    expect(plain.hx).toBe(left + px);
+    expect(flipped.hx).toBe(left + (21 - 1 - px));
+    expect(plain.hy).toBe(top + py);
+    expect(flipped.hy).toBe(plain.hy);
   });
 });
 
