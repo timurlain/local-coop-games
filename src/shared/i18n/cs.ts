@@ -33,6 +33,7 @@ export const cs = {
     mobShout: 'CHYŤTE HO!',
     caught: (name: string) => `${name} zůstal v ambasádě…`,
     rematchHint: 'Akce = odveta · Esc = menu',
+    timeLeft: (clock: string) => `Zbývající čas: ${clock}`,
     seed: 'Seed',
     traps: {
       bomba: 'Bomba',

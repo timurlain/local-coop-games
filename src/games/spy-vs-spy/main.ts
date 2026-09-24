@@ -10,6 +10,7 @@ import { createGame } from './logic/generator';
 import { RULES } from './logic/rules';
 import type { EmbassySize, GameEvent, GameState, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
+import { formatClock } from './render/hud';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { renderGame } from './render/view';
 
@@ -135,6 +136,7 @@ function pause(reason: string): void {
 function finish(s: GameState): void {
   const r = s.result!;
   $('result-title').textContent = r.kind === 'win' ? T.winner(r.winner === 0 ? T.white : T.black) : T.draw;
+  $('result-time').textContent = r.kind === 'win' ? T.timeLeft(formatClock(s.spies[r.winner].clock)) : '';
   $('result-seed').textContent = `${T.seed}: ${s.seed}`;
   $('result-hint').textContent = T.rematchHint;
   screen = 'result';
