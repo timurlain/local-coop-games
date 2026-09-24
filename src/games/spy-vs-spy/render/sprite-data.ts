@@ -1,63 +1,258 @@
 // Pixel-string sprites. '.' is transparent; other characters index a palette.
 
-// Spy facing right, 14×21. o = outline, b = body, e = eye.
-const SPY_TOP = [
-  '....oooooo....',
-  '....obbbbo....',
-  '..oooooooooo..',
-  '....obbbbo....',
-  '....obebbooooo',
-  '....obbbbbbbbo',
-  '....obbboooooo',
-  '.....obbo.....',
-  '....obbbbo....',
-  '...obbbbbbo...',
-  '..obbbbbbbbo..',
-  '..obobbbbobo..',
-  '..obobbbbobo..',
-  '..ooobbbbooo..',
-  '....obbbbo....',
-  '....obbbbo....',
+// Spy facing right, 21×24. o = outline, b = body, e = eye, c = club.
+// Body centre line is column 10 in every frame; the nose and club reach right, a swung-back arm reaches left.
+
+const HAT = [
+  '.........ooo.........',
+  '........obbbo........',
+  '.......obbbbbo.......',
+  '.......ooooooo.......',
+  '....ooooooooooooo....',
 ];
+
+const FACE = [
+  '.......obbeeo........',
+  '.......obbbbbooo.....',
+  '.......obbbbbbbbooo..',
+  '.......obbbbbbbbbbbo.',
+  '.......obbbbooooooooo',
+];
+
+// Same face with the nose tipped 1 px up (walk bob).
+const FACE_BOB = [
+  '.......obbeeoooo.....',
+  '.......obbbbbbbbooo..',
+  '.......obbbbbbbbbbbo.',
+  '.......obbbbooooooooo',
+  '.......obbbbo........',
+];
+
+const COAT = {
+  hang: [
+    '........obbbo........',
+    '......oobbbbboo......',
+    '.....obbbbbbbbbo.....',
+    '.....obbbbbbobbo.....',
+    '.....obbbbbbobbo.....',
+    '.....obbbbbbobbbo....',
+    '.....obbbbbbbobbo....',
+    '.....obbbbbbboobbo...',
+    '.....oooooooooooo....',
+  ],
+  fwd: [
+    '........obbbo........',
+    '......oobbbbboo......',
+    '.....obbbbbbbbboo....',
+    '.....obbbbbbbobbbo...',
+    '.....obbbbbbbboobbo..',
+    '.....obbbbbbbbo.obbo.',
+    '.....obbbbbbbbo..oo..',
+    '.....obbbbbbbbbo.....',
+    '.....ooooooooooo.....',
+  ],
+  back: [
+    '........obbbo........',
+    '......oobbbbboo......',
+    '....oobbbbbbbbbo.....',
+    '...obbobbbbbbbbo.....',
+    '..obboobbbbbbbbo.....',
+    '.obbo.obbbbbbbbo.....',
+    '..oo..obbbbbbbbbo....',
+    '......obbbbbbbbbo....',
+    '......ooooooooooo....',
+  ],
+};
 
 const LEGS = {
   stand: [
-    '....obo.obo...',
-    '....obo.obo...',
-    '....obo.obo...',
-    '...oobo.oboo..',
-    '...ooo...ooo..',
+    '.......obo.obo.......',
+    '.......obo.obo.......',
+    '.......obo.obo.......',
+    '.......obbo.obbo.....',
+    '.......oooo.oooo.....',
   ],
-  walkA: [
-    '....obo.obo...',
-    '...obo...obo..',
-    '..obo.....obo.',
-    '.oobo.....oboo',
-    '.ooo.......ooo',
+  stride: [
+    '......obo..obo.......',
+    '.....obo....obo......',
+    '....obo......obo.....',
+    '...obbo......obbo....',
+    '...ooo.......oooo....',
   ],
-  walkB: [
-    '....obbbo.....',
-    '.....obo......',
-    '.....obo......',
-    '....oobo......',
-    '....ooo.......',
+  pass: [
+    '........obbbo........',
+    '.......obbobo........',
+    '.....oobo.obo........',
+    '....obo...obbo.......',
+    '....oo....oooo.......',
   ],
 };
 
 export const SPY_FRAMES = {
-  stand: [...SPY_TOP, ...LEGS.stand],
-  walkA: [...SPY_TOP, ...LEGS.walkA],
-  walkB: [...SPY_TOP, ...LEGS.walkB],
+  stand: [...HAT, ...FACE, ...COAT.hang, ...LEGS.stand],
+  walk1: [...HAT, ...FACE, ...COAT.fwd, ...LEGS.stride],
+  walk2: [...HAT, ...FACE_BOB, ...COAT.hang, ...LEGS.pass],
+  walk3: [...HAT, ...FACE, ...COAT.back, ...LEGS.stride],
+  walk4: [...HAT, ...FACE_BOB, ...COAT.hang, ...LEGS.pass],
+  // bent forward, nose poking down at the furniture, arms reaching in
+  search: [
+    '.....................',
+    '.....................',
+    '.....................',
+    '..........ooo........',
+    '.........obbbo.......',
+    '........obbbbbo......',
+    '........ooooooo......',
+    '.....ooooooooooooo...',
+    '........obbeeo.......',
+    '........obbbbbooo....',
+    '........obbbbbbbbooo.',
+    '........obbbbbbbbbbbo',
+    '.......obbbbboooooobo',
+    '......obbbbbo......o.',
+    '.....obbbbbbbooooo...',
+    '.....obbbbbbbbbbbbo..',
+    '.....obbbbbbboooooo..',
+    '.....obbbbbbbo.......',
+    '.....oooooooooo......',
+    ...LEGS.stand,
+  ],
+  // club raised up behind the head
+  swing1: [
+    '.cc..................',
+    '.cc......ooo.........',
+    '..cc....obbbo........',
+    '..cc...obbbbbo.......',
+    '..cc...ooooooo.......',
+    '..ccooooooooooooo....',
+    '.obbo..obbeeo........',
+    '.obbbo.obbbbbooo.....',
+    '..obbbobbbbbbbbbooo..',
+    '...obbbobbbbbbbbbbbo.',
+    '....obbobbbbooooooooo',
+    '.....obbobbbo........',
+    '......obbbbbbboo.....',
+    '.....obbbbbbbbbo.....',
+    '.....obbbbbbbbbo.....',
+    '.....obbbbbbbbbo.....',
+    '.....obbbbbbbbbbo....',
+    '.....obbbbbbbbbbo....',
+    '.....oooooooooooo....',
+    ...LEGS.stride,
+  ],
+  // club struck forward
+  swing2: [
+    '.....................',
+    '.........ooo.........',
+    '........obbbo........',
+    '.......obbbbbo.......',
+    '.......ooooooo.......',
+    '....ooooooooooooo....',
+    '.......obbeeo........',
+    '.......obbbbbooo.....',
+    '.......obbbbbbbbooo..',
+    '.......obbbbbbbbbbbo.',
+    '.......obbbbooooooooo',
+    '........obbbo........',
+    '......oobbbboooo...cc',
+    '.....obbbbbbbbbbccccc',
+    '.....obbbbbbboooo..cc',
+    '.....obbbbbbbo.......',
+    '.....obbbbbbbbo......',
+    '.....obbbbbbbbo......',
+    '.....oooooooooo......',
+    ...LEGS.stride,
+  ],
+  // club held upright in front
+  block: [
+    ...HAT,
+    ...FACE,
+    '........obbbo....cc..',
+    '......oobbbbboo..cc..',
+    '.....obbbbbbbbboocc..',
+    '.....obbbbbbbobbocco.',
+    '.....obbbbbbbbooobbo.',
+    '.....obbbbbbbbo..cc..',
+    '.....obbbbbbbbo..cc..',
+    '.....obbbbbbbbbo.....',
+    '.....ooooooooooo.....',
+    ...LEGS.stand,
+  ],
+  // head thrown back (hat tilted, nose up-forward), mouth open, kufrik arm held out in front
+  laugh1: [
+    '.....................',
+    '.....oo..........o...',
+    '...oobbo........oo...',
+    '..obbbbbo......obo...',
+    '..obbbbbbooo...obo...',
+    '..obbbbooobbbbobbo...',
+    '...oboooeebbbbbbbbo..',
+    '.ooo.obbbbbbbbbbbbo..',
+    '.....obbbbbbbbbbbo...',
+    '.....obbbbbbboooo....',
+    '.....obbbbbbo........',
+    '.....obbbbbbbooo.....',
+    '......obbbbboo.......',
+    '.....oobbbbbbooooooo.',
+    '....obbbbbbbbbbbbbbbo',
+    '....obbbbbbbooooooooo',
+    '....obbbbbbbbo.......',
+    '....obbbbbbbbbo......',
+    '....oooooooooooo.....',
+    ...LEGS.stand,
+  ],
+  // shake: head and arm jerk 1 px up, jaw drops (mouth gap 2 px)
+  laugh2: [
+    '.....oo..........o...',
+    '...oobbo........oo...',
+    '..obbbbbo......obo...',
+    '..obbbbbbooo...obo...',
+    '..obbbbooobbbbobbo...',
+    '...oboooeebbbbbbbbo..',
+    '.ooo.obbbbbbbbbbbbo..',
+    '.....obbbbbbbbbbbo...',
+    '.....obbbbbbboooo....',
+    '.....obbbbbbo........',
+    '.....obbbbbbo........',
+    '......obbbbboo.......',
+    '.....oobbbbbbooooooo.',
+    '....obbbbbbbbbbbbbbbo',
+    '....obbbbbbbooooooooo',
+    '....obbbbbbbbo.......',
+    '....obbbbbbbbbo......',
+    '....obbbbbbbbbo......',
+    '....oooooooooooo.....',
+    ...LEGS.stand,
+  ],
 } satisfies Record<string, readonly string[]>;
 
 export type SpyFrame = keyof typeof SPY_FRAMES;
 
+/**
+ * Image pixel (x, y) of the hand that carries the kufrik in each frame: the front hand, except in the
+ * combat frames (swing/block) where the club is in front and the kufrik hangs from the back hand at the hip;
+ * for the laugh frames it is the raised hand.
+ */
+export const SPY_HANDS: Record<SpyFrame, readonly [number, number]> = {
+  stand: [15, 17],
+  walk1: [17, 15],
+  walk2: [15, 17],
+  walk3: [2, 15],
+  walk4: [15, 17],
+  search: [17, 15],
+  swing1: [6, 16],
+  swing2: [6, 16],
+  block: [6, 16],
+  laugh1: [19, 14],
+  laugh2: [19, 13],
+};
+
 export const SPY_PALETTES = {
-  white: { o: '#1a1a1a', b: '#f2f2f2', e: '#1a1a1a' },
-  black: { o: '#9a9a9a', b: '#1e1e1e', e: '#f2f2f2' },
-  sooty: { o: '#000000', b: '#3a3a3a', e: '#ffffff' },
-  soaked: { o: '#1b3a6b', b: '#8cc4ff', e: '#1b3a6b' },
-  ghost: { o: '#dddddd', b: '#ffffff', e: '#999999' },
+  white: { o: '#1a1a1a', b: '#f2f2f2', e: '#1a1a1a', c: '#8b5a2b' },
+  black: { o: '#9a9a9a', b: '#1e1e1e', e: '#f2f2f2', c: '#8b5a2b' },
+  sooty: { o: '#000000', b: '#3a3a3a', e: '#ffffff', c: '#8b5a2b' },
+  soaked: { o: '#1b3a6b', b: '#8cc4ff', e: '#1b3a6b', c: '#8b5a2b' },
+  ghost: { o: '#dddddd', b: '#ffffff', e: '#999999', c: '#8b5a2b' },
 } satisfies Record<string, Record<string, string>>;
 
 export type SpyPalette = keyof typeof SPY_PALETTES;

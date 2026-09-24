@@ -2,8 +2,8 @@ import { RULES } from '../logic/rules';
 import type { Spy } from '../logic/state';
 import { line, r, text } from './draw';
 import { project } from './geometry';
-import type { SpyPalette } from './sprite-data';
-import { drawSprite, spyImage } from './sprites';
+import type { SpyFrame, SpyPalette } from './sprite-data';
+import { drawKufrikInHand, drawSprite, spyImage } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -33,11 +33,24 @@ export function drawSpy(ctx: Ctx, spy: Spy, now: number): void {
     return;
   }
   const moving = spy.mode === 'normal' && (movingUntil.get(spy.id) ?? 0) > now;
-  const frame = moving ? (Math.floor(now * 8) % 2 === 0 ? 'walkA' : 'walkB') : 'stand';
-  const jitter = spy.mode === 'searching' ? (Math.floor(now * 20) % 2 === 0 ? 1 : -1) : 0;
-  drawSprite(ctx, spyImage(baseColor(spy), frame), sx + jitter, sy, spy.facing < 0);
-  if (spy.swingAnim > 0) r(ctx, sx + (spy.facing > 0 ? 4 : -16), sy - 13, 12, 2, '#8b5a2b');
-  else if (spy.blocking) r(ctx, sx + spy.facing * 7, sy - 19, 2, 12, '#8b5a2b');
+  const frame = pickFrame(spy, moving, now);
+  const flip = spy.facing < 0;
+  drawSprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
+  if (spy.hand?.kind === 'kufrik') drawKufrikInHand(ctx, frame, sx, sy, flip);
+}
+
+export const WALK_CYCLE: readonly SpyFrame[] = ['walk1', 'walk2', 'walk3', 'walk4'];
+
+/** Walk cycle frame at ~8 fps. */
+export function walkFrame(now: number): SpyFrame {
+  return WALK_CYCLE[Math.floor(now * 8) % WALK_CYCLE.length];
+}
+
+function pickFrame(spy: Spy, moving: boolean, now: number): SpyFrame {
+  if (spy.swingAnim > 0) return spy.swingAnim > RULES.swingAnim / 2 ? 'swing1' : 'swing2';
+  if (spy.blocking) return 'block';
+  if (spy.mode === 'searching') return 'search';
+  return moving ? walkFrame(now) : 'stand';
 }
 
 function drawDeath(ctx: Ctx, spy: Spy, sx: number, sy: number, now: number): void {
@@ -52,7 +65,7 @@ function drawDeath(ctx: Ctx, spy: Spy, sx: number, sy: number, now: number): voi
     ctx.strokeStyle = '#e8c547';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(sx, sy - rise - 22, 5, 1.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy - rise - 26, 5, 1.5, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
     return;
@@ -94,9 +107,9 @@ function drawDeath(ctx: Ctx, spy: Spy, sx: number, sy: number, now: number): voi
     default:
       // fight: knocked flat
       ctx.save();
-      ctx.translate(sx, sy);
+      ctx.translate(sx, sy - 10); // the 21-px-wide sprite lies on its back, resting on the floor
       ctx.rotate(((flip ? 1 : -1) * Math.PI) / 2);
-      drawSprite(ctx, spyImage('sooty', 'stand'), 0, 7, flip);
+      drawSprite(ctx, spyImage('sooty', 'stand'), 0, 12, flip);
       ctx.restore();
   }
 }

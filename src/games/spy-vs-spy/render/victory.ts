@@ -6,7 +6,8 @@ import { line, r, text } from './draw';
 import { VIEW, project } from './geometry';
 import { drawRoom } from './room';
 import type { SpyPalette } from './sprite-data';
-import { drawIcon, drawSprite, spyImage } from './sprites';
+import { drawIcon, drawKufrikInHand, drawSprite, spyImage } from './sprites';
+import { walkFrame } from './spy';
 
 type Ctx = CanvasRenderingContext2D;
 const T = cs.spy;
@@ -78,10 +79,9 @@ function drawRunway(ctx: Ctx, winner: Spy, t: number, now: number): void {
   const walk = Math.min(1, t / LAUGH_AT);
   const x = 50 + walk * 90;
   const laughing = t >= LAUGH_AT;
-  const bounce = laughing ? Math.abs(Math.sin(now * 12)) * 3 : 0;
-  const frame = !laughing && Math.floor(now * 8) % 2 === 0 ? 'walkA' : 'stand';
-  drawSprite(ctx, spyImage(palette(winner), frame), x, 78 - bounce);
-  drawIcon(ctx, 'kufrik', x + 9, 68 - bounce);
+  const frame = laughing ? (Math.floor(now * 6) % 2 === 0 ? 'laugh1' : 'laugh2') : walkFrame(now);
+  drawSprite(ctx, spyImage(palette(winner), frame), x, 78);
+  drawKufrikInHand(ctx, frame, x, 78);
   if (laughing) {
     const bx = x + 14;
     const by = 36;

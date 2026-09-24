@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { shade } from '../../src/games/spy-vs-spy/render/draw';
 import { project } from '../../src/games/spy-vs-spy/render/geometry';
 import { formatClock } from '../../src/games/spy-vs-spy/render/hud';
-import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_PALETTES } from '../../src/games/spy-vs-spy/render/sprite-data';
+import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_HANDS, SPY_PALETTES } from '../../src/games/spy-vs-spy/render/sprite-data';
 
 describe('project', () => {
   it('maps the floor corners onto the trapezoid', () => {
@@ -32,8 +32,22 @@ describe('sprite data', () => {
   it('spy frames are rectangular and use only palette characters', () => {
     for (const [frame, rows] of Object.entries(SPY_FRAMES)) {
       for (const [pal, colours] of Object.entries(SPY_PALETTES)) checkSprite(`${frame}/${pal}`, rows, colours);
-      expect(rows[0].length).toBe(14);
-      expect(rows).toHaveLength(21);
+      expect(rows[0].length, `${frame} width`).toBe(21);
+      expect(rows, `${frame} height`).toHaveLength(24);
+    }
+  });
+
+  it('has exactly the planned spy frames', () => {
+    expect(Object.keys(SPY_FRAMES).sort()).toEqual(
+      ['stand', 'walk1', 'walk2', 'walk3', 'walk4', 'search', 'swing1', 'swing2', 'block', 'laugh1', 'laugh2'].sort(),
+    );
+  });
+
+  it('every spy frame has a hand point inside the image', () => {
+    expect(Object.keys(SPY_HANDS).sort()).toEqual(Object.keys(SPY_FRAMES).sort());
+    for (const [frame, [x, y]] of Object.entries(SPY_HANDS)) {
+      expect(Number.isInteger(x) && x >= 0 && x < 21, `${frame} hand x`).toBe(true);
+      expect(Number.isInteger(y) && y >= 0 && y < 24, `${frame} hand y`).toBe(true);
     }
   });
 

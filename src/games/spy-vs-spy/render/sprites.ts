@@ -1,5 +1,5 @@
 import type { Thing } from '../logic/state';
-import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette } from './sprite-data';
+import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette } from './sprite-data';
 
 const cache = new Map<string, HTMLCanvasElement>();
 
@@ -45,6 +45,23 @@ export function drawSprite(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement
   ctx.scale(-1, 1);
   ctx.drawImage(img, 0, 0);
   ctx.restore();
+}
+
+/** Screen pixel of the frame's hand when the sprite is drawn with drawSprite at (x, y) = bottom-centre. */
+export function handPoint(frame: SpyFrame, x: number, y: number, flip = false): { hx: number; hy: number } {
+  const rows = SPY_FRAMES[frame];
+  const w = rows[0].length;
+  const left = Math.round(x - w / 2);
+  const top = Math.round(y - rows.length);
+  const [px, py] = SPY_HANDS[frame];
+  return { hx: left + (flip ? w - 1 - px : px), hy: top + py };
+}
+
+/** Draws the kufřík hanging from the frame's hand (the handle sits on the hand pixel). */
+export function drawKufrikInHand(ctx: CanvasRenderingContext2D, frame: SpyFrame, x: number, y: number, flip = false): void {
+  const { hx, hy } = handPoint(frame, x, y, flip);
+  // icon is 8×8 anchored bottom-centre; its handle top is at icon row 1, columns 2..5
+  drawIcon(ctx, 'kufrik', hx, hy + 7);
 }
 
 export function drawIcon(ctx: CanvasRenderingContext2D, name: IconName, cx: number, bottomY: number): void {
