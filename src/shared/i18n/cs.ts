@@ -29,6 +29,9 @@ export const cs = {
     armed: 'Past:',
     winner: (name: string) => `${name} utekl!`,
     draw: 'Remíza — oběma došel čas',
+    laugh: 'HA HA HA!',
+    mobShout: 'CHYŤTE HO!',
+    caught: (name: string) => `${name} zůstal v ambasádě…`,
     rematchHint: 'Akce = odveta · Esc = menu',
     seed: 'Seed',
     traps: {

@@ -10,9 +10,10 @@ import { createGame } from './logic/generator';
 import { RULES } from './logic/rules';
 import type { EmbassySize, GameEvent, GameState, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
+import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { renderGame } from './render/view';
 
-type Screen = 'menu' | 'play' | 'pause' | 'result';
+type Screen = 'menu' | 'play' | 'pause' | 'victory' | 'result';
 interface Settings {
   size: EmbassySize;
   clock: number;
@@ -43,6 +44,7 @@ let frames = 0;
 let fpsTime = performance.now();
 /** Countdown per spy to the next footstep sound while walking. */
 const stepTimers: [number, number] = [0, 0];
+let victoryT = 0;
 
 function parseSeed(raw: string | null): number | null {
   if (raw === null) return null;
@@ -155,6 +157,9 @@ function update(dt: number): void {
     case 'play':
       updatePlay(dt);
       break;
+    case 'victory':
+      updateVictory(dt);
+      break;
     case 'pause':
       if (slotPressed('pause') && slotDevices().every((d) => input.isConnected(d))) {
         screen = 'play';
@@ -222,7 +227,23 @@ function updatePlay(dt: number): void {
       stepTimers[spy.id] = 0;
     }
   }
-  if (s.result) finish(s);
+  if (s.result) {
+    if (s.result.kind === 'win') {
+      screen = 'victory';
+      victoryT = 0;
+    } else {
+      finish(s);
+    }
+  }
+}
+
+function updateVictory(dt: number): void {
+  const before = victoryT;
+  victoryT += dt;
+  if (before < LAUGH_AT && victoryT >= LAUGH_AT) sfx.play('laugh');
+  if (before < MOB_AT && victoryT >= MOB_AT) sfx.play('mob');
+  const skipped = victoryT >= VICTORY_SKIPPABLE_AFTER && slotPressed('action');
+  if (victoryT >= VICTORY_DURATION || skipped) finish(state!);
 }
 
 function soundFor(e: GameEvent): SfxName | null {
@@ -266,7 +287,9 @@ function render(): void {
     frames = 0;
     fpsTime = now;
   }
-  if (state && screen !== 'menu') {
+  if (screen === 'victory' && state?.result?.kind === 'win') {
+    renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
+  } else if (state && screen !== 'menu') {
     renderGame(ctx, scale, state, now / 1000, { on: debug, fps });
   } else {
     ctx.setTransform(1, 0, 0, 1, 0, 0);

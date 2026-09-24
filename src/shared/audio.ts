@@ -2,7 +2,8 @@ export type SfxName =
   | 'join' | 'search' | 'found' | 'hide' | 'trapSet' | 'fail'
   | 'bomb' | 'zap' | 'boing' | 'shot'
   | 'swing' | 'hit' | 'block' | 'door' | 'locked' | 'tick' | 'win' | 'draw'
-  | 'step';
+  | 'step'
+  | 'laugh' | 'mob';
 
 interface ToneOpts {
   freq: number;
@@ -75,6 +76,12 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   win: (c) => [523, 659, 784, 1047].forEach((f, i) => tone(c, { freq: f, dur: 0.18, delay: i * 0.15, vol: 0.2 })),
   draw: (c) => [392, 330, 262].forEach((f, i) => tone(c, { freq: f, dur: 0.25, delay: i * 0.2, vol: 0.2 })),
   step: (c) => noise(c, { dur: 0.04, vol: 0.06, lowpass: 900 }),
+  laugh: (c) => [0, 0.2, 0.4].forEach((delay, i) =>
+    tone(c, { freq: 620 - i * 60, to: 480 - i * 60, dur: 0.14, delay, type: 'square', vol: 0.18 })),
+  mob: (c) => {
+    noise(c, { dur: 3, vol: 0.25, lowpass: 450 });
+    for (let i = 0; i < 6; i++) tone(c, { freq: 140 + (i % 3) * 30, dur: 0.25, delay: 0.3 + i * 0.4, type: 'sawtooth', vol: 0.08 });
+  },
 };
 
 /** Synthesized sound effects. Call `unlock()` from a user gesture (browser autoplay policy). */
