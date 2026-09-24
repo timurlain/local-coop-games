@@ -4,7 +4,7 @@ import { VIEW, project, wallX } from '../../src/games/spy-vs-spy/render/geometry
 import { ROOM } from '../../src/games/spy-vs-spy/render/layout';
 import { formatClock } from '../../src/games/spy-vs-spy/render/hud';
 import { createSpy } from '../../src/games/spy-vs-spy/logic/generator';
-import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
+import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import type { Spy } from '../../src/games/spy-vs-spy/logic/state';
 import {
   ICONS, ICON_PALETTE, SPY_CENTER_X, SPY_FRAMES, SPY_H, SPY_HANDS, SPY_PALETTES, SPY_W, type SpyFrame,
@@ -169,7 +169,7 @@ describe('handPoint', () => {
 });
 
 describe('pickFrame', () => {
-  const spy = (over: Partial<Spy> = {}): Spy => ({ ...createSpy(0, 0, 40, 9, 480), ...over });
+  const spy = (over: Partial<Spy> = {}): Spy => ({ ...createSpy(0, 0, 40, 9, 480, levelRules(3).trapStockPerSpy), ...over });
 
   it('uses the fight frames when an opponent is in the room', () => {
     expect(pickFrame(spy(), true, false, 0)).toBe('fightStand');

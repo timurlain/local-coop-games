@@ -7,8 +7,8 @@ import { randomSeed } from '../../shared/rng';
 import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
 import { createGame } from './logic/generator';
-import { RULES } from './logic/rules';
-import type { EmbassySize, GameEvent, GameState, Spy, SpyInput } from './logic/state';
+import { LEVELS, levelRules } from './logic/rules';
+import type { GameEvent, GameState, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
 import { spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
@@ -17,17 +17,12 @@ import { LOW_TIME } from './render/trapulator';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { TITLE_CARD_TIME, renderTitleCard } from './render/title';
 import { renderGame } from './render/view';
+import { levelReadout, migrateSettings } from './settings';
 
 type Screen = 'menu' | 'title' | 'play' | 'pause' | 'victory' | 'result';
-interface Settings {
-  size: EmbassySize;
-  clock: number;
-  muted: boolean;
-}
 
 const T = cs.spy;
 const SETTINGS_KEY = 'spy-vs-spy/settings';
-const SIZES: readonly EmbassySize[] = ['mala', 'stredni', 'velka'];
 const STEP_INTERVAL = 0.3;
 
 const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
@@ -35,10 +30,7 @@ const canvas = $<HTMLCanvasElement>('game');
 const ctx = canvas.getContext('2d')!;
 const input = new InputManager(window);
 const sfx = new Sfx();
-const settings = loadJson<Settings>(SETTINGS_KEY, { size: 'stredni', clock: RULES.defaultClock, muted: false });
-if (!SIZES.includes(settings.size)) settings.size = 'stredni';
-if (!RULES.clockOptions.includes(settings.clock)) settings.clock = RULES.defaultClock;
-if (typeof settings.muted !== 'boolean') settings.muted = false;
+const settings = migrateSettings(loadJson<Record<string, unknown>>(SETTINGS_KEY, {}));
 sfx.muted = settings.muted;
 const urlSeed = parseSeed(new URLSearchParams(location.search).get('seed'));
 
@@ -76,24 +68,22 @@ function setupMenu(): void {
   // canvas text (title card) needs the art-deco faces loaded; the DOM menu loads them via CSS
   document.fonts?.load('14px "Limelight"').catch(() => undefined);
   document.fonts?.load('8px "Poiret One"').catch(() => undefined);
-  $('size-label').textContent = T.sizeLabel;
-  $('clock-label').textContent = T.clockLabel;
+  $('level-label').textContent = T.levelLabel;
   $('mute-label').textContent = T.mute;
   $('controls').textContent = T.controls;
   $('back').textContent = T.back;
   $('toosmall-title').textContent = T.tooSmall;
 
-  const size = $<HTMLSelectElement>('size');
-  for (const key of SIZES) size.add(new Option(T.sizes[key], key, false, key === settings.size));
-  size.onchange = () => {
-    settings.size = size.value as EmbassySize;
-    saveJson(SETTINGS_KEY, settings);
-  };
-
-  const clock = $<HTMLSelectElement>('clock');
-  for (const sec of RULES.clockOptions) clock.add(new Option(T.clockOption(sec), String(sec), false, sec === settings.clock));
-  clock.onchange = () => {
-    settings.clock = Number(clock.value);
+  const level = $<HTMLSelectElement>('level');
+  const readout = $('level-readout');
+  for (const n of LEVELS) {
+    const { cols, rows } = levelRules(n);
+    level.add(new Option(T.levelOption(n, cols, rows), String(n), false, n === settings.level));
+  }
+  readout.textContent = levelReadout(settings.level);
+  level.onchange = () => {
+    settings.level = Number(level.value);
+    readout.textContent = levelReadout(settings.level);
     saveJson(SETTINGS_KEY, settings);
   };
 
@@ -130,7 +120,7 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
-  state = createGame(urlSeed ?? randomSeed(), settings.size, settings.clock);
+  state = createGame(urlSeed ?? randomSeed(), settings.level);
   state.spies.forEach((spy, i) => {
     spy.prev = toSpyInput(input.get(slots[i]!));
   });

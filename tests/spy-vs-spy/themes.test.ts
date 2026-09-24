@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
 import {
-  DIRS, FIXTURE_KINDS, FURNITURE_KINDS, ROOM_THEMES, neighbor, type EmbassySize, type GameState,
+  DIRS, FIXTURE_KINDS, FURNITURE_KINDS, ROOM_THEMES, neighbor, type GameState,
 } from '../../src/games/spy-vs-spy/logic/state';
 import { cs } from '../../src/shared/i18n/cs';
-import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
+import { LEVELS, RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { DECOR_KINDS, DECOR_W, TALL_FURNITURE, THEME_FURNITURE } from '../../src/games/spy-vs-spy/logic/themes';
 
-const SIZES: EmbassySize[] = ['mala', 'stredni', 'velka'];
 const SEEDS = Array.from({ length: 200 }, (_, i) => i * 104729 + 3);
 
-function forAll(check: (s: GameState, size: EmbassySize) => void) {
-  for (const size of SIZES) for (const seed of SEEDS) check(createGame(seed, size), size);
+function forAll(check: (s: GameState, level: number) => void) {
+  for (const level of LEVELS) for (const seed of SEEDS) check(createGame(seed, level), level);
 }
 
 describe('room themes', () => {
@@ -70,9 +69,9 @@ describe('room themes', () => {
   });
 
   it('is deterministic per seed', () => {
-    for (const size of SIZES) {
-      const a = createGame(77, size).rooms.map((r) => r.theme);
-      expect(createGame(77, size).rooms.map((r) => r.theme)).toEqual(a);
+    for (const level of LEVELS) {
+      const a = createGame(77, level).rooms.map((r) => r.theme);
+      expect(createGame(77, level).rooms.map((r) => r.theme)).toEqual(a);
     }
   });
 });

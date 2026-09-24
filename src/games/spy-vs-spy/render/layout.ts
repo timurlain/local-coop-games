@@ -108,12 +108,28 @@ export function gridLayout(
   };
 }
 
-/** Mini-map grid in the Trapulator. */
-export function minimapLayout(cols: number, rows: number): GridLayout {
-  return gridLayout(cols, rows, DEV.minimap, { maxW: 7, maxH: 5, gap: 2, margin: 3 });
+/**
+ * `gridLayout` with the widest gap from `gaps` (widest first) whose cells are still at least `minH` tall; the
+ * narrowest gap when none is. Keeps the round-2 spacing on small embassies and squeezes the gaps on tall ones (6×6).
+ */
+function gridWithGap(
+  cols: number, rows: number, area: Rect, opts: { maxW: number; maxH: number; margin: number },
+  gaps: readonly number[], minH: number,
+): GridLayout {
+  let g = gridLayout(cols, rows, area, { ...opts, gap: gaps[0] });
+  for (const gap of gaps.slice(1)) {
+    if (g.cellH >= minH) break;
+    g = gridLayout(cols, rows, area, { ...opts, gap });
+  }
+  return g;
 }
 
-/** Big map grid, drawn instead of the room view. */
+/** Mini-map grid in the Trapulator. */
+export function minimapLayout(cols: number, rows: number): GridLayout {
+  return gridWithGap(cols, rows, DEV.minimap, { maxW: 7, maxH: 5, margin: 3 }, [2, 1], 3);
+}
+
+/** Big map grid, drawn instead of the room view; cells stay tall enough for the 8 px plane icon. */
 export function bigMapLayout(cols: number, rows: number): GridLayout {
-  return gridLayout(cols, rows, ROOM, { maxW: 34, maxH: 16, gap: 5, margin: 6 });
+  return gridWithGap(cols, rows, ROOM, { maxW: 34, maxH: 16, margin: 6 }, [5, 4, 3, 2], 9);
 }

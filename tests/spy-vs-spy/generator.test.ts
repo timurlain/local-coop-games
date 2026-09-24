@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, outwardDirs } from '../../src/games/spy-vs-spy/logic/generator';
-import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
+import { createGame, minFurniturePerRoom, outwardDirs } from '../../src/games/spy-vs-spy/logic/generator';
+import { LEVELS, RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import {
-  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, OPPOSITE, neighbor, type EmbassySize, type GameState,
+  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, OPPOSITE, neighbor, type GameState,
 } from '../../src/games/spy-vs-spy/logic/state';
 
-const SIZES: EmbassySize[] = ['mala', 'stredni', 'velka'];
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 7919 + 1);
 
-function forAll(check: (s: GameState, size: EmbassySize) => void) {
-  for (const size of SIZES) for (const seed of SEEDS) check(createGame(seed, size), size);
+function forAll(check: (s: GameState, level: number) => void) {
+  for (const level of LEVELS) for (const seed of SEEDS) check(createGame(seed, level), level);
 }
 
 function reachableCount(s: GameState): number {
@@ -28,8 +27,8 @@ function reachableCount(s: GameState): number {
 
 describe('createGame', () => {
   it('builds the configured grid', () => {
-    forAll((s, size) => {
-      const { cols, rows } = RULES.sizes[size];
+    forAll((s, level) => {
+      const { cols, rows } = levelRules(level);
       expect(s.cols).toBe(cols);
       expect(s.rows).toBe(rows);
       expect(s.rooms).toHaveLength(cols * rows);
@@ -87,7 +86,7 @@ describe('createGame', () => {
   });
 
   it('starts both spies together in the same room, facing each other, with full stock', () => {
-    forAll((s) => {
+    forAll((s, level) => {
       const [white, black] = s.spies;
       expect(white.room).toBe(black.room);
       expect(white.x).toBe(40);
@@ -100,24 +99,35 @@ describe('createGame', () => {
       expect(black.visited[black.room]).toBe(true);
       expect(white.visited.filter(Boolean)).toHaveLength(1);
       expect(black.visited.filter(Boolean)).toHaveLength(1);
-      expect(s.spies[0].stock).toEqual(RULES.trapStock);
-      expect(s.spies[0].clock).toBe(RULES.defaultClock);
+      for (const spy of s.spies) {
+        expect(spy.stock).toEqual(levelRules(level).trapStockPerSpy);
+        expect(spy.clock).toBe(levelRules(level).clockSeconds);
+      }
     });
   });
 
   it('picks the shared start room with the gameplay RNG, deterministically per seed', () => {
-    expect(createGame(123, 'stredni').spies[0].room).toBe(createGame(123, 'stredni').spies[0].room);
-    const rooms = SEEDS.map((seed) => createGame(seed, 'velka').spies[0].room);
+    expect(createGame(123, 3).spies[0].room).toBe(createGame(123, 3).spies[0].room);
+    const rooms = SEEDS.map((seed) => createGame(seed, 5).spies[0].room);
     expect(new Set(rooms).size).toBeGreaterThan(1);
   });
 
   it('is deterministic per seed', () => {
-    expect(JSON.stringify(createGame(123, 'stredni'))).toBe(JSON.stringify(createGame(123, 'stredni')));
-    expect(JSON.stringify(createGame(123, 'stredni'))).not.toBe(JSON.stringify(createGame(124, 'stredni')));
+    expect(JSON.stringify(createGame(123, 3))).toBe(JSON.stringify(createGame(123, 3)));
+    expect(JSON.stringify(createGame(123, 3))).not.toBe(JSON.stringify(createGame(124, 3)));
   });
 
-  it('uses the given clock', () => {
-    expect(createGame(1, 'mala', 300).spies[1].clock).toBe(300);
+  it('gives each spy its own copy of the stock', () => {
+    const s = createGame(1, 8);
+    s.spies[0].stock.bomba--;
+    expect(s.spies[1].stock.bomba).toBe(levelRules(8).trapStockPerSpy.bomba);
+    expect(levelRules(8).trapStockPerSpy.bomba).toBe(8);
+  });
+
+  it('rejects a level outside 1-8', () => {
+    expect(() => createGame(1, 0)).toThrow();
+    expect(() => createGame(1, 9)).toThrow();
+    expect(() => createGame(1, 2.5)).toThrow();
   });
 });
 
@@ -173,8 +183,53 @@ describe('remedy fixtures', () => {
   });
 
   it('is deterministic per seed', () => {
-    const a = createGame(55, 'stredni');
-    const b = createGame(55, 'stredni');
+    const a = createGame(55, 3);
+    const b = createGame(55, 3);
     expect(a.furniture.map((f) => [f.kind, f.source])).toEqual(b.furniture.map((f) => [f.kind, f.source]));
+  });
+});
+
+describe('level table (spec §4)', () => {
+  it('has levels 1-8 with the spec grid, clock and stock', () => {
+    const rows = LEVELS.map((l) => {
+      const r = levelRules(l);
+      const st = r.trapStockPerSpy;
+      return `${l} ${r.cols}x${r.rows} ${r.clockSeconds / 60}min ${st.bomba}/${st.pruzina}/${st.elektrina}/${st.pistole}/${st.casovana}`;
+    });
+    expect(rows).toEqual([
+      '1 3x2 5min 1/1/1/1/1',
+      '2 3x3 6min 2/2/1/1/1',
+      '3 4x3 8min 2/2/2/2/1',
+      '4 4x4 10min 3/3/2/2/2',
+      '5 5x4 12min 3/3/3/3/2',
+      '6 6x4 15min 4/4/3/3/2',
+      '7 6x5 18min 5/5/4/4/2',
+      '8 6x6 24min 8/8/8/8/3',
+    ]);
+    expect(RULES.levels).toHaveLength(8);
+  });
+
+  it('totals the traps of both spies as in the spec', () => {
+    const totals = LEVELS.map((l) => 2 * Object.values(levelRules(l).trapStockPerSpy).reduce((a, b) => a + b, 0));
+    expect(totals).toEqual([10, 14, 18, 24, 28, 32, 40, 70]);
+  });
+
+  it('gives tiny embassies enough furniture for every fixture, secret and the kufrik', () => {
+    // level 1: 6 rooms, 2 fixtures × 4 kinds + 4 secrets + kufrik = 13 pieces > 6 × 2
+    expect(minFurniturePerRoom(6)).toBe(3);
+    for (const seed of SEEDS) {
+      const s = createGame(seed, 1);
+      for (const r of s.rooms) expect(r.furniture.length).toBeGreaterThanOrEqual(3);
+    }
+    // every other level keeps the round-2 minimum of 2
+    for (const l of LEVELS.slice(1)) {
+      const { cols, rows } = levelRules(l);
+      expect(minFurniturePerRoom(cols * rows), `level ${l}`).toBe(RULES.furniturePerRoom.min);
+    }
+    expect(() => minFurniturePerRoom(2)).toThrow();
+  });
+
+  it('defaults to a valid level', () => {
+    expect(LEVELS).toContain(RULES.defaultLevel);
   });
 });

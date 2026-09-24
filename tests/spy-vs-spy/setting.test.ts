@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { LEVELS } from '../../src/games/spy-vs-spy/logic/rules';
 import {
-  FURNITURE_KINDS, HOSTS, ROOM_THEMES, YEAR_MAX, YEAR_MIN, type EmbassySize, type GameState,
+  FURNITURE_KINDS, HOSTS, ROOM_THEMES, YEAR_MAX, YEAR_MIN, type GameState,
 } from '../../src/games/spy-vs-spy/logic/state';
 import { DECOR_KINDS, THEME_FURNITURE, flagOf } from '../../src/games/spy-vs-spy/logic/themes';
 import { TITLE_CARD_TIME, titleCardAlpha, titleCardLines } from '../../src/games/spy-vs-spy/render/title';
 import { cs } from '../../src/shared/i18n/cs';
 
-const SIZES: EmbassySize[] = ['mala', 'stredni', 'velka'];
+/** Round-2 embassy sizes and the levels with the same grid: mala 3×3, stredni 4×3, velka 5×4. */
+const LEVEL_OF_SIZE: Record<string, number> = { mala: 2, stredni: 3, velka: 5 };
 const SEEDS = Array.from({ length: 200 }, (_, i) => i * 7919 + 11);
 
 /**
@@ -39,9 +41,9 @@ const RECORDED: Record<string, string> = {
 
 describe('host embassy and year', () => {
   it('picks a known host and a year in 1929-1937', () => {
-    for (const size of SIZES) {
+    for (const level of LEVELS) {
       for (const seed of SEEDS) {
-        const s = createGame(seed, size);
+        const s = createGame(seed, level);
         expect(HOSTS).toContain(s.host);
         expect(Number.isInteger(s.year)).toBe(true);
         expect(s.year).toBeGreaterThanOrEqual(1929);
@@ -54,8 +56,8 @@ describe('host embassy and year', () => {
   it('keeps a German embassy before 1933, while the Weimar black-red-gold flag was the flag', () => {
     let german = 0;
     for (const seed of SEEDS) {
-      for (const size of SIZES) {
-        const s = createGame(seed, size);
+      for (const level of LEVELS) {
+        const s = createGame(seed, level);
         if (s.host !== 'de') continue;
         german++;
         expect(s.year).toBeLessThanOrEqual(1932);
@@ -65,10 +67,10 @@ describe('host embassy and year', () => {
   });
 
   it('is deterministic per seed', () => {
-    for (const size of SIZES) {
+    for (const level of LEVELS) {
       for (const seed of SEEDS.slice(0, 20)) {
-        const a = createGame(seed, size);
-        const b = createGame(seed, size);
+        const a = createGame(seed, level);
+        const b = createGame(seed, level);
         expect([b.host, b.year]).toEqual([a.host, a.year]);
       }
     }
@@ -78,7 +80,7 @@ describe('host embassy and year', () => {
     const hosts = new Set<string>();
     const years = new Set<number>();
     for (const seed of SEEDS) {
-      const s = createGame(seed, 'mala');
+      const s = createGame(seed, 2);
       hosts.add(s.host);
       years.add(s.year);
     }
@@ -90,7 +92,7 @@ describe('host embassy and year', () => {
     const now: Record<string, string> = {};
     for (const key of Object.keys(RECORDED)) {
       const [size, seed] = key.split(':');
-      now[key] = gameplayFingerprint(createGame(Number(seed), size as EmbassySize));
+      now[key] = gameplayFingerprint(createGame(Number(seed), LEVEL_OF_SIZE[size]));
     }
     expect(now).toEqual(RECORDED);
   });
@@ -126,9 +128,9 @@ describe('flags on the walls', () => {
     let rooms = 0;
     let host = 0;
     let other = 0;
-    for (const size of SIZES) {
+    for (const level of LEVELS) {
       for (const seed of SEEDS) {
-        const s = createGame(seed, size);
+        const s = createGame(seed, level);
         for (const r of s.rooms) {
           rooms++;
           if (r.decor.some((d) => d.kind === flagOf(s.host))) host++;
@@ -143,7 +145,7 @@ describe('flags on the walls', () => {
 
   it('never hangs two flags in one room', () => {
     for (const seed of SEEDS) {
-      for (const r of createGame(seed, 'velka').rooms) {
+      for (const r of createGame(seed, 5).rooms) {
         expect(r.decor.filter((d) => d.kind.startsWith('vlajka_')).length).toBeLessThanOrEqual(1);
       }
     }

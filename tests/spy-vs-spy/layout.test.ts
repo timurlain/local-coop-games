@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
+import { LEVELS, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import {
   DEV, DEVICE, FRAME, HALF_H, HALF_W, ROOM, UNDER, UNDER_PARTS,
   bigMapLayout, contains, minimapLayout, overlaps, type GridLayout, type Rect,
@@ -59,21 +59,36 @@ function gridFits(g: GridLayout, cols: number, rows: number, area: Rect, margin:
 }
 
 describe('map layouts', () => {
-  for (const [size, { cols, rows }] of Object.entries(RULES.sizes)) {
-    it(`mini-map fits the Trapulator slot for ${size}`, () => {
+  for (const level of LEVELS) {
+    const { cols, rows } = levelRules(level);
+    it(`mini-map fits the Trapulator slot for level ${level} (${cols}×${rows})`, () => {
       const g = minimapLayout(cols, rows);
       gridFits(g, cols, rows, DEV.minimap, 3);
-      expect(g.cellW).toBe(7);
-      expect(g.cellH).toBe(5);
-      expect(g.gap).toBe(2);
+      if (rows <= 4) {
+        // the round-2 look: 7×5 cells, 2 px apart
+        expect(g.cellW).toBe(7);
+        expect(g.cellH).toBe(5);
+        expect(g.gap).toBe(2);
+      } else {
+        expect(g.cellW).toBeGreaterThanOrEqual(4);
+        expect(g.cellH).toBeGreaterThanOrEqual(3);
+        expect(g.gap).toBeGreaterThanOrEqual(1);
+      }
+      expect(g.cellW).toBeGreaterThan(g.cellH);
     });
 
-    it(`big map fits the room view for ${size}, with cells larger than the mini-map`, () => {
+    it(`big map fits the room view for level ${level} (${cols}×${rows}), with cells larger than the mini-map`, () => {
       const g = bigMapLayout(cols, rows);
       gridFits(g, cols, rows, ROOM, 6);
       expect(g.cellW).toBeGreaterThan(14);
       expect(g.cellH).toBeGreaterThan(8);
       expect(g.cellW).toBeGreaterThan(g.cellH);
+      expect(g.gap).toBeGreaterThanOrEqual(2);
     });
   }
+
+  it('keeps the round-2 big-map spacing where it fits', () => {
+    expect(bigMapLayout(5, 4).gap).toBe(5);
+    expect(bigMapLayout(6, 6).gap).toBeLessThan(5);
+  });
 });

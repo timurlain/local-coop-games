@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { kill, updateDead } from '../../src/games/spy-vs-spy/logic/death';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
-import { kufrik, openGame, place, remedy, secret } from './fixtures';
+import { OPEN_RULES, kufrik, openGame, place, remedy, secret } from './fixtures';
 
 describe('kill', () => {
   it('marks the spy dead, costs 30 s and emits died', () => {
@@ -11,7 +11,7 @@ describe('kill', () => {
     const ev: GameEvent[] = [];
     kill(s, spy, 'bomba', ev);
     expect(spy.mode).toBe('dead');
-    expect(spy.clock).toBe(RULES.defaultClock - RULES.deathPenalty);
+    expect(spy.clock).toBe(OPEN_RULES.clockSeconds - RULES.deathPenalty);
     expect(spy.deathCause).toBe('bomba');
     expect(spy.modeTimer).toBe(RULES.respawnTime);
     expect(ev).toEqual([{ type: 'died', spy: 0, cause: 'bomba' }]);
@@ -30,7 +30,7 @@ describe('kill', () => {
     kill(s, s.spies[0], 'bomba', ev);
     kill(s, s.spies[0], 'bomba', ev);
     expect(ev).toHaveLength(1);
-    expect(s.spies[0].clock).toBe(RULES.defaultClock - RULES.deathPenalty);
+    expect(s.spies[0].clock).toBe(OPEN_RULES.clockSeconds - RULES.deathPenalty);
   });
 
   it('clears menu, armed trap and pending hold', () => {

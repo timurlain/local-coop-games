@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
-import { atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, run, secret } from './fixtures';
+import { OPEN_RULES, atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, run, secret } from './fixtures';
 
 const IDLE = input();
 
@@ -9,7 +9,7 @@ describe('clock', () => {
   it('runs down while playing', () => {
     const s = openGame();
     run(s, [IDLE, IDLE], 1, 0.25);
-    expect(s.spies[0].clock).toBe(RULES.defaultClock - 1);
+    expect(s.spies[0].clock).toBe(OPEN_RULES.clockSeconds - 1);
   });
 
   it('times a spy out, drops the hand item, and the other keeps playing', () => {

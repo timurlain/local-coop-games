@@ -1,28 +1,31 @@
 import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
-import { RULES } from './rules';
+import { RULES, levelRules } from './rules';
 import { THEME_FURNITURE, assignThemes, decorate, pickHost } from './themes';
 import {
   DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, NO_INPUT, OPPOSITE, SECRETS, neighbor,
-  type Dir, type EmbassySize, type FixtureKind, type Furniture, type GameState, type PlayerId, type Room, type Spy,
+  type Dir, type FixtureKind, type Furniture, type GameState, type PlayerId, type Room, type Spy, type TrapKind,
 } from './state';
 
 const LOOKS_SALT = 0x5eed7e3a;
 
-export function createSpy(id: PlayerId, room: number, x: number, roomCount: number, clock: number): Spy {
+export function createSpy(
+  id: PlayerId, room: number, x: number, roomCount: number, clock: number, stock: Readonly<Record<TrapKind, number>>,
+): Spy {
   const visited = Array<boolean>(roomCount).fill(false);
   visited[room] = true;
   return {
     id, room, x, z: RULES.roomD / 2, facing: id === 0 ? 1 : -1,
     hand: null, clock, health: RULES.health, sinceHit: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
-    menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...RULES.trapStock },
+    menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...stock },
     swingCooldown: 0, swingAnim: 0, blocking: false, lockedMsg: 0,
     visited, prev: { ...NO_INPUT },
   };
 }
 
-export function createGame(seed: number, size: EmbassySize, clock: number = RULES.defaultClock): GameState {
-  const { cols, rows } = RULES.sizes[size];
+/** A new match on `level` (1-8, spec §4): grid, clock and trap stock come from `RULES.levels`. */
+export function createGame(seed: number, level: number): GameState {
+  const { cols, rows, clockSeconds, trapStockPerSpy } = levelRules(level);
   // Looks come from their own stream so the gameplay stream (doors, slots, hidden things) is untouched.
   const looks = makeRng((seed ^ LOOKS_SALT) >>> 0);
   const themes = assignThemes({ cols, rows }, looks);
@@ -37,18 +40,17 @@ export function createGame(seed: number, size: EmbassySize, clock: number = RULE
       });
     }
   }
-  // Fixtures (4 kinds x fixtureCount) + 4 secrets + kufrik all need distinct furniture pieces.
-  const neededPieces = FIXTURE_KINDS.length * fixtureCount(rooms.length) + SECRETS.length + 1;
-  if (rooms.length * RULES.furniturePerRoom.min < neededPieces) {
-    throw new Error(`embassy ${size} too small: needs room for ${neededPieces} hidden things`);
-  }
+  const minPieces = minFurniturePerRoom(rooms.length);
   const state: GameState = {
     seed, host, year, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
-    spies: [createSpy(0, 0, 40, rooms.length, clock), createSpy(1, 0, 160, rooms.length, clock)],
+    spies: [
+      createSpy(0, 0, 40, rooms.length, clockSeconds, trapStockPerSpy),
+      createSpy(1, 0, 160, rooms.length, clockSeconds, trapStockPerSpy),
+    ],
     rng: makeRng(seed), time: 0, tick: 0, result: null,
   };
   carveDoors(state);
-  placeFurniture(state);
+  placeFurniture(state, minPieces);
   placeFixtures(state);
   placeExit(state);
   placeSpawn(state);
@@ -97,8 +99,22 @@ function carveDoors(state: GameState): void {
   }
 }
 
-function placeFurniture(state: GameState): void {
-  const { min, max } = RULES.furniturePerRoom;
+/**
+ * Fewest furniture pieces per room so that fixtures (4 kinds × fixtureCount), 4 secrets and the kufřík always get
+ * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (level 1's 3×2 needs 3). Throws when
+ * even a full room of `max` pieces is not enough.
+ */
+export function minFurniturePerRoom(roomCount: number): number {
+  const needed = FIXTURE_KINDS.length * fixtureCount(roomCount) + SECRETS.length + 1;
+  const min = Math.max(RULES.furniturePerRoom.min, Math.ceil(needed / roomCount));
+  if (min > RULES.furniturePerRoom.max) {
+    throw new Error(`embassy of ${roomCount} rooms too small: needs room for ${needed} hidden things`);
+  }
+  return min;
+}
+
+function placeFurniture(state: GameState, min: number): void {
+  const { max } = RULES.furniturePerRoom;
   for (const room of state.rooms) {
     const count = min + randInt(state.rng, max - min + 1);
     const slots = shuffle(state.rng, RULES.slotX).slice(0, count).sort((a, b) => a - b);

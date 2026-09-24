@@ -1,13 +1,18 @@
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
-import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
+import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
 import {
   DIRS, NO_INPUT, neighbor,
   type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing,
 } from '../../src/games/spy-vs-spy/logic/state';
 
+/** Level of `openGame`: the one with the 3×3 grid. */
+export const OPEN_LEVEL = 2;
+/** Clock and stock every spy of `openGame` starts with. */
+export const OPEN_RULES = levelRules(OPEN_LEVEL);
+
 /**
- * 3×3 embassy with every internal door open, the exit on room 2's east wall,
+ * 3×3 embassy (level 2) with every internal door open, the exit on room 2's east wall,
  * nothing hidden, no sources, no traps. Spy 0 in room 0, spy 1 in room 8, apart
  * (createGame's own R3 shared start would otherwise put both in the same room) —
  * most tests here only place one spy and rely on the other being harmlessly far away.
@@ -17,7 +22,7 @@ import {
  *   6 7 8
  */
 export function openGame(): GameState {
-  const s = createGame(1, 'mala');
+  const s = createGame(1, OPEN_LEVEL);
   for (const r of s.rooms) {
     for (const d of DIRS) r.doors[d] = neighbor(s, r.id, d) !== null;
     r.exit = null;

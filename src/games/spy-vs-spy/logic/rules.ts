@@ -1,4 +1,17 @@
-import type { EmbassySize, TrapKind } from './state';
+import type { TrapKind } from './state';
+
+/** One difficulty level (spec §4): embassy grid, clock per spy and each spy's starting trap stock. */
+export interface LevelRules {
+  cols: number;
+  rows: number;
+  clockSeconds: number;
+  trapStockPerSpy: Readonly<Record<TrapKind, number>>;
+}
+
+const level = (
+  cols: number, rows: number, minutes: number,
+  [bomba, pruzina, elektrina, pistole, casovana]: readonly [number, number, number, number, number],
+): LevelRules => ({ cols, rows, clockSeconds: minutes * 60, trapStockPerSpy: { bomba, pruzina, elektrina, pistole, casovana } });
 
 /** Every tunable number lives here. Units: logic units, seconds. */
 export const RULES = {
@@ -20,7 +33,6 @@ export const RULES = {
   extraDoorChance: 0.5,
   searchTime: 0.5,
   hideHold: 0.4,
-  trapStock: { bomba: 3, pruzina: 3, elektrina: 3, pistole: 3, casovana: 2 } as Readonly<Record<TrapKind, number>>,
   timeBombFuse: 15,
   /** clock cost to the placer of any successfully-placed trap (incl. the time bomb) */
   trapSetCost: 3,
@@ -40,12 +52,29 @@ export const RULES = {
   /** portion of swingAnim spent winding up before the strike lands; rendering only */
   swingWindup: 0.15,
   knockback: 12,
-  clockOptions: [300, 480, 720] as readonly number[],
-  defaultClock: 480,
   lockedMsgTime: 1,
-  sizes: {
-    mala: { cols: 3, rows: 3 },
-    stredni: { cols: 4, rows: 3 },
-    velka: { cols: 5, rows: 4 },
-  } as Readonly<Record<EmbassySize, { cols: number; rows: number }>>,
+  /** Levels 1-8, index = level - 1 (spec §4). Stock order: bomba/pružina/elektřina/pistole/časovaná. */
+  levels: [
+    level(3, 2, 5, [1, 1, 1, 1, 1]),
+    level(3, 3, 6, [2, 2, 1, 1, 1]),
+    level(4, 3, 8, [2, 2, 2, 2, 1]),
+    level(4, 4, 10, [3, 3, 2, 2, 2]),
+    level(5, 4, 12, [3, 3, 3, 3, 2]),
+    level(6, 4, 15, [4, 4, 3, 3, 2]),
+    level(6, 5, 18, [5, 5, 4, 4, 2]),
+    level(6, 6, 24, [8, 8, 8, 8, 3]),
+  ] as readonly LevelRules[],
+  defaultLevel: 3,
 };
+
+/** Every playable level, 1-based. */
+export const LEVELS: readonly number[] = RULES.levels.map((_, i) => i + 1);
+
+export function isLevel(n: unknown): n is number {
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= RULES.levels.length;
+}
+
+export function levelRules(n: number): LevelRules {
+  if (!isLevel(n)) throw new Error(`no level ${n}`);
+  return RULES.levels[n - 1];
+}

@@ -6,7 +6,7 @@ import {
 import {
   doorKey, MENU_MAP, type GameEvent, type GameState, type Spy, type SpyInput,
 } from '../../src/games/spy-vs-spy/logic/state';
-import { atFurniture, firstFurniture, input, openGame, place, remedy } from './fixtures';
+import { OPEN_RULES, atFurniture, firstFurniture, input, openGame, place, remedy } from './fixtures';
 
 function menu(s: GameState, spy: Spy, inp: SpyInput, ev: GameEvent[]) {
   updateTrapMenu(s, spy, inp, ev);
@@ -125,7 +125,7 @@ describe('placing traps', () => {
     const ev: GameEvent[] = [];
     placeFurnitureTrap(spy, f, 'bomba', ev);
     expect(f.trap).toEqual({ kind: 'bomba', owner: 0 });
-    expect(spy.stock.bomba).toBe(RULES.trapStock.bomba - 1);
+    expect(spy.stock.bomba).toBe(OPEN_RULES.trapStockPerSpy.bomba - 1);
     expect(spy.armed).toBeNull();
     expect(spy.clock).toBe(clock - RULES.trapSetCost);
     expect(ev).toEqual([{ type: 'trapSet', spy: 0, trap: 'bomba' }]);
@@ -141,7 +141,7 @@ describe('placing traps', () => {
     const ev: GameEvent[] = [];
     placeFurnitureTrap(spy, f, 'bomba', ev);
     expect(f.trap).toEqual({ kind: 'pruzina', owner: 1 });
-    expect(spy.stock.bomba).toBe(RULES.trapStock.bomba);
+    expect(spy.stock.bomba).toBe(OPEN_RULES.trapStockPerSpy.bomba);
     expect(spy.armed).toBe('bomba');
     expect(spy.clock).toBe(clock);
     expect(ev).toEqual([{ type: 'trapFailed', spy: 0 }]);
@@ -154,7 +154,7 @@ describe('placing traps', () => {
     const clock = spy.clock;
     placeDoorTrap(s, spy, doorKey(4, 1), 'elektrina', []);
     expect(s.doorTraps[doorKey(1, 4)]).toEqual({ kind: 'elektrina', owner: 0 });
-    expect(spy.stock.elektrina).toBe(RULES.trapStock.elektrina - 1);
+    expect(spy.stock.elektrina).toBe(OPEN_RULES.trapStockPerSpy.elektrina - 1);
     expect(spy.clock).toBe(clock - RULES.trapSetCost);
   });
 
@@ -220,7 +220,7 @@ describe('Trapulator menu', () => {
     menu(s, spy, input({ trap: true }), []); // release Akce
     menu(s, spy, input({ trap: true, action: true }), []); // press Akce again
     expect(spy.armed).toBeNull();
-    expect(spy.stock.bomba).toBe(RULES.trapStock.bomba);
+    expect(spy.stock.bomba).toBe(OPEN_RULES.trapStockPerSpy.bomba);
     expect(spy.clock).toBe(clock);
   });
 
@@ -231,7 +231,7 @@ describe('Trapulator menu', () => {
     const clock = spy.clock;
     menu(s, spy, input({ trap: true, action: true }), []);
     expect(s.timeBombs).toEqual([{ room: 4, x: 80, z: 30, fuse: RULES.timeBombFuse, owner: 0 }]);
-    expect(spy.stock.casovana).toBe(RULES.trapStock.casovana - 1);
+    expect(spy.stock.casovana).toBe(OPEN_RULES.trapStockPerSpy.casovana - 1);
     expect(spy.armed).toBeNull();
     expect(spy.clock).toBe(clock - RULES.trapSetCost);
   });

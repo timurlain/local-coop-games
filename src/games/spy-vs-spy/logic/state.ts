@@ -2,7 +2,6 @@ import type { RngState } from '../../../shared/rng';
 
 export type PlayerId = 0 | 1;
 export type Dir = 'N' | 'S' | 'E' | 'W';
-export type EmbassySize = 'mala' | 'stredni' | 'velka';
 export type SecretKind = 'klic' | 'penize' | 'pas' | 'plany';
 export type RemedyKind = 'voda' | 'kleste' | 'destnik' | 'nuzky';
 export type FurnitureTrapKind = 'bomba' | 'pruzina';
