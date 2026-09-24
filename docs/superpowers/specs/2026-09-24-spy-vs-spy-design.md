@@ -166,7 +166,11 @@ Bindings use `KeyboardEvent.code` (physical keys), so Czech layout works.
 - HUD per player: clock (mm:ss), hand item icon, kufřík contents (4 slots), mini-map of visited rooms with current room marked. Opponent is **not** shown on the mini-map.
 - Sprites: pixel strings in TS + shared palette. Frames: idle, walk (4), search, swing, block, 4 deaths, angel. Spies are white and black with pointy noses.
 - Trapulator: a small panel in the player's half with 5 trap icons and stock counts.
-- Screens: Launcher → Menu (size, clock, join, mute) → Game → Pause → Result (winner, time left) → Odveta / Menu.
+- Screens: Launcher → Menu (size, clock, join, mute) → Game → Pause → **Victory scene** (win only) → Result (winner, time left) → Odveta / Menu.
+- **Victory scene** (~6 s, Akce skips after 1 s), still split screen:
+  - Winner's half: outside the embassy on the airport runway, plane waiting. The winner walks out of the exit door, raises the kufřík, bounces and laughs at the other spy — speech bubble „HA HA HA!" + synth laugh.
+  - Loser's half: the loser's room; the loser trembles („!"), and an angry mob (pitchforks, torches, waving arms) storms in from both sides and closes in around them; the screen shakes and „CHYŤTE HO!" appears, with a crowd-rumble sound.
+  - A draw has no victory scene.
 
 ## 6. Audio
 

@@ -1,0 +1,88 @@
+import { describe, expect, it } from 'vitest';
+import { shade } from '../../src/games/spy-vs-spy/render/draw';
+import { project } from '../../src/games/spy-vs-spy/render/geometry';
+import { formatClock } from '../../src/games/spy-vs-spy/render/hud';
+import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type SpyFrame } from '../../src/games/spy-vs-spy/render/sprite-data';
+import { handPoint } from '../../src/games/spy-vs-spy/render/sprites';
+
+describe('project', () => {
+  it('maps the floor corners onto the trapezoid', () => {
+    expect(project(0, 0)).toEqual({ sx: 60, sy: 46 });
+    expect(project(200, 0)).toEqual({ sx: 260, sy: 46 });
+    expect(project(0, 40)).toEqual({ sx: 20, sy: 78 });
+    expect(project(200, 40)).toEqual({ sx: 300, sy: 78 });
+    expect(project(100, 20)).toEqual({ sx: 160, sy: 62 });
+  });
+});
+
+describe('shade', () => {
+  it('scales a hex colour', () => {
+    expect(shade('#808080', 0.5)).toBe('rgb(64,64,64)');
+  });
+});
+
+function checkSprite(name: string, rows: readonly string[], palette: Record<string, string>) {
+  const w = rows[0].length;
+  for (const row of rows) {
+    expect(row.length, `${name} row width`).toBe(w);
+    for (const ch of row) if (ch !== '.') expect(palette[ch], `${name} char ${ch}`).toBeDefined();
+  }
+}
+
+describe('sprite data', () => {
+  it('spy frames are rectangular and use only palette characters', () => {
+    for (const [frame, rows] of Object.entries(SPY_FRAMES)) {
+      for (const [pal, colours] of Object.entries(SPY_PALETTES)) checkSprite(`${frame}/${pal}`, rows, colours);
+      expect(rows[0].length, `${frame} width`).toBe(21);
+      expect(rows, `${frame} height`).toHaveLength(24);
+    }
+  });
+
+  it('has exactly the planned spy frames', () => {
+    expect(Object.keys(SPY_FRAMES).sort()).toEqual(
+      ['stand', 'walk1', 'walk2', 'walk3', 'walk4', 'search', 'swing1', 'swing2', 'block', 'laugh1', 'laugh2'].sort(),
+    );
+  });
+
+  it('every spy frame has a hand point inside the image', () => {
+    expect(Object.keys(SPY_HANDS).sort()).toEqual(Object.keys(SPY_FRAMES).sort());
+    for (const [frame, [x, y]] of Object.entries(SPY_HANDS)) {
+      expect(Number.isInteger(x) && x >= 0 && x < 21, `${frame} hand x`).toBe(true);
+      expect(Number.isInteger(y) && y >= 0 && y < 24, `${frame} hand y`).toBe(true);
+      expect(SPY_FRAMES[frame as SpyFrame][y][x], `${frame} hand pixel is drawn`).not.toBe('.');
+    }
+  });
+
+  it('icons are 8×8 and use only palette characters', () => {
+    for (const [name, rows] of Object.entries(ICONS)) {
+      checkSprite(name, rows, ICON_PALETTE);
+      expect(rows).toHaveLength(8);
+      expect(rows[0].length).toBe(8);
+    }
+  });
+});
+
+describe('handPoint', () => {
+  it('maps the stand hand to screen pixels, mirroring x when flipped', () => {
+    const [px, py] = SPY_HANDS.stand;
+    const x = 123.4;
+    const y = 70.6;
+    const left = Math.round(x - 21 / 2);
+    const top = Math.round(y - 24);
+    const plain = handPoint('stand', x, y);
+    const flipped = handPoint('stand', x, y, true);
+    expect(plain.hx).toBe(left + px);
+    expect(flipped.hx).toBe(left + (21 - 1 - px));
+    expect(plain.hy).toBe(top + py);
+    expect(flipped.hy).toBe(plain.hy);
+  });
+});
+
+describe('formatClock', () => {
+  it('shows m:ss rounded up', () => {
+    expect(formatClock(480)).toBe('8:00');
+    expect(formatClock(59.2)).toBe('1:00');
+    expect(formatClock(58.9)).toBe('0:59');
+    expect(formatClock(0)).toBe('0:00');
+  });
+});
