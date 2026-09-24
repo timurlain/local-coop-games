@@ -166,6 +166,13 @@ describe('Czech texts for the setting', () => {
     expect(cs.spy.titleCard('pl', 1934)).toBe('Velvyslanectví Polské republiky · Praha 1934');
   });
 
+  it('names Austria by year: the republic through 1933, the Ständestaat from 1934', () => {
+    expect(cs.spy.hostName('at', 1932)).toBe('Velvyslanectví Rakouské republiky');
+    expect(cs.spy.hostName('at', 1935)).toBe('Velvyslanectví Spolkového státu Rakousko');
+    expect(cs.spy.titleCard('at', 1932)).toBe('Velvyslanectví Rakouské republiky · Praha 1932');
+    expect(cs.spy.titleCard('at', 1935)).toBe('Velvyslanectví Spolkového státu Rakousko · Praha 1935');
+  });
+
   it('names every furniture kind', () => {
     expect(Object.keys(cs.spy.furniture).sort()).toEqual([...FURNITURE_KINDS].sort());
     for (const name of Object.values(cs.spy.furniture)) expect(name.length).toBeGreaterThan(0);
@@ -176,6 +183,8 @@ describe('title card', () => {
   it('shows the embassy and „Praha <year>"', () => {
     expect(titleCardLines('pl', 1934)).toEqual(['Velvyslanectví Polské republiky', 'Praha 1934']);
     expect(titleCardLines('de', 1931)[0]).toBe('Velvyslanectví Německé říše (Výmarská republika)');
+    expect(titleCardLines('at', 1932)[0]).toBe('Velvyslanectví Rakouské republiky');
+    expect(titleCardLines('at', 1935)[0]).toBe('Velvyslanectví Spolkového státu Rakousko');
   });
 
   it('fades in, holds for about two seconds and fades out', () => {

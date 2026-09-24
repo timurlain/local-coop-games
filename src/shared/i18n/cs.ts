@@ -63,10 +63,16 @@ export const cs = {
       pl: 'Velvyslanectví Polské republiky',
       de: 'Velvyslanectví Německé říše (Výmarská republika)',
       hu: 'Velvyslanectví Maďarského království',
+      /** Rakouská republika, ≤ 1933 (before the Ständestaat). See `atStandestaat` for 1934+. */
       at: 'Velvyslanectví Rakouské republiky',
     },
+    /** Austria became the Ständestaat in 1934; the embassy's name changes with it (1934–1937). */
+    atStandestaat: 'Velvyslanectví Spolkového státu Rakousko',
+    /** The embassy name for `host`, accounting for Austria's 1934 regime change. */
+    hostName: (host: 'cs' | 'pl' | 'de' | 'hu' | 'at', year: number): string =>
+      host === 'at' && year >= 1934 ? cs.spy.atStandestaat : cs.spy.hosts[host],
     /** Match title card, e.g. „Velvyslanectví Polské republiky · Praha 1934". */
-    titleCard: (host: 'cs' | 'pl' | 'de' | 'hu' | 'at', year: number) => `${cs.spy.hosts[host]} · ${cs.spy.city} ${year}`,
+    titleCard: (host: 'cs' | 'pl' | 'de' | 'hu' | 'at', year: number) => `${cs.spy.hostName(host, year)} · ${cs.spy.city} ${year}`,
     city: 'Praha',
     subtitle: 'Praha, 193x',
     furniture: {

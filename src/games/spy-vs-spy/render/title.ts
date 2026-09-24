@@ -23,7 +23,7 @@ const NIGHT = '#15110c';
 
 /** The two lines of the card: the embassy, and „Praha <year>". */
 export function titleCardLines(host: HostCountry, year: number): [string, string] {
-  return [T.hosts[host], `${T.city} ${year}`];
+  return [T.hostName(host, year), `${T.city} ${year}`];
 }
 
 /** Opacity of the card `t` seconds after it appeared: quick fade in, hold, fade out at the end. */
