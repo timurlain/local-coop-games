@@ -112,6 +112,9 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
   state = createGame(urlSeed ?? randomSeed(), settings.size, settings.clock);
+  state.spies.forEach((spy, i) => {
+    spy.prev = toSpyInput(input.get(slots[i]!));
+  });
   stepTimers[0] = 0;
   stepTimers[1] = 0;
   screen = 'play';
