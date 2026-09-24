@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import {
-  EFFECT_TIME, activeEffects, effectPose, effectsIn, spawnEffects, type EffectQueue,
+  EFFECT_TIME, LAUGH_TIME, activeEffects, effectPose, effectsIn, laugher, spawnEffects, type EffectQueue,
 } from '../../src/games/spy-vs-spy/render/effects';
+import { pickFrame } from '../../src/games/spy-vs-spy/render/spy';
 import { atFurniture, firstFurniture, openGame, place, remedy, secret } from './fixtures';
 
 function setup() {
@@ -138,5 +139,64 @@ describe('effectPose', () => {
     const q: EffectQueue = [];
     spawnEffects(q, s, [ev], 0);
     expect(effectPose(q, 1, 0.1)).toBeNull();
+  });
+});
+
+describe('laugh on a trap death (spec §3)', () => {
+  /** Spy 0 died of `cause`; spy 1 stands in room 8. */
+  function death(cause: 'bomba' | 'pruzina' | 'elektrina' | 'pistole' | 'casovana' | 'fight') {
+    const s = openGame();
+    s.spies[0].mode = 'dead';
+    const ev: GameEvent = { type: 'died', spy: 0, cause, ...(cause === 'fight' ? { killer: 1 as const } : {}) };
+    return { s, ev };
+  }
+
+  it('the other spy laughs for 1.2 s, anchored at itself in its own room', () => {
+    for (const cause of ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana'] as const) {
+      const { s, ev } = death(cause);
+      const q: EffectQueue = [];
+      spawnEffects(q, s, [ev], 3);
+      expect(q, cause).toHaveLength(1);
+      expect(q[0]).toMatchObject({ kind: 'laugh', spy: 1, room: 8, x: s.spies[1].x, z: s.spies[1].z, start: 3, duration: LAUGH_TIME });
+      expect(laugher(s, ev)).toBe(1);
+    }
+    expect(LAUGH_TIME).toBe(1.2);
+  });
+
+  it('nobody laughs at a fight death', () => {
+    const { s, ev } = death('fight');
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [ev], 0);
+    expect(q).toHaveLength(0);
+    expect(laugher(s, ev)).toBeNull();
+  });
+
+  it('nobody laughs when the other spy is not active', () => {
+    for (const mode of ['dead', 'out', 'escaped'] as const) {
+      const { s, ev } = death('bomba');
+      s.spies[1].mode = mode;
+      const q: EffectQueue = [];
+      spawnEffects(q, s, [ev], 0);
+      expect(q, mode).toHaveLength(0);
+      expect(laugher(s, ev), mode).toBeNull();
+    }
+  });
+
+  it('alternates laugh1/laugh2 at ~6 fps for the laugher only, then ends', () => {
+    const { s, ev } = death('pistole');
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [ev], 10);
+    expect(effectPose(q, 1, 10)).toBe('laugh1');
+    expect(effectPose(q, 1, 10 + 1 / 6 + 0.01)).toBe('laugh2');
+    expect(effectPose(q, 1, 10 + 2 / 6 + 0.01)).toBe('laugh1');
+    expect(effectPose(q, 1, 10 + LAUGH_TIME - 0.01)).not.toBeNull();
+    expect(effectPose(q, 0, 10.1)).toBeNull();
+    expect(effectPose(q, 1, 10 + LAUGH_TIME)).toBeNull();
+  });
+
+  it('walking cancels the laugh pose like the other poses', () => {
+    const spy = openGame().spies[1];
+    expect(pickFrame(spy, false, false, 0, 'laugh1')).toBe('laugh1');
+    expect(pickFrame(spy, false, true, 0, 'laugh1')).not.toBe('laugh1');
   });
 });

@@ -1,5 +1,5 @@
 import { RULES } from '../logic/rules';
-import type { GameEvent, GameState, PlayerId, Thing } from '../logic/state';
+import { isActive, type GameEvent, type GameState, type PlayerId, type Thing } from '../logic/state';
 import { r, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawGuard } from './guard';
@@ -10,18 +10,30 @@ type Ctx = CanvasRenderingContext2D;
 
 /** How long one search / hide / swap / store / drop effect shows, seconds (spec §7). */
 export const EFFECT_TIME = 0.6;
+/** How long the other spy laughs at a trap death, seconds (spec §3). */
+export const LAUGH_TIME = 1.2;
+/** Laugh frames alternate at this rate, frames per second. */
+const LAUGH_FPS = 6;
 
 /**
  * Render-side feedback for a logic event (spec §7):
  * - `found` / `nothing`: a search outcome with / without a find;
  * - `hidden`, `swapped`, `stored`: hand ↔ furniture exchanges;
  * - `dropped`: the hand item flies into the furniture that received it; `poof`: it was lost (remedy);
- * - `guard`: the airport guard in the exit doorway kicking a spy back (spec §9), for `RULES.guardKickTime`.
+ * - `guard`: the airport guard in the exit doorway kicking a spy back (spec §9), for `RULES.guardKickTime`;
+ * - `laugh`: the other spy laughing at a trap death (spec §3), for `LAUGH_TIME` — a pose only, nothing drawn.
  */
-export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard';
+export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh';
 
 /** Pose the spy sprite shows while an effect runs (overrides search/fight/walk, not swing/block). */
-export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut'>;
+export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut' | 'laugh1' | 'laugh2'>;
+
+/** The spy who laughs at this event (spec §3): on a trap death (`died`, cause ≠ fight), the other spy if it is active. */
+export function laugher(state: GameState, e: GameEvent): PlayerId | null {
+  if (e.type !== 'died' || e.cause === 'fight') return null;
+  const other = state.spies[e.spy === 0 ? 1 : 0];
+  return isActive(other) ? other.id : null;
+}
 
 export interface Effect {
   kind: EffectKind;
@@ -84,6 +96,10 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
     }
     case 'bounced':
       return { kind: 'guard', spy: e.spy, duration: RULES.guardKickTime };
+    case 'died': {
+      const spy = laugher(state, e);
+      return spy === null ? null : { kind: 'laugh', spy, duration: LAUGH_TIME };
+    }
     default:
       return null;
   }
@@ -118,6 +134,8 @@ function poseOf(e: Effect, now: number): EffectPose | null {
       return 'hidePut';
     case 'swapped':
       return progress(e, now) < 0.5 ? 'hidePut' : 'liftFind';
+    case 'laugh':
+      return Math.floor((now - e.start) * LAUGH_FPS) % 2 === 0 ? 'laugh1' : 'laugh2';
     case 'dropped':
     case 'poof':
     case 'guard':
@@ -242,6 +260,9 @@ function drawEffect(ctx: Ctx, state: GameState, e: Effect, t: number): void {
       if (exit !== null) drawGuard(ctx, exit, e.x, t * e.duration);
       break;
     }
+    case 'laugh':
+      break; // the pose is the whole effect
+
   }
 }
 

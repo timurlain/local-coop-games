@@ -11,7 +11,7 @@ import { LEVELS, levelRules } from './logic/rules';
 import { rankFor } from './logic/score';
 import type { GameEvent, GameState, PlayerId, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
-import { spawnEffects, type EffectQueue } from './render/effects';
+import { laugher, spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
 import { pushToast, toastFor, type ToastQueue } from './render/toast';
 import { LOW_TIME } from './render/trapulator';
@@ -283,6 +283,7 @@ function updatePlay(dt: number): void {
   for (const e of events) {
     const name = soundFor(e);
     if (name) sfx.play(name);
+    if (laugher(s, e) !== null) sfx.play('laugh');
     toastOn(e, now);
   }
   spawnEffects(effects, s, events, now);

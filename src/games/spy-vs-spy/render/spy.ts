@@ -32,7 +32,7 @@ export function inFight(state: GameState, spy: Spy): boolean {
   return isActive(spy) && sameRoomOpponent(state, spy) !== null;
 }
 
-/** `pose` is the search/hide feedback override from the effect queue (see effects.ts). */
+/** `pose` is the effect-queue override (search/hide feedback, trap-death laugh; see effects.ts). */
 export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose: EffectPose | null = null): void {
   if (spy.mode === 'out' || spy.mode === 'escaped') return;
   const { sx, sy } = project(spy.x, spy.z);
@@ -65,7 +65,7 @@ export function digFrame(now: number): SpyFrame {
 }
 
 /**
- * Swing (wind-up, then the jab or head-bash strike), block and duck always show; then a search/hide feedback pose (`liftFind`, `shrug`, `hidePut`) while the spy
+ * Swing (wind-up, then the jab or head-bash strike), block and duck always show; then an effect pose (search/hide feedback `liftFind`, `shrug`, `hidePut`; the trap-death `laugh1`/`laugh2`) while the spy
  * isn't moving — walking away cancels the pose so the spy doesn't glide frozen; a running search keeps digging
  * (it completes even when the opponent walks in); otherwise an active opponent in the room puts the spy on
  * guard, else walk or stand.
