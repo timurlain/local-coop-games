@@ -9,7 +9,8 @@ import { VIEW, project, wallX } from './geometry';
 import { drawGuard } from './guard';
 import { doorCentre } from './room';
 import { ICONS, SPY_H, type SpyFrame } from './sprite-data';
-import { drawIcon, drawIconOutlined, drawIconScaled, drawInHand, handPoint, thingIcon } from './sprites';
+import { drawIcon, drawIconOutlined, drawIconScaled, drawInHand, handOutline, handPoint, thingIcon } from './sprites';
+import { baseColor } from './spy';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -342,7 +343,7 @@ function drawDisarm(ctx: Ctx, state: GameState, e: Effect, t: number): void {
       if (withSpy) umbrella(ctx, h, t);
       break;
     case 'voda':
-      water(ctx, frame, sx, sy, flip, h, e.facing, t, withSpy);
+      water(ctx, frame, sx, sy, flip, h, e.facing, t, withSpy, handOutline(baseColor(spy)));
       break;
     case 'kleste':
       snipSpring(ctx, h, e.facing, t, withSpy);
@@ -384,10 +385,11 @@ function umbrella(ctx: Ctx, h: Pt, t: number): void {
 /** The bucket in hand pours an arc of water onto the bomb's lit fuse; a steam puff rises and the bomb is out. */
 function water(
   ctx: Ctx, frame: SpyFrame, sx: number, sy: number, flip: boolean, h: Pt, facing: -1 | 1, t: number, withSpy: boolean,
+  outline: string,
 ): void {
   const bx = h.x + facing * 11;
   const by = VIEW.backY - 1;
-  if (withSpy) drawInHand(ctx, 'voda', frame, sx, sy, flip);
+  if (withSpy) drawInHand(ctx, 'voda', frame, sx, sy, flip, 'front', outline);
   if (t < 0.75) drawIcon(ctx, 'bomba', bx, by);
   const fuse = { x: bx + 2, y: by - 7 };
   if (t < 0.4 && Math.floor(t * 24) % 2 === 0) r(ctx, fuse.x + 1, fuse.y - 1, 1, 1, '#ff9a3c');

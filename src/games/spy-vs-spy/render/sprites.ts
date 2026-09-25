@@ -3,6 +3,32 @@ import {
   ICONS, ICON_PALETTE, SPY_BACK_HANDS, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette,
 } from './sprite-data';
 
+/** Sentinel character marking the outline ring in `outlineRows`' output; never a real palette key. */
+const OUTLINE_MARK = '+';
+
+/**
+ * Pads `rows` by 1px on every side and marks every transparent cell touching an opaque one (4-directionally)
+ * with `mark`, so the result can be baked into a silhouette that rings the icon's opaque pixels (round 4 §2:
+ * items held in hand need to read against a same-toned coat). Pure and side-effect free.
+ */
+export function outlineRows(rows: readonly string[], mark: string = OUTLINE_MARK): string[] {
+  const h = rows.length;
+  const w = h > 0 ? rows[0].length : 0;
+  const padded: string[][] = Array.from({ length: h + 2 }, () => Array<string>(w + 2).fill('.'));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) padded[y + 1][x + 1] = rows[y][x];
+  }
+  const opaque = (x: number, y: number): boolean => (padded[y]?.[x] ?? '.') !== '.';
+  return padded.map((row, y) => row
+    .map((ch, x) => (ch === '.' && (opaque(x - 1, y) || opaque(x + 1, y) || opaque(x, y - 1) || opaque(x, y + 1)) ? mark : ch))
+    .join(''));
+}
+
+/** Outline colour that reads on that spy's own coat: light grey on the black spy, dark on the white spy. */
+export function handOutline(palette: SpyPalette): string {
+  return palette === 'black' ? '#d8d8d8' : '#1a1a1a';
+}
+
 const cache = new Map<string, HTMLCanvasElement>();
 
 /** Turns pixel strings into a small offscreen canvas (cached by key). */
@@ -32,6 +58,11 @@ export function spyImage(palette: SpyPalette, frame: SpyFrame): HTMLCanvasElemen
 
 export function iconImage(name: IconName): HTMLCanvasElement {
   return bake(`icon:${name}`, ICONS[name], ICON_PALETTE);
+}
+
+/** The icon with a baked-in 1px outline ring in `outline`, cached per icon + colour like the other baked sprites. */
+export function outlinedIconImage(name: IconName, outline: string): HTMLCanvasElement {
+  return bake(`icon+:${name}:${outline}`, outlineRows(ICONS[name]), { ...ICON_PALETTE, [OUTLINE_MARK]: outline });
 }
 
 /** Draws with (x, y) = bottom-centre of the sprite. */
@@ -108,18 +139,28 @@ export const HANDLE_ROW: Readonly<Record<HandIcon, number>> = {
   destnik_open: 5,
 };
 
-/** Draws a held item hanging from the frame's front (or back) hand: its handle row sits on the hand pixel. */
+/**
+ * Draws a held item hanging from the frame's front (or back) hand: its handle row sits on the hand pixel.
+ * With `outline` set (see `handOutline`), the icon gets a baked 1px ring in that colour first, so it still
+ * reads against a same-toned coat (round 4 §2). The outlined bake is padded 1px on every side, so it is drawn
+ * 1px lower than the plain icon to keep its original pixels lined up on the same hand point.
+ */
 export function drawInHand(
   ctx: CanvasRenderingContext2D, icon: HandIcon, frame: SpyFrame, x: number, y: number, flip = false, hand: Hand = 'front',
+  outline?: string,
 ): void {
   const { hx, hy } = handPoint(frame, x, y, flip, hand);
   // icons are anchored bottom-centre: row HANDLE_ROW lands on hy
-  drawIcon(ctx, icon, hx, hy + ICONS[icon].length - HANDLE_ROW[icon]);
+  const bottomY = hy + ICONS[icon].length - HANDLE_ROW[icon];
+  if (outline) drawSprite(ctx, outlinedIconImage(icon, outline), hx, bottomY + 1);
+  else drawIcon(ctx, icon, hx, bottomY);
 }
 
 /** Draws the kufřík hanging from the frame's hand (the handle sits on the hand pixel). */
-export function drawKufrikInHand(ctx: CanvasRenderingContext2D, frame: SpyFrame, x: number, y: number, flip = false): void {
-  drawInHand(ctx, 'kufrik', frame, x, y, flip);
+export function drawKufrikInHand(
+  ctx: CanvasRenderingContext2D, frame: SpyFrame, x: number, y: number, flip = false, outline?: string,
+): void {
+  drawInHand(ctx, 'kufrik', frame, x, y, flip, 'front', outline);
 }
 
 export function drawIcon(ctx: CanvasRenderingContext2D, name: IconName, cx: number, bottomY: number): void {

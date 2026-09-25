@@ -9,7 +9,7 @@ import { drawFrame } from './hud';
 import { ROOM, UNDER } from './layout';
 import { drawRoom } from './room';
 import { SPY_H, type SpyPalette } from './sprite-data';
-import { drawKufrikInHand, drawSprite, spyImage } from './sprites';
+import { drawKufrikInHand, drawSprite, handOutline, spyImage } from './sprites';
 import { walkFrame } from './spy';
 import { drawCable, drawDevice } from './trapulator';
 
@@ -132,7 +132,7 @@ function drawRunway(ctx: Ctx, winner: Spy, t: number, now: number): void {
   if (!pose.visible) return;
   const frame = pose.laughing ? (Math.floor(now * 6) % 2 === 0 ? 'laugh1' : 'laugh2') : walkFrame(now);
   drawSprite(ctx, spyImage(palette(winner), frame), pose.x, GROUND_Y);
-  drawKufrikInHand(ctx, frame, pose.x, GROUND_Y);
+  drawKufrikInHand(ctx, frame, pose.x, GROUND_Y, false, handOutline(palette(winner)));
   if (pose.laughing) {
     const bx = pose.x + 16;
     const by = GROUND_Y - SPY_H - 12;

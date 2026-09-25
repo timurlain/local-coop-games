@@ -7,7 +7,7 @@ import { VIEW, project, wallX } from './geometry';
 import { doorCentre } from './room';
 import { SPY_H, SPY_W, type SpyFrame, type SpyPalette } from './sprite-data';
 import type { EffectPose } from './effects';
-import { drawIconScaled, drawInHand, drawSprite, handPoint, heldIcon, spyImage, type HandIcon } from './sprites';
+import { drawIconScaled, drawInHand, drawSprite, handOutline, handPoint, heldIcon, spyImage, type HandIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -25,7 +25,7 @@ export function trackMotion(spies: readonly Spy[], now: number): void {
   }
 }
 
-function baseColor(spy: Spy): SpyPalette {
+export function baseColor(spy: Spy): SpyPalette {
   return spy.id === 0 ? 'white' : 'black';
 }
 
@@ -52,8 +52,9 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
   const flip = spy.facing < 0;
   drawSprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
   const { front, back } = handItems(spy, frame);
-  if (back !== null) drawInHand(ctx, back, frame, sx, sy, flip, 'back');
-  if (front !== null) drawInHand(ctx, front, frame, sx, sy, flip);
+  const outline = handOutline(baseColor(spy));
+  if (back !== null) drawInHand(ctx, back, frame, sx, sy, flip, 'back', outline);
+  if (front !== null) drawInHand(ctx, front, frame, sx, sy, flip, 'front', outline);
   if (spy.placing !== null) drawPlacing(ctx, state, spy, spy.placing, frame, sx, sy, flip);
   if (spy.refuseTimer > 0 && frame.startsWith('refuse')) drawGrumble(ctx, sx, sy, flip, now);
 }
