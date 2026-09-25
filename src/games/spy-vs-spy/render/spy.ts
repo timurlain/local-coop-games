@@ -60,6 +60,14 @@ export function walkFrame(now: number): SpyFrame {
   return WALK_CYCLE[Math.floor(now * 8) % WALK_CYCLE.length];
 }
 
+/** Stepping on guard in a shared room (spec §4): legs apart, legs passing. */
+export const FIGHT_WALK_CYCLE: readonly SpyFrame[] = ['fightWalk1', 'fightWalk2'];
+
+/** Fight walk frame at ~8 fps, in step with the walk cycle's stride / pass rhythm. */
+export function fightWalkFrame(now: number): SpyFrame {
+  return FIGHT_WALK_CYCLE[Math.floor(now * 8) % FIGHT_WALK_CYCLE.length];
+}
+
 /** Dig frames alternate at ~6 fps while searching. */
 export function digFrame(now: number): SpyFrame {
   return Math.floor(now * 6) % 2 === 0 ? 'searchDig1' : 'searchDig2';
@@ -69,7 +77,7 @@ export function digFrame(now: number): SpyFrame {
  * Swing (wind-up, then the jab or head-bash strike), block and duck always show; then an effect pose (search/hide feedback `liftFind`, `shrug`, `hidePut`; the trap-death `laugh1`/`laugh2`) while the spy
  * isn't moving — walking away cancels the pose so the spy doesn't glide frozen; a running search keeps digging
  * (it completes even when the opponent walks in); otherwise an active opponent in the room puts the spy on
- * guard, else walk or stand.
+ * guard (stepping in the guard stance while moving), else walk or stand.
  */
 export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: number, pose: EffectPose | null = null): SpyFrame {
   if (spy.swingAnim > 0 && spy.attack !== null) {
@@ -80,7 +88,7 @@ export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: num
   if (spy.ducking) return 'duck';
   if (pose !== null && !moving) return pose;
   if (spy.mode === 'searching') return digFrame(now);
-  if (fighting) return 'fightStand';
+  if (fighting) return moving ? fightWalkFrame(now) : 'fightStand';
   return moving ? walkFrame(now) : 'stand';
 }
 

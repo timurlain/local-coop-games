@@ -7,10 +7,12 @@ import { createSpy } from '../../src/games/spy-vs-spy/logic/generator';
 import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import type { Spy } from '../../src/games/spy-vs-spy/logic/state';
 import {
-  ICONS, ICON_PALETTE, SPY_CENTER_X, SPY_FRAMES, SPY_H, SPY_HANDS, SPY_PALETTES, SPY_W, type SpyFrame,
+  ICONS, ICON_PALETTE, SPY_BACK_HANDS, SPY_CENTER_X, SPY_FRAMES, SPY_H, SPY_HANDS, SPY_PALETTES, SPY_W, type SpyFrame,
 } from '../../src/games/spy-vs-spy/render/sprite-data';
-import { HANDLE_ROW, handPoint, heldIcon } from '../../src/games/spy-vs-spy/render/sprites';
-import { WALK_CYCLE, digFrame, pickFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
+import { HANDLE_ROW, HAND_ICONS, handPoint, heldIcon } from '../../src/games/spy-vs-spy/render/sprites';
+import {
+  FIGHT_WALK_CYCLE, WALK_CYCLE, digFrame, fightWalkFrame, pickFrame, walkFrame,
+} from '../../src/games/spy-vs-spy/render/spy';
 import { leafFraction } from '../../src/games/spy-vs-spy/render/room';
 
 describe('project', () => {
@@ -50,10 +52,12 @@ function checkSprite(name: string, rows: readonly string[], palette: Record<stri
 
 const FRAMES = [
   'stand', 'walk1', 'walk2', 'walk3', 'walk4',
-  'fightStand', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck',
-  'searchDig1', 'searchDig2', 'hidePut', 'shrug', 'liftFind',
-  'laugh1', 'laugh2',
+  'fightStand', 'fightWalk1', 'fightWalk2', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck',
+  'searchDig1', 'searchDig2', 'hidePut', 'placeTrap', 'shrug', 'liftFind',
+  'laugh1', 'laugh2', 'refuse1', 'refuse2',
 ];
+
+const FIGHT_FRAMES = ['fightStand', 'fightWalk1', 'fightWalk2', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck'];
 
 function drawn(frame: SpyFrame, x: number, y: number): boolean {
   const ch = SPY_FRAMES[frame][y]?.[x];
@@ -109,7 +113,7 @@ describe('sprite data', () => {
   });
 
   it('only the fight frames draw the club', () => {
-    const club = new Set(['fightStand', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck']);
+    const club = new Set(FIGHT_FRAMES);
     for (const frame of FRAMES) {
       const has = SPY_FRAMES[frame as SpyFrame].some((row) => row.includes('c'));
       expect(has, `${frame} club`).toBe(club.has(frame));
@@ -126,15 +130,61 @@ describe('sprite data', () => {
   });
 
   it('carries the kufrik in the front hand, at the back hip in a fight, and raised when lifting or laughing', () => {
-    for (const f of ['fightStand', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck'] as SpyFrame[]) {
+    for (const f of FIGHT_FRAMES as SpyFrame[]) {
       expect(SPY_HANDS[f][0], `${f} back hand`).toBeLessThan(SPY_CENTER_X);
     }
-    for (const f of ['stand', 'walk1', 'walk2', 'walk4', 'searchDig1', 'searchDig2', 'hidePut'] as SpyFrame[]) {
+    const front = ['stand', 'walk1', 'walk2', 'walk4', 'searchDig1', 'searchDig2', 'hidePut', 'placeTrap', 'refuse1', 'refuse2'];
+    for (const f of front as SpyFrame[]) {
       expect(SPY_HANDS[f][0], `${f} front hand`).toBeGreaterThan(SPY_CENTER_X);
     }
     for (const f of ['liftFind', 'laugh1', 'laugh2'] as SpyFrame[]) {
       expect(SPY_HANDS[f][1], `${f} raised hand`).toBeLessThan(SPY_HANDS.stand[1] - 6);
     }
+  });
+
+  it('every spy frame has a back hand on a drawn pixel, behind the body centre (spec §2)', () => {
+    expect(Object.keys(SPY_BACK_HANDS).sort()).toEqual([...FRAMES].sort());
+    for (const [frame, [x, y]] of Object.entries(SPY_BACK_HANDS)) {
+      expect(Number.isInteger(x) && x >= 0 && x < SPY_CENTER_X, `${frame} back hand x`).toBe(true);
+      expect(Number.isInteger(y) && y >= 0 && y < SPY_H, `${frame} back hand y`).toBe(true);
+      expect(SPY_FRAMES[frame as SpyFrame][y][x], `${frame} back hand pixel is drawn`).not.toBe('.');
+      // at the side / hip, below the chin; only liftFind holds the back hand up high
+      if (frame !== 'liftFind') expect(y, `${frame} back hand below the head`).toBeGreaterThanOrEqual(19);
+    }
+  });
+
+  it('fight walk keeps the crouched ready stance and steps its legs (spec §4)', () => {
+    const upper = (f: SpyFrame) => SPY_FRAMES[f].slice(0, 28);
+    const legs = (f: SpyFrame) => SPY_FRAMES[f].slice(28);
+    const club = (f: SpyFrame) => SPY_FRAMES[f].map((r) => r.replace(/[^c]/g, '.'));
+    expect(club('fightWalk1'), 'club held as in the stance').toEqual(club('fightStand'));
+    expect(club('fightWalk2'), 'club held as in the stance').toEqual(club('fightStand'));
+    expect(upper('fightWalk1')).toEqual(upper('fightStand'));
+    expect(legs('fightWalk1')).not.toEqual(legs('fightStand'));
+    expect(legs('fightWalk2')).not.toEqual(legs('fightWalk1'));
+    expect(legs('fightWalk2')).not.toEqual(legs('fightStand'));
+  });
+
+  it('placing a trap reaches low and forward, lower than hiding (spec §4)', () => {
+    const [hx, hy] = SPY_HANDS.placeTrap;
+    expect(hx).toBeGreaterThan(SPY_CENTER_X + 6);
+    expect(hy).toBeGreaterThan(SPY_HANDS.hidePut[1]);
+    expect(hy).toBeGreaterThanOrEqual(SPY_H - 6);
+    const top = (f: SpyFrame) => SPY_FRAMES[f].findIndex((r) => r.includes('o'));
+    expect(top('placeTrap'), 'bent down').toBeGreaterThan(top('stand') + 4);
+  });
+
+  it('the head shake turns the nose one way, then the other (spec §4)', () => {
+    const face = (f: SpyFrame) => SPY_FRAMES[f].slice(8, 16);
+    const right = (f: SpyFrame) => Math.max(...face(f).map((r) => r.replace(/\.+$/, '').length - 1));
+    const left = (f: SpyFrame) => Math.min(...face(f).map((r) => r.search(/[^.]/)).filter((i) => i >= 0));
+    // refuse1: nose foreshortened, still to the right; refuse2: nose to the left, behind the head
+    expect(right('refuse1')).toBeLessThan(right('stand') - 2);
+    expect(right('refuse1')).toBeGreaterThan(SPY_CENTER_X + 4);
+    expect(left('refuse2')).toBeLessThan(SPY_CENTER_X - 6);
+    expect(right('refuse2')).toBeLessThan(SPY_CENTER_X + 6);
+    // only the head moves
+    expect(SPY_FRAMES.refuse1.slice(16)).toEqual(SPY_FRAMES.refuse2.slice(16));
   });
 
   it('the head bash brings the club down in front of the head, above the nose', () => {
@@ -157,12 +207,43 @@ describe('sprite data', () => {
     expect(widest, 'held flat: one long row of club').toBeGreaterThanOrEqual(15);
   });
 
-  it('icons are 8×8 and use only palette characters', () => {
+  it('icons are 8×8 (the open umbrella up to 12×8) and use only palette characters', () => {
     for (const [name, rows] of Object.entries(ICONS)) {
       checkSprite(name, rows, ICON_PALETTE);
-      expect(rows).toHaveLength(8);
-      expect(rows[0].length).toBe(8);
+      expect(rows, name).toHaveLength(8);
+      if (name === 'destnik_open') {
+        expect(rows[0].length).toBeGreaterThanOrEqual(8);
+        expect(rows[0].length).toBeLessThanOrEqual(12);
+      } else expect(rows[0].length, name).toBe(8);
     }
+  });
+
+  it('has hand icons for every trap and remedy, the open umbrella too (spec §2, §3)', () => {
+    const all = ['kufrik', 'satchel', 'bomba', 'pruzina', 'elektrina', 'pistole', 'casovana', 'voda', 'kleste', 'destnik', 'nuzky', 'destnik_open'];
+    expect([...HAND_ICONS].sort()).toEqual(all.sort());
+  });
+
+  it('every hand icon has a handle row with a drawn pixel under the hand column', () => {
+    expect(Object.keys(HANDLE_ROW).sort()).toEqual([...HAND_ICONS].sort());
+    for (const name of HAND_ICONS) {
+      const rows = ICONS[name];
+      const row = HANDLE_ROW[name];
+      expect(Number.isInteger(row) && row >= 0 && row < rows.length, `${name} handle row`).toBe(true);
+      // drawIcon centres the icon on the hand: column w/2 (or the one left of it) sits on the hand pixel
+      const w = rows[0].length;
+      const cols = [Math.floor(w / 2), Math.ceil(w / 2) - 1];
+      expect(cols.some((x) => rows[row][x] !== '.'), `${name} handle under the hand`).toBe(true);
+    }
+  });
+
+  it('remedy icons read as themselves: bucket of water on a handle, pliers, closed umbrella, scissors', () => {
+    const count = (name: keyof typeof ICONS, ch: string) => ICONS[name].join('').split(ch).length - 1;
+    expect(count('voda', 'u') + count('voda', 'c'), 'water').toBeGreaterThanOrEqual(6);
+    expect(HANDLE_ROW.voda, 'bucket hangs from its handle, above the water').toBeLessThan(ICONS.voda.findIndex((r) => /[uc]/.test(r)));
+    // closed umbrella: canopy never wider than 3 px; the open one: a wide canopy
+    expect(Math.max(...ICONS.destnik.map((r) => (r.match(/r/g) ?? []).length))).toBeLessThanOrEqual(3);
+    expect(Math.max(...ICONS.destnik_open.map((r) => (r.match(/r/g) ?? []).length))).toBeGreaterThanOrEqual(9);
+    expect(ICONS.nuzky).not.toEqual(ICONS.kleste);
   });
 });
 
@@ -219,10 +300,20 @@ describe('pickFrame', () => {
 
   it('uses the fight frames when an opponent is in the room', () => {
     expect(pickFrame(spy(), true, false, 0)).toBe('fightStand');
-    expect(pickFrame(spy(), true, true, 0)).toBe('fightStand');
     expect(pickFrame(spy({ blocking: true }), true, false, 0)).toBe('block');
     expect(pickFrame(spy({ ducking: true }), true, false, 0)).toBe('duck');
     expect(pickFrame(spy({ ducking: true, blocking: true }), true, false, 0)).toBe('block');
+  });
+
+  it('steps in the fight stance when moving in a shared room (spec §4)', () => {
+    expect(FIGHT_WALK_CYCLE).toEqual(['fightWalk1', 'fightWalk2']);
+    expect(pickFrame(spy(), true, true, 0)).toBe('fightWalk1');
+    expect(pickFrame(spy(), true, true, 1 / 8 + 0.01)).toBe('fightWalk2');
+    expect(pickFrame(spy(), true, true, 2 / 8 + 0.01)).toBe('fightWalk1');
+    expect(pickFrame(spy(), true, true, 0.3)).toBe(fightWalkFrame(0.3));
+    // block, duck and the swing still win over the step
+    expect(pickFrame(spy({ blocking: true }), true, true, 0)).toBe('block');
+    expect(pickFrame(spy({ ducking: true }), true, true, 0)).toBe('duck');
   });
 
   it('winds up for both attacks, then strikes with the frame of the attack (spec §8)', () => {
@@ -262,7 +353,7 @@ describe('pickFrame', () => {
   it('walking cancels the effect pose so the spy shows a walk frame instead', () => {
     expect(pickFrame(spy(), false, true, 0, 'shrug')).toBe(walkFrame(0));
     expect(WALK_CYCLE).toContain(pickFrame(spy(), false, true, 0.3, 'liftFind'));
-    expect(pickFrame(spy(), true, true, 0, 'liftFind')).toBe('fightStand');
+    expect(pickFrame(spy(), true, true, 0, 'liftFind')).toBe('fightWalk1');
   });
 
   it('a running search still digs over a pose even while moving, per the frame priority', () => {

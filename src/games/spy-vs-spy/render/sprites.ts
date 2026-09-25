@@ -1,5 +1,7 @@
 import type { Thing } from '../logic/state';
-import { ICONS, ICON_PALETTE, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette } from './sprite-data';
+import {
+  ICONS, ICON_PALETTE, SPY_BACK_HANDS, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette,
+} from './sprite-data';
 
 const cache = new Map<string, HTMLCanvasElement>();
 
@@ -47,13 +49,16 @@ export function drawSprite(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement
   ctx.restore();
 }
 
+/** Which hand: the carrying `front` hand (SPY_HANDS) or the `back` hand (SPY_BACK_HANDS, spec §2). */
+export type Hand = 'front' | 'back';
+
 /** Screen pixel of the frame's hand when the sprite is drawn with drawSprite at (x, y) = bottom-centre. */
-export function handPoint(frame: SpyFrame, x: number, y: number, flip = false): { hx: number; hy: number } {
+export function handPoint(frame: SpyFrame, x: number, y: number, flip = false, hand: Hand = 'front'): { hx: number; hy: number } {
   const rows = SPY_FRAMES[frame];
   const w = rows[0].length;
   const left = Math.round(x - w / 2);
   const top = Math.round(y - rows.length);
-  const [px, py] = SPY_HANDS[frame];
+  const [px, py] = (hand === 'back' ? SPY_BACK_HANDS : SPY_HANDS)[frame];
   return { hx: left + (flip ? w - 1 - px : px), hy: top + py };
 }
 
@@ -72,16 +77,44 @@ export function heldIcon(t: Thing | null): HeldIcon | null {
   }
 }
 
-/** Icon row of the handle / strap top that sits on the hand pixel. */
-export const HANDLE_ROW: Readonly<Record<HeldIcon, number>> = { kufrik: 1, satchel: 0 };
+/**
+ * Every icon that can be drawn in a hand: the carried things, the selected trap (spec §2), the carried
+ * remedies and the umbrella opened over the head while disarming (spec §3).
+ */
+export const HAND_ICONS = [
+  'kufrik', 'satchel',
+  'bomba', 'pruzina', 'elektrina', 'pistole', 'casovana',
+  'voda', 'kleste', 'destnik', 'nuzky', 'destnik_open',
+] as const satisfies readonly IconName[];
 
-/** Draws a held item hanging from the frame's hand (its handle row sits on the hand pixel). */
+export type HandIcon = (typeof HAND_ICONS)[number];
+
+/** Icon row of the handle / strap / grip that sits on the hand pixel. */
+export const HANDLE_ROW: Readonly<Record<HandIcon, number>> = {
+  kufrik: 1,
+  satchel: 0,
+  // traps: held by the top of the bomb / the top plate / the bucket rim / the barrel / the clock case
+  bomba: 3,
+  pruzina: 0,
+  elektrina: 4,
+  pistole: 2,
+  casovana: 2,
+  // remedies: the bucket's wire handle, where the pliers' handles meet, the crook, the scissors' pivot
+  voda: 0,
+  kleste: 3,
+  destnik: 0,
+  nuzky: 3,
+  // the open umbrella is gripped on the shaft above the crook
+  destnik_open: 5,
+};
+
+/** Draws a held item hanging from the frame's front (or back) hand: its handle row sits on the hand pixel. */
 export function drawInHand(
-  ctx: CanvasRenderingContext2D, icon: HeldIcon, frame: SpyFrame, x: number, y: number, flip = false,
+  ctx: CanvasRenderingContext2D, icon: HandIcon, frame: SpyFrame, x: number, y: number, flip = false, hand: Hand = 'front',
 ): void {
-  const { hx, hy } = handPoint(frame, x, y, flip);
-  // icons are 8×8 anchored bottom-centre: row HANDLE_ROW lands on hy
-  drawIcon(ctx, icon, hx, hy + 8 - HANDLE_ROW[icon]);
+  const { hx, hy } = handPoint(frame, x, y, flip, hand);
+  // icons are anchored bottom-centre: row HANDLE_ROW lands on hy
+  drawIcon(ctx, icon, hx, hy + ICONS[icon].length - HANDLE_ROW[icon]);
 }
 
 /** Draws the kufřík hanging from the frame's hand (the handle sits on the hand pixel). */
