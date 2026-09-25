@@ -8,7 +8,7 @@ import { randomSeed } from '../../shared/rng';
 import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
 import { createGame } from './logic/generator';
-import { LEVELS, levelRules } from './logic/rules';
+import { GAME_LENGTH_MULTIPLIERS, LEVELS, levelRules } from './logic/rules';
 import { rankFor } from './logic/score';
 import type { GameEvent, GameState, PlayerId, RemedyKind, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
@@ -78,6 +78,7 @@ function setupMenu(): void {
   document.fonts?.load('14px "Limelight"').catch(() => undefined);
   document.fonts?.load('8px "Poiret One"').catch(() => undefined);
   $('level-label').textContent = T.levelLabel;
+  $('game-length-label').textContent = T.gameLengthLabel;
   $('hide-airport-label').textContent = T.hideAirport;
   $('mute-label').textContent = T.mute;
   $('music-label').textContent = T.music;
@@ -91,10 +92,23 @@ function setupMenu(): void {
     const { cols, rows } = levelRules(n);
     level.add(new Option(T.levelOption(n, cols, rows), String(n), false, n === settings.level));
   }
-  readout.textContent = levelReadout(settings.level);
+  const updateReadout = () => {
+    readout.textContent = levelReadout(settings.level, settings.gameLength);
+  };
+  updateReadout();
   level.onchange = () => {
     settings.level = Number(level.value);
-    readout.textContent = levelReadout(settings.level);
+    updateReadout();
+    saveJson(SETTINGS_KEY, settings);
+  };
+
+  const gameLength = $<HTMLSelectElement>('game-length');
+  for (const m of GAME_LENGTH_MULTIPLIERS) {
+    gameLength.add(new Option(T.gameLengthOption(m), String(m), false, m === settings.gameLength));
+  }
+  gameLength.onchange = () => {
+    settings.gameLength = Number(gameLength.value) as typeof GAME_LENGTH_MULTIPLIERS[number];
+    updateReadout();
     saveJson(SETTINGS_KEY, settings);
   };
 
@@ -146,7 +160,7 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
-  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport });
+  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport, gameLength: settings.gameLength });
   state.spies.forEach((spy, i) => {
     spy.prev = toSpyInput(input.get(slots[i]!));
   });
