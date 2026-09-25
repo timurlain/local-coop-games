@@ -1,4 +1,4 @@
-import { Sfx, getAudioContext, type SfxName } from '../../shared/audio';
+import { Sfx, audioLocked, getAudioContext, type SfxName } from '../../shared/audio';
 import { cs } from '../../shared/i18n/cs';
 import type { PlayerActions } from '../../shared/input/actions';
 import { InputManager, type DeviceId } from '../../shared/input/manager';
@@ -83,6 +83,7 @@ function setupMenu(): void {
   $('mute-label').textContent = T.mute;
   $('music-label').textContent = T.music;
   $('controls').textContent = T.controls;
+  $('sound-hint').textContent = T.soundLocked;
   $('back').textContent = T.back;
   $('toosmall-title').textContent = T.tooSmall;
 
@@ -273,6 +274,7 @@ function update(dt: number): void {
 }
 
 function updateMenu(): void {
+  $('sound-hint').hidden = !audioLocked();
   slots.forEach((d, i) => {
     if (d && !input.isConnected(d)) {
       slots[i as 0 | 1] = null;
@@ -478,7 +480,11 @@ window.addEventListener('blur', () => {
     pause(T.paused);
   }
 });
-window.addEventListener('pointerdown', () => sfx.unlock());
+// Unlock sound inside a real user gesture (autoplay policy): a click, touch or any key. Gamepad buttons are not
+// gestures, so the menu shows a hint until the sound runs.
+for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
+  window.addEventListener(type, () => sfx.unlock(), { capture: true });
+}
 
 setupMenu();
 resize();
