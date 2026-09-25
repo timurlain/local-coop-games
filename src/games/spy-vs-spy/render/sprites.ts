@@ -1,4 +1,4 @@
-import type { Thing } from '../logic/state';
+import type { RemedyKind, Thing } from '../logic/state';
 import {
   ICONS, ICON_PALETTE, SPY_BACK_HANDS, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette,
 } from './sprite-data';
@@ -62,8 +62,8 @@ export function handPoint(frame: SpyFrame, x: number, y: number, flip = false, h
   return { hx: left + (flip ? w - 1 - px : px), hy: top + py };
 }
 
-/** What a spy visibly carries in hand: the kufřík, or a loose secret in a satchel (spec §6); remedies stay undrawn. */
-export type HeldIcon = 'kufrik' | 'satchel';
+/** What a spy visibly carries in hand: the kufřík, a loose secret in a satchel (spec §6), or a remedy (round 4 §3). */
+export type HeldIcon = 'kufrik' | 'satchel' | RemedyKind;
 
 export function heldIcon(t: Thing | null): HeldIcon | null {
   if (t === null) return null;
@@ -73,7 +73,7 @@ export function heldIcon(t: Thing | null): HeldIcon | null {
     case 'secret':
       return 'satchel';
     case 'remedy':
-      return null;
+      return t.remedy;
   }
 }
 
@@ -124,6 +124,16 @@ export function drawKufrikInHand(ctx: CanvasRenderingContext2D, frame: SpyFrame,
 
 export function drawIcon(ctx: CanvasRenderingContext2D, name: IconName, cx: number, bottomY: number): void {
   drawSprite(ctx, iconImage(name), cx, bottomY);
+}
+
+/** An icon scaled by `k` about its centre (cx, cy); used where one shrinks into a target. */
+export function drawIconScaled(ctx: CanvasRenderingContext2D, name: IconName, cx: number, cy: number, k: number): void {
+  const img = iconImage(name);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(k, k);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  ctx.restore();
 }
 
 export function thingIcon(t: Thing): IconName {

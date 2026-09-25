@@ -264,11 +264,14 @@ describe('satchel (spec §6)', () => {
     expect(ICONS.kufrik[HANDLE_ROW.kufrik]).toMatch(/n/);
   });
 
-  it('a loose secret is carried in the satchel, the kufřík as itself, remedies undrawn', () => {
+  it('a loose secret is carried in the satchel, the kufřík and remedies as themselves (round 4 §3)', () => {
     expect(heldIcon(null)).toBeNull();
     expect(heldIcon({ kind: 'secret', secret: 'pas', lastHolder: null })).toBe('satchel');
     expect(heldIcon({ kind: 'kufrik', contents: ['klic'], lastHolder: 0 })).toBe('kufrik');
-    expect(heldIcon({ kind: 'remedy', remedy: 'voda' })).toBeNull();
+    expect(heldIcon({ kind: 'remedy', remedy: 'voda' })).toBe('voda');
+    expect(heldIcon({ kind: 'remedy', remedy: 'kleste' })).toBe('kleste');
+    expect(heldIcon({ kind: 'remedy', remedy: 'destnik' })).toBe('destnik');
+    expect(heldIcon({ kind: 'remedy', remedy: 'nuzky' })).toBe('nuzky');
   });
 });
 

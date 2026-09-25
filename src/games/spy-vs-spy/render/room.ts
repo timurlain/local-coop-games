@@ -27,6 +27,8 @@ const LOOKS: Readonly<Record<RoomTheme, ThemeLook>> = {
 const BG = '#101018';
 /** Height of the back-wall (N) door; its top stays below the decoration band. */
 const N_DOOR_H = 27;
+/** Heights of a side (W/E) door at its back and front jamb; the front one is nearer, so taller. */
+const SIDE_DOOR_H = [26, 30] as const;
 /** Dark-wood wainscoting along the bottom of the back wall, px. */
 const WAINSCOT_H = 11;
 const WOOD = '#3e2616';
@@ -345,8 +347,8 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: num
       const x = dir === 'W' ? 0 : RULES.roomW;
       const p0 = project(x, RULES.roomD / 2 - RULES.doorHalfZ);
       const p1 = project(x, RULES.roomD / 2 + RULES.doorHalfZ);
-      const h0 = 26;
-      const h1 = 30;
+      const h0 = SIDE_DOOR_H[0];
+      const h1 = SIDE_DOOR_H[1];
       // hinge at p0: the leaf occupies the [0, leaf] portion of the span (t), the rest is the
       // revealed dark opening while opening/open (spec §5). lerp(t, h0) is that t's top edge,
       // lerp(t, 0) its bottom edge (h scales with the door's height at t, per the original panels).
@@ -371,6 +373,21 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: num
       line(ctx, p1.sx, p1.sy, p1.sx, p1.sy - h1, frame);
       if (armed) drawReachMarker(ctx, (p0.sx + p1.sx) / 2, Math.min(p0.sy - h0, p1.sy - h1), ARMED_RED);
       break;
+    }
+  }
+}
+
+/** Screen point in the middle of a door's opening (where a door trap is put, round 4 §4). */
+export function doorCentre(dir: Dir): { x: number; y: number } {
+  switch (dir) {
+    case 'N':
+      return { x: wallX(RULES.roomW / 2), y: VIEW.backY - N_DOOR_H / 2 };
+    case 'S':
+      return { x: project(RULES.roomW / 2, RULES.roomD).sx, y: VIEW.frontY - 4 };
+    case 'W':
+    case 'E': {
+      const p = project(dir === 'W' ? 0 : RULES.roomW, RULES.roomD / 2);
+      return { x: p.sx, y: p.sy - (SIDE_DOOR_H[0] + SIDE_DOOR_H[1]) / 4 };
     }
   }
 }

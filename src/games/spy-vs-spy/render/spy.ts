@@ -1,11 +1,13 @@
 import { RULES } from '../logic/rules';
 import { sameRoomOpponent } from '../logic/fight';
-import { isActive, type Dir, type GameState, type Spy } from '../logic/state';
+import { doorAt } from '../logic/places';
+import { isActive, type Dir, type GameState, type Placing, type Spy } from '../logic/state';
 import { line, r, text } from './draw';
-import { project } from './geometry';
+import { VIEW, project, wallX } from './geometry';
+import { doorCentre } from './room';
 import { SPY_H, SPY_W, type SpyFrame, type SpyPalette } from './sprite-data';
 import type { EffectPose } from './effects';
-import { drawInHand, drawSprite, heldIcon, spyImage } from './sprites';
+import { drawIconScaled, drawInHand, drawSprite, handPoint, heldIcon, spyImage, type HandIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -49,8 +51,74 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
   const frame = pickFrame(spy, inFight(state, spy), moving, now, pose);
   const flip = spy.facing < 0;
   drawSprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
-  const held = heldIcon(spy.hand);
-  if (held !== null) drawInHand(ctx, held, frame, sx, sy, flip);
+  const { front, back } = handItems(spy, frame);
+  if (back !== null) drawInHand(ctx, back, frame, sx, sy, flip, 'back');
+  if (front !== null) drawInHand(ctx, front, frame, sx, sy, flip);
+  if (spy.placing !== null) drawPlacing(ctx, state, spy, spy.placing, frame, sx, sy, flip);
+  if (spy.refuseTimer > 0 && frame.startsWith('refuse')) drawGrumble(ctx, sx, sy, flip, now);
+}
+
+/** Frames with the club drawn in the front hand (the fight stance, swing, block, duck). */
+export const CLUB_FRAMES: readonly SpyFrame[] = [
+  'fightStand', 'fightWalk1', 'fightWalk2', 'swingWind', 'swingStrike', 'block', 'bashStrike', 'duck',
+];
+
+/**
+ * What each hand shows in `frame` (round 4 §2): a selected trap goes in the front hand and the carried thing
+ * (kufřík, satchel, remedy) then hangs from the back hand; with no trap selected the carried thing is in front.
+ * The club frames hold the club in front, so no trap is drawn and the carried thing hangs at the back; while
+ * placing, the trap is drawn flying into its target instead (`drawPlacing`).
+ */
+export function handItems(spy: Spy, frame: SpyFrame): { front: HandIcon | null; back: HandIcon | null } {
+  const carried = heldIcon(spy.hand);
+  if (CLUB_FRAMES.includes(frame)) return { front: null, back: carried };
+  if (spy.selected === null) return { front: carried, back: null };
+  return { front: spy.placing === null ? spy.selected : null, back: carried };
+}
+
+/** 0 → 1 over the placing time (round 4 §4). */
+export function placeProgress(p: Placing): number {
+  return Math.min(1, Math.max(0, 1 - p.timer / RULES.placeTime));
+}
+
+/** Screen point the trap being placed flies into: the furniture's hiding spot, the door opening or the floor. */
+function placeTargetPoint(state: GameState, spy: Spy, p: Placing, sx: number, sy: number): { x: number; y: number } {
+  switch (p.target.on) {
+    case 'furniture':
+      return { x: Math.round(wallX(state.furniture[p.target.furniture].x)), y: VIEW.backY - 5 };
+    case 'door': {
+      const dir = doorAt(state, spy);
+      return dir === null ? { x: sx, y: sy - 4 } : doorCentre(dir);
+    }
+    case 'floor':
+      return { x: sx + spy.facing * 9, y: sy - 3 };
+  }
+}
+
+/** The trap icon leaving the hand and shrinking into its target over the placing time. */
+function drawPlacing(
+  ctx: CanvasRenderingContext2D, state: GameState, spy: Spy, p: Placing, frame: SpyFrame, sx: number, sy: number, flip: boolean,
+): void {
+  const k = placeProgress(p);
+  const { hx, hy } = handPoint(frame, sx, sy, flip);
+  const to = placeTargetPoint(state, spy, p, sx, sy);
+  const e = k * k * (3 - 2 * k);
+  drawIconScaled(ctx, p.trap, hx + (to.x - hx) * e, hy + 3 + (to.y - hy - 3) * e, 1 - 0.75 * e);
+}
+
+/** A tiny grey grumble cloud above the head during the head shake, with a scribble in it. */
+function drawGrumble(ctx: CanvasRenderingContext2D, sx: number, sy: number, flip: boolean, now: number): void {
+  const x = Math.round(sx + (flip ? 5 : -5));
+  const y = Math.max(VIEW.top + 1, Math.round(sy - SPY_H - 5));
+  const bob = Math.floor(now * 8) % 2;
+  const cloud = '#b8b8bc';
+  r(ctx, x - 4, y + 1 - bob, 9, 3, cloud);
+  r(ctx, x - 3, y - bob, 3, 1, cloud);
+  r(ctx, x + 1, y - 1 - bob, 3, 2, cloud);
+  r(ctx, x - 3, y + 4 - bob, 7, 1, cloud);
+  // the scribble: a little zigzag of dark pixels
+  for (let i = 0; i < 5; i++) r(ctx, x - 2 + i, y + 1 + ((i + bob) % 2) - bob, 1, 1, '#3a3a40');
+  r(ctx, x + (flip ? 3 : -3), y + 6 - bob, 1, 1, cloud);
 }
 
 export const WALK_CYCLE: readonly SpyFrame[] = ['walk1', 'walk2', 'walk3', 'walk4'];
@@ -68,13 +136,19 @@ export function fightWalkFrame(now: number): SpyFrame {
   return FIGHT_WALK_CYCLE[Math.floor(now * 8) % FIGHT_WALK_CYCLE.length];
 }
 
+/** Head shake frames alternate at ~8 fps (round 4 §4). */
+export function refuseFrame(now: number): SpyFrame {
+  return Math.floor(now * 8) % 2 === 0 ? 'refuse1' : 'refuse2';
+}
+
 /** Dig frames alternate at ~6 fps while searching. */
 export function digFrame(now: number): SpyFrame {
   return Math.floor(now * 6) % 2 === 0 ? 'searchDig1' : 'searchDig2';
 }
 
 /**
- * Swing (wind-up, then the jab or head-bash strike), block and duck always show; then an effect pose (search/hide feedback `liftFind`, `shrug`, `hidePut`; the trap-death `laugh1`/`laugh2`) while the spy
+ * Swing (wind-up, then the jab or head-bash strike), block and duck always show; then putting a trap down
+ * (`placeTrap`) and the head shake (`refuse1`/`refuse2`, shown even while walking — it is only visual); then an effect pose (search/hide feedback `liftFind`, `shrug`, `hidePut`; the trap-death `laugh1`/`laugh2`) while the spy
  * isn't moving — walking away cancels the pose so the spy doesn't glide frozen; a running search keeps digging
  * (it completes even when the opponent walks in); otherwise an active opponent in the room puts the spy on
  * guard (stepping in the guard stance while moving), else walk or stand.
@@ -86,6 +160,8 @@ export function pickFrame(spy: Spy, fighting: boolean, moving: boolean, now: num
   }
   if (spy.blocking) return 'block';
   if (spy.ducking) return 'duck';
+  if (spy.placing !== null) return 'placeTrap';
+  if (spy.refuseTimer > 0) return refuseFrame(now);
   if (pose !== null && !moving) return pose;
   if (spy.mode === 'searching') return digFrame(now);
   if (fighting) return moving ? fightWalkFrame(now) : 'fightStand';
