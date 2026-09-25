@@ -80,6 +80,30 @@ const FACE_DOWN = [
   '...........obbbo.......oo',
 ];
 
+// Head shake (spec §4), first half: head turned towards the viewer, the nose foreshortened.
+const FACE_SHORT = [
+  '.........obbbbbbeeoo',
+  '.........obbbbbbbbbboo',
+  '.........obbbbbbbbbbbbo',
+  '.........obbbbbbbbbbbbo',
+  '.........obbbbbbbooooo',
+  '.........obbbbbbbo',
+  '..........obbbbbo',
+  '...........obbbo',
+];
+
+// Head shake, second half: head turned away, the short nose pointing back under the hat's brim.
+const FACE_AWAY = [
+  '........ooeebbbbbbo',
+  '......oobbbbbbbbbbo',
+  '.....obbbbbbbbbbbbo',
+  '.....obbbbbbbbbbbbo',
+  '......ooooobbbbbbbo',
+  '..........obbbbbbbo',
+  '...........obbbbbo',
+  '............obbbo',
+];
+
 const COAT = {
   // arms hanging, front hand at the hem
   hang: [
@@ -129,6 +153,19 @@ const COAT = {
     '.....obo.obbbbbbbbbo.obo',
     '......oboobbbbbbbbboobo',
     '.......obbbbbbbbbbbbbo',
+    '.........obbbbbbbbbo',
+    '.........obbbbbbbbbo',
+    '.........ooooooooooo',
+  ],
+  // arms folded across the chest: elbow out at the back, fist out in front
+  crossed: [
+    '..........oobbbbboo',
+    '.........obbbbbbbbbo',
+    '.........obbbbbbbbbo',
+    '........ooooooooooooo',
+    '........obbbbbbbbbbbo',
+    '........ooooooooooooo',
+    '.........obbbbbbbbbo',
     '.........obbbbbbbbbo',
     '.........obbbbbbbbbo',
     '.........ooooooooooo',
@@ -207,6 +244,28 @@ const LEGS = {
     '.....obo..........obo',
     '....obo...........obbo',
     '...ooo............oooo',
+  ],
+  // crouched step, legs apart: front foot reaching forward, back foot pushing off (8 rows)
+  crouchStride: [
+    '..........obo..obo',
+    '.........obo....obo',
+    '........obo......obo',
+    '.......obo........obo',
+    '......obo.........obo',
+    '......obo..........obo',
+    '......obbo.........obbo',
+    '.......ooo..........oooo',
+  ],
+  // crouched step, legs passing: front foot planted under the body, back heel lifted (8 rows)
+  crouchPass: [
+    '..........obo..obo',
+    '.........obo...obo',
+    '........obo.....obo',
+    '.......obbo.....obo',
+    '........obbo...obo',
+    '.........ooo...obo',
+    '...............obbo',
+    '...............oooo',
   ],
 };
 
@@ -298,6 +357,11 @@ const DUCK_CLUB: Layer = [5, 7, [
   '.............cccccc',
 ]];
 
+// Setting a trap (spec §4): the front arm reaches down past the knee towards the floor / furniture foot.
+const ARM_PLACE: Layer = [16, 23, [
+  'oooo', 'obbboo', '.oobbbo', '...oobbo', '.....obo', '.....obbo', '......obo', '......obbo', '.......obbo', '........oo',
+]];
+
 // Laughing arm held straight out in front, square to the up-pointing nose (never parallel to it).
 const LAUGH_ARM: Layer = [17, 15, ['ooooooooooo', 'obbbbbbbbbbo', 'ooooooooooo']];
 
@@ -310,6 +374,9 @@ export const SPY_FRAMES = {
 
   // crouched, club drawn and held ready in front; kufrik hand at the back hip
   fightStand: frame([...blank(3), ...HAT, ...FACE, ...FIGHT_COAT, ...LEGS.crouch], ARM_READY, CLUB_READY),
+  // moving in a shared room (spec §4): the same guard, legs stepping apart / passing
+  fightWalk1: frame([...blank(3), ...HAT, ...FACE, ...FIGHT_COAT, ...LEGS.crouchStride], ARM_READY, CLUB_READY),
+  fightWalk2: frame([...blank(3), ...HAT, ...FACE_BOB, ...FIGHT_COAT, ...LEGS.crouchPass], ARM_READY, CLUB_READY),
   // club raised back over the shoulder
   swingWind: frame(
     [...blank(3), ...HAT, ...FACE, ...FIGHT_COAT, ...LEGS.crouch],
@@ -342,6 +409,14 @@ export const SPY_FRAMES = {
     [...blank(5), ...shift(HAT, 2), ...shift(FACE_DOWN, 2), ...shift(DIG_COAT, 1), ...DIG_LEGS],
     [16, 21, ['oooo', 'obbbooo', '.oobbbbo', '....oobbo', '......obo', '......obbo', '.......oo']],
   ),
+  // setting a trap (spec §4): knees bent, bent low, the front hand down at the floor
+  placeTrap: frame(
+    [...blank(7), ...shift(HAT, 2), ...shift(FACE_DOWN, 2), ...shift(DIG_COAT, 1), ...LEGS.crouch],
+    ARM_PLACE,
+  ),
+  // head shake (spec §4): arms folded, the nose turned one way, then the other
+  refuse1: frame([...HAT, ...FACE_SHORT, ...COAT.crossed, ...LEGS.stand]),
+  refuse2: frame([...HAT, ...FACE_AWAY, ...COAT.crossed, ...LEGS.stand]),
   // both hands up, nothing found
   shrug: frame([...HAT, ...FACE, ...COAT.shrug, ...LEGS.stand]),
   // the find held up high in the back hand
@@ -430,6 +505,8 @@ export const SPY_HANDS: Record<SpyFrame, readonly [number, number]> = {
   walk3: [5, 21],
   walk4: [19, 23],
   fightStand: [8, 26],
+  fightWalk1: [8, 26],
+  fightWalk2: [8, 26],
   swingWind: [8, 26],
   swingStrike: [8, 26],
   block: [8, 26],
@@ -438,10 +515,45 @@ export const SPY_HANDS: Record<SpyFrame, readonly [number, number]> = {
   searchDig1: [23, 25],
   searchDig2: [23, 23],
   hidePut: [23, 26],
+  placeTrap: [25, 31],
   shrug: [23, 19],
   liftFind: [2, 1],
   laugh1: [26, 16],
   laugh2: [26, 15],
+  refuse1: [20, 20],
+  refuse2: [20, 20],
+};
+
+/**
+ * Image pixel (x, y) of the back hand in each frame (spec §2): where the carried thing hangs while the front
+ * hand holds a trap. Mostly the back edge of the coat at the hip; the back hip in the fight frames (the same
+ * pixel as SPY_HANDS there, the club being in front); the raised hand in liftFind; the elbow-side end of the
+ * folded arms in the head shake.
+ */
+export const SPY_BACK_HANDS: Record<SpyFrame, readonly [number, number]> = {
+  stand: [9, 23],
+  walk1: [9, 23],
+  walk2: [9, 23],
+  walk3: [10, 23],
+  walk4: [9, 23],
+  fightStand: [8, 26],
+  fightWalk1: [8, 26],
+  fightWalk2: [8, 26],
+  swingWind: [8, 26],
+  swingStrike: [8, 26],
+  block: [8, 26],
+  bashStrike: [8, 26],
+  duck: [8, 29],
+  searchDig1: [9, 24],
+  searchDig2: [9, 24],
+  hidePut: [9, 24],
+  placeTrap: [9, 26],
+  shrug: [5, 19],
+  liftFind: [2, 1],
+  laugh1: [9, 23],
+  laugh2: [9, 23],
+  refuse1: [8, 20],
+  refuse2: [8, 20],
 };
 
 export const SPY_PALETTES = {
@@ -465,10 +577,23 @@ export const ICONS = {
   pas: ['.rrrrrr.', '.rrrrrr.', '.rryyrr.', '.ryrryr.', '.rryyrr.', '.rrrrrr.', '.ryyyyr.', '.rrrrrr.'],
   plany: ['........', 'uuuuuuuu', 'uwwuwwwu', 'uwuuuuwu', 'uwwwuwwu', 'uuuuuuuu', '........', '........'],
   kufrik: ['........', '..nnnn..', '..n..n..', 'nnnnnnnn', 'nnnnnnnn', 'nnnyynnn', 'nnnnnnnn', 'nnnnnnnn'],
-  voda: ['..gggg..', '.g....g.', 'gccccccg', 'guuuuuug', '.gggggg.', '.gwgggg.', '..gggg..', '........'],
-  kleste: ['...gg...', '...gg...', '..gggg..', '...ww...', '..r..r..', '.rr..rr.', '.r....r.', 'rr....rr'],
-  destnik: ['....g...', '..rrrr..', '.rrrrrr.', 'rrrrrrrr', '....g...', '....g...', '..g.g...', '...g....'],
-  nuzky: ['g......g', '.g....g.', '..g..g..', '...ww...', '..r..r..', 'rrr..rrr', 'r.r..r.r', 'rrr..rrr'],
+  // remedies, drawn to hang from a hand (spec §3): a bucket of water on its wire handle,
+  // pliers held by the red handles (grey jaws down), a closed umbrella on its crook, scissors by the rings
+  voda: ['...kk...', '..k..k..', '.k....k.', 'gccccccg', 'guuuuuug', '.gwgggg.', '.gwgggg.', '..gggg..'],
+  kleste: ['.r....r.', '.rr..rr.', '..r..r..', '..rrrr..', '...kk...', '..gggg..', '..gggg..', '...gg...'],
+  destnik: ['..nnn...', '..n.n...', '....n...', '...rrr..', '...rrr..', '...rrr..', '....r...', '....g...'],
+  nuzky: ['rrr..rrr', 'r.r..r.r', 'rrr..rrr', '...rr...', '...ww...', '..g..g..', '.g....g.', 'g......g'],
+  // the umbrella opened over the head, seen from the side (disarm animation, spec §3); 11×8
+  destnik_open: [
+    '...rrrrr...',
+    '.rrrrrrrrr.',
+    'rrwrrrrrrrr',
+    'rrrrrrrrrrr',
+    'r..r.n.r..r',
+    '.....n.....',
+    '...n.n.....',
+    '....n......',
+  ],
   bomba: ['......o.', '.....o..', '....k...', '..kkkk..', '.kkkkkk.', '.kwkkkk.', '.kkkkkk.', '..kkkk..'],
   pruzina: ['kkkkkkkk', '.gggggg.', 'g......g', '.gggggg.', 'g......g', '.gggggg.', 'kkkkkkkk', '........'],
   elektrina: ['...yyy..', '..yyy...', '...yy...', '...y....', 'gccccccg', 'guuuuuug', '.gggggg.', '..gggg..'],
