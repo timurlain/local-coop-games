@@ -117,39 +117,56 @@ export function rasterize(paints: readonly Paint[], w: number, h: number, ss: nu
 export function downsample(buf: SuperBuffer, weights: Readonly<Record<string, number>>): Cell[][] {
   const { w, h, ss, chars, parts } = buf;
   const W = w * ss;
+  // per-pixel tallies by character code / part number, reset after each pixel
+  const counts = new Float64Array(65536);
+  const partCounts = new Uint32Array(256);
+  const weightOf = new Float64Array(65536).fill(1);
+  for (const [ch, k] of Object.entries(weights)) weightOf[ch.charCodeAt(0)] = k;
   const out: Cell[][] = [];
   for (let y = 0; y < h; y++) {
     const row: Cell[] = [];
     for (let x = 0; x < w; x++) {
-      const counts = new Map<number, number>();
+      const seen: number[] = [];
       for (let sy = y * ss; sy < (y + 1) * ss; sy++) {
         for (let sx = x * ss; sx < (x + 1) * ss; sx++) {
           const c = chars[sy * W + sx];
-          counts.set(c, (counts.get(c) ?? 0) + 1);
+          if (counts[c] === 0) seen.push(c);
+          counts[c]++;
         }
       }
       let best = 0;
       let bestScore = -1;
       // iterate in a fixed order (char code) so ties resolve deterministically
-      for (const [c, n] of [...counts].sort((a, b) => a[0] - b[0])) {
-        const score = n * (c === 0 ? 1 : weights[String.fromCharCode(c)] ?? 1);
+      for (const c of seen.sort((p, q) => p - q)) {
+        const score = counts[c] * (c === 0 ? 1 : weightOf[c]);
         if (score > bestScore) {
           best = c;
           bestScore = score;
         }
+        counts[c] = 0;
       }
       if (best === 0) {
         row.push({ ch: '.', part: 0 });
         continue;
       }
-      const partCounts = new Map<number, number>();
+      const partsSeen: number[] = [];
       for (let sy = y * ss; sy < (y + 1) * ss; sy++) {
         for (let sx = x * ss; sx < (x + 1) * ss; sx++) {
           const i = sy * W + sx;
-          if (chars[i] === best) partCounts.set(parts[i], (partCounts.get(parts[i]) ?? 0) + 1);
+          if (chars[i] !== best) continue;
+          if (partCounts[parts[i]] === 0) partsSeen.push(parts[i]);
+          partCounts[parts[i]]++;
         }
       }
-      const part = [...partCounts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+      let part = 0;
+      let most = -1;
+      for (const p of partsSeen.sort((p, q) => p - q)) {
+        if (partCounts[p] > most) {
+          part = p;
+          most = partCounts[p];
+        }
+        partCounts[p] = 0;
+      }
       row.push({ ch: String.fromCharCode(best), part });
     }
     out.push(row);

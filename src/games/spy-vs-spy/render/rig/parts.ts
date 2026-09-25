@@ -59,14 +59,19 @@ function coat(shrug: number): Vec[] {
 }
 const BELT: readonly Vec[] = [[-4.2, 1.3], [4.6, 1.3], [4.6, 2.1], [-4.2, 2.1]];
 
+/** Hand to ferrule tip of the closed umbrella. */
+export const UMBRELLA_LEN = 11.8;
+/** Hand to the middle of the open canopy's outer face, where a blocked jab strikes. */
+export const CANOPY_AT = 10;
+
 /** Closed umbrella along its shaft (origin = the gripping hand, y = towards the tip). */
 function closedUmbrella(hand: Vec, angle: number): WorldPaint[] {
   const u = PART.umbrella;
   return [
     ...crook(hand, angle),
-    { shape: limb(step(hand, angle, -1), step(hand, angle, 12.6), 0.45), ch: 'u', part: u },
-    { shape: poly(hand, angle, [[-1.05, 2.4], [1.05, 2.4], [1.2, 3.6], [0.35, 11.4], [-0.35, 11.4], [-1.2, 3.6]]), ch: 'u', part: u },
-    { shape: limb(step(hand, angle, 12.2), step(hand, angle, 14), 0.5, 0.3), ch: 'f', part: u },
+    { shape: limb(step(hand, angle, -1), step(hand, angle, UMBRELLA_LEN - 1.2), 0.45), ch: 'u', part: u },
+    { shape: poly(hand, angle, [[-1.05, 2.1], [1.05, 2.1], [1.2, 3.2], [0.35, 9.5], [-0.35, 9.5], [-1.2, 3.2]]), ch: 'u', part: u },
+    { shape: limb(step(hand, angle, UMBRELLA_LEN - 1.6), step(hand, angle, UMBRELLA_LEN), 0.5, 0.3), ch: 'f', part: u },
   ];
 }
 
@@ -81,9 +86,9 @@ function openUmbrella(hand: Vec, angle: number): WorldPaint[] {
   }
   return [
     ...crook(hand, angle),
-    { shape: limb(step(hand, angle, -1), step(hand, angle, 12), 0.45), ch: 'u', part: u },
+    { shape: limb(step(hand, angle, -1), step(hand, angle, 11.4), 0.45), ch: 'u', part: u },
     { shape: poly(hand, angle, dome), ch: 'u', part: u },
-    { shape: limb(step(hand, angle, 12), step(hand, angle, 13.4), 0.5, 0.3), ch: 'f', part: u },
+    { shape: limb(step(hand, angle, 11.4), step(hand, angle, 12.6), 0.5, 0.3), ch: 'f', part: u },
   ];
 }
 
@@ -128,17 +133,38 @@ export function buildParts(pose: RigPose, j: Joints): WorldPaint[] {
     // coat and belt
     { shape: poly(j.hip, j.spineAngle, coat(shrug)), ch: 'b', part: PART.body },
     { shape: poly(j.hip, j.spineAngle, BELT), ch: 'o', part: PART.body },
-    // front arm (its hand grips over the umbrella; the head is nearest of all)
-    { shape: limb(j.shoulder, j.elbowFront, 1.5, 1.3), ch: 'b', part: PART.armFront },
-    { shape: limb(j.elbowFront, j.handFront, 1.3, 1.1), ch: 'b', part: PART.armFront },
-    ...umbrella(pose, j),
-    { shape: dot(j.handFront, 1.35), ch: 's', part: PART.handFront },
-    // head: face, nose, eye, hat
-    { shape: poly(j.neckTop, j.headAngle, FACE), ch: 's', part: PART.head },
-    { shape: poly(j.neckTop, j.headAngle, NOSE), ch: 's', part: PART.head },
-    { shape: dot(pointOn(j.neckTop, j.headAngle, EYE), 0.55), ch: 'd', part: PART.head },
-    { shape: poly(j.neckTop, j.headAngle, HAT), ch: 'b', part: PART.head },
+    // front arm (its hand grips over the umbrella), then the head, nearest of all unless the arm is raised over it
+    ...(pose.armOverHead ? [...head(j), ...frontArm(pose, j, PART.head + 1)] : [...frontArm(pose, j, 0), ...head(j)]),
   ];
+}
+
+/** The near arm, its umbrella and hand; `lift` > 0 puts them all in front of the head. */
+function frontArm(pose: RigPose, j: Joints, lift: number): WorldPaint[] {
+  const arm = lift || PART.armFront;
+  return [
+    { shape: limb(j.shoulder, j.elbowFront, 1.5, 1.3), ch: 'b', part: arm },
+    { shape: limb(j.elbowFront, j.handFront, 1.3, 1.1), ch: 'b', part: arm },
+    ...umbrella(pose, j).map((p) => (lift ? { ...p, part: lift } : p)),
+    { shape: dot(j.handFront, 1.35), ch: 's', part: lift || PART.handFront },
+  ];
+}
+
+/** Face, nose, eye and hat. */
+function head(j: Joints): WorldPaint[] {
+  return [
+    { shape: poly(j.neckTop, j.headAngle, turned(FACE, j.headTurn)), ch: 's', part: PART.head },
+    { shape: poly(j.neckTop, j.headAngle, turned(NOSE, j.headTurn)), ch: 's', part: PART.head },
+    { shape: dot(pointOn(j.neckTop, j.headAngle, turned([EYE], j.headTurn)[0]), 0.55), ch: 'd', part: PART.head },
+    { shape: poly(j.neckTop, j.hatAngle, turned(HAT, j.headTurn)), ch: 'b', part: PART.head },
+  ];
+}
+
+/** Turns head points about the neck: mirrored for a negative `turn`, the front part (nose, brim) foreshortened. */
+function turned(pts: readonly Vec[], turn: number): Vec[] {
+  if (turn === 1) return [...pts];
+  const k = Math.abs(turn);
+  const sign = turn < 0 ? -1 : 1;
+  return pts.map(([x, y]) => [sign * (x <= 1 ? x : 1 + (x - 1) * k), y] as Vec);
 }
 
 function pointOn(origin: Vec, angle: number, p: Vec): Vec {

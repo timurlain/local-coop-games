@@ -8,9 +8,9 @@ import { line, r, text } from './draw';
 import { VIEW, furnitureBase, hidingSpot, project } from './geometry';
 import { drawGuard } from './guard';
 import { doorCentre } from './room';
-import { ICONS, SPY_H, type SpyFrame } from './sprite-data';
-import { drawIcon, drawIconOutlined, drawIconScaled, drawInHand, handOutline, handPoint, thingIcon } from './sprites';
-import { baseColor } from './spy';
+import { ICONS, SPY_STAND_H, type SpyFrame } from './sprite-data';
+import { canopyPoint, drawIcon, drawIconOutlined, drawIconScaled, drawInHand, handOutline, handPoint, thingIcon } from './sprites';
+import { baseColor, giggleFrame } from './spy';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -22,8 +22,10 @@ export const LAUGH_TIME = 1.2;
 const LAUGH_FPS = 6;
 /** How long a remedy's disarm animation shows, seconds (round 4 §3). */
 export const DISARM_TIME = 0.8;
-/** How long a blocked jab's club-spark shows, seconds (round 4 §2). */
+/** How long a blocked jab's spark shows, seconds (round 4 §2). */
 export const BLOCK_SPARK_TIME = 0.3;
+/** How long a spy giggles after setting a trap, seconds. */
+export const TRAP_GIGGLE_TIME = 0.8;
 
 /**
  * Render-side feedback for a logic event (spec §7):
@@ -34,14 +36,18 @@ export const BLOCK_SPARK_TIME = 0.3;
  * - `laugh`: the other spy laughing at a trap death (spec §3), for `LAUGH_TIME` — a pose only, nothing drawn;
  * - `disarm`: a remedy defusing a trap (round 4 §3), for `DISARM_TIME` — umbrella under the electric bucket, water on
  *   the bomb's fuse, pliers snipping the spring, scissors cutting the pistol's string.
- * - `blockSpark`: a jab stopped by the guard's club (round 4 §2), for `BLOCK_SPARK_TIME` — a few white/yellow
- *   pixels flying from the point where the clubs meet, between the two spies at club height.
+ * - `blockSpark`: a jab stopped by the open umbrella (round 4 §2, round 5 §3), for `BLOCK_SPARK_TIME` — a few
+ *   white/yellow pixels flying off the blocking spy's canopy;
+ * - `giggle`: the spy giggling to himself right after setting a trap, for `TRAP_GIGGLE_TIME` — a pose only.
  */
 export type EffectKind =
-  | 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh' | 'disarm' | 'blockSpark';
+  | 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh' | 'disarm' | 'blockSpark'
+  | 'giggle';
 
 /** Pose the spy sprite shows while an effect runs (overrides search/fight/walk, not swing/block). */
-export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut' | 'laugh1' | 'laugh2' | 'placeTrap'>;
+export type EffectPose = Extract<
+  SpyFrame, 'liftFind' | 'shrug' | 'hidePut' | 'laugh1' | 'laugh2' | 'placeTrap' | 'giggle1' | 'giggle2'
+>;
 
 /** The spy who laughs at this event (spec §3): on a trap death (`died`, cause ≠ fight), the other spy if it is active. */
 export function laugher(state: GameState, e: GameEvent): PlayerId | null {
@@ -116,16 +122,19 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
     case 'bounced':
       return { kind: 'guard', spy: e.spy, duration: RULES.guardKickTime };
     case 'blocked': {
-      // Only a blocked jab shows a spark: the clubs actually meet. A bash stopped by ducking has
-      // no club contact to spark from.
+      // Only a blocked jab shows a spark: the umbrella hits the open canopy. A bash stopped by ducking has
+      // no contact to spark from.
       if (e.kind !== 'jab') return null;
       const defender = state.spies[e.spy];
       const attacker = opponentOf(state, defender);
+      // anchored at the defender, facing the attacker: the spark comes off his canopy
       return {
-        kind: 'blockSpark', spy: e.spy, duration: BLOCK_SPARK_TIME,
-        x: (attacker.x + defender.x) / 2, z: (attacker.z + defender.z) / 2,
+        kind: 'blockSpark', spy: e.spy, duration: BLOCK_SPARK_TIME, x: defender.x, z: defender.z,
+        facing: attacker.x >= defender.x ? 1 : -1,
       };
     }
+    case 'trapSet':
+      return { kind: 'giggle', spy: e.spy, duration: TRAP_GIGGLE_TIME };
     case 'died': {
       const spy = laugher(state, e);
       return spy === null ? null : { kind: 'laugh', spy, duration: LAUGH_TIME };
@@ -177,6 +186,8 @@ function poseOf(e: Effect, now: number): EffectPose | null {
       return Math.floor((now - e.start) * LAUGH_FPS) % 2 === 0 ? 'laugh1' : 'laugh2';
     case 'disarm':
       return disarmPose(e);
+    case 'giggle':
+      return giggleFrame(now - e.start);
     case 'dropped':
     case 'poof':
     case 'guard':
@@ -245,7 +256,7 @@ function drawEffect(ctx: Ctx, state: GameState, e: Effect, t: number): void {
       if (at) dust(ctx, at.x, at.y, t, 7);
       const { sx, sy } = project(e.x, e.z);
       const bob = Math.round(Math.sin(t * Math.PI * 3));
-      text(ctx, '?', sx, sy - SPY_H - 2 + bob, '#f4f4f4', 8, 'center');
+      text(ctx, '?', sx, sy - SPY_STAND_H - 2 + bob, '#f4f4f4', 8, 'center');
       break;
     }
     case 'hidden': {
@@ -303,13 +314,15 @@ function drawEffect(ctx: Ctx, state: GameState, e: Effect, t: number): void {
       break;
     }
     case 'laugh':
+    case 'giggle':
       break; // the pose is the whole effect
     case 'disarm':
       drawDisarm(ctx, state, e, t);
       break;
     case 'blockSpark': {
-      const h = hand(e, 'block');
-      sparkles(ctx, h.x, h.y, t);
+      const { sx, sy } = project(e.x, e.z);
+      const c = canopyPoint('block', sx, sy, e.facing < 0);
+      sparkles(ctx, c.hx, c.hy, t);
       break;
     }
 

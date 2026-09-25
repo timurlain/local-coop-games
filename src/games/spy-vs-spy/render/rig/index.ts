@@ -1,10 +1,9 @@
-// Prototype 2D rig renderer for the spies (not used by the game yet): pose → skeleton → vector parts →
+// 2D rig renderer for the spies (sprite-data renders every frame from it at load): pose → skeleton → vector parts →
 // supersampled raster → palette-character rows in the same format as SPY_FRAMES, plus the hand pixels.
 
-import { SPY_PALETTES, type SpyPalette } from '../sprite-data';
-import { buildParts, PART, toPixels } from './parts';
+import { buildParts, CANOPY_AT, PART, toPixels } from './parts';
 import { downsample, outline, rasterize, type Cell, type Vec } from './raster';
-import { solve, type RigPose } from './skeleton';
+import { solve, step, type RigPose } from './skeleton';
 
 export { RIG_POSES, type RigPoseName } from './poses';
 export { solve, type RigPose, type Joints } from './skeleton';
@@ -21,7 +20,7 @@ export interface RigOptions {
   readonly ss?: number;
 }
 
-/** Proposed frame: 40×40 with the body on column 20, so the jab and the open umbrella fit without clipping. */
+/** Spy frame: 40×40 with the body on column 20, so the jab and the open umbrella fit without clipping. */
 export const RIG_W = 40;
 export const RIG_H = 40;
 
@@ -30,6 +29,8 @@ export interface RigFrame {
   /** Image pixel of the front / back hand, like SPY_HANDS / SPY_BACK_HANDS. */
   readonly hand: readonly [number, number];
   readonly backHand: readonly [number, number];
+  /** Image pixel in the middle of the open umbrella's canopy (null with the umbrella closed or absent). */
+  readonly canopy: readonly [number, number] | null;
 }
 
 /** Vote weights: thin, important details beat the fill around them. */
@@ -37,17 +38,9 @@ export const RIG_WEIGHTS: Readonly<Record<string, number>> = {
   b: 1, s: 1.3, S: 1.3, k: 1.6, o: 2.4, u: 2.4, h: 2.4, f: 3, d: 3.5,
 };
 
-/** Characters the rig draws; every RIG_PALETTES entry has all of them. */
-export const RIG_CHARS = ['o', 'b', 'e', 'c', 's', 'S', 'd', 'k', 'u', 'h', 'f'] as const;
-
-/** The game's spy palettes plus the rig's skin, eye, shoe and umbrella characters. */
-export const RIG_PALETTES: Record<SpyPalette, Record<(typeof RIG_CHARS)[number], string>> = {
-  white: { ...SPY_PALETTES.white, s: '#f0a484', S: '#c47858', d: '#1a1a1a', k: '#1a1a1a', u: '#262626', h: '#8b5a2b', f: '#c8c8c8' },
-  black: { ...SPY_PALETTES.black, s: '#f0a484', S: '#c47858', d: '#1a1a1a', k: '#050505', u: '#383838', h: '#8b5a2b', f: '#c8c8c8' },
-  sooty: { ...SPY_PALETTES.sooty, s: '#6a5a52', S: '#4a3e38', d: '#ffffff', k: '#000000', u: '#1a1a1a', h: '#4a3020', f: '#808080' },
-  soaked: { ...SPY_PALETTES.soaked, s: '#c8b8e8', S: '#9a8cc0', d: '#1b3a6b', k: '#1b3a6b', u: '#2a4a7a', h: '#5a6a8a', f: '#c8d8ff' },
-  ghost: { ...SPY_PALETTES.ghost, s: '#fff0ea', S: '#eeddd6', d: '#999999', k: '#cccccc', u: '#dddddd', h: '#e6d8cc', f: '#ffffff' },
-};
+/** Characters the rig draws; every spy palette (SPY_PALETTES) colours all of them. */
+export const RIG_CHARS = ['o', 'b', 's', 'S', 'd', 'k', 'u', 'h', 'f'] as const;
+export type RigChar = (typeof RIG_CHARS)[number];
 
 /** Two touching parts need a line between them when they would otherwise merge into one colour. */
 function separate(back: Cell, front: Cell): boolean {
@@ -75,6 +68,9 @@ export function renderRig(pose: RigPose, opts: RigOptions = { w: RIG_W, h: RIG_H
     rows,
     hand: pixel(joints.handFront, cx, h - 1, scale),
     backHand: pixel(joints.handBack, cx, h - 1, scale),
+    canopy: pose.umbrella?.state === 'open' && joints.umbrellaAngle !== null
+      ? pixel(step(joints.handFront, joints.umbrellaAngle, CANOPY_AT), cx, h - 1, scale)
+      : null,
   };
 }
 

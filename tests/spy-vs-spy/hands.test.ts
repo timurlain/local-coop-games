@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSpy } from '../../src/games/spy-vs-spy/logic/generator';
 import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import type { Spy, Thing } from '../../src/games/spy-vs-spy/logic/state';
-import { CLUB_FRAMES, handItems, pickFrame, refuseFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
+import { UMBRELLA_FRAMES, handItems, pickFrame, refuseFrame, walkFrame } from '../../src/games/spy-vs-spy/render/spy';
 
 const spy = (over: Partial<Spy> = {}): Spy => ({ ...createSpy(0, 0, 40, 9, 480, levelRules(3).trapStockPerSpy), ...over });
 const kufrik: Thing = { kind: 'kufrik', contents: ['klic'], lastHolder: 0 };
@@ -31,14 +31,14 @@ describe('handItems (round 4 §2): what goes in which hand', () => {
     expect(handItems(spy({ selected: 'elektrina', hand: voda }), 'stand')).toEqual({ front: 'elektrina', back: 'voda' });
   });
 
-  it('fight frames: the club is in front, so no trap is drawn; the carried thing hangs at the back hand', () => {
-    for (const frame of CLUB_FRAMES) {
+  it('fight frames: the umbrella is in front, so no trap is drawn; the carried thing hangs at the back hand', () => {
+    for (const frame of UMBRELLA_FRAMES) {
       expect(handItems(spy({ selected: 'bomba', hand: kufrik }), frame)).toEqual({ front: null, back: 'kufrik' });
       expect(handItems(spy({ selected: 'bomba' }), frame)).toEqual({ front: null, back: null });
     }
-    expect(CLUB_FRAMES).toContain('fightStand');
-    expect(CLUB_FRAMES).toContain('swingStrike');
-    expect(CLUB_FRAMES).toContain('duck');
+    expect(UMBRELLA_FRAMES).toContain('fightStand');
+    expect(UMBRELLA_FRAMES).toContain('swingStrike');
+    expect(UMBRELLA_FRAMES).toContain('duck');
   });
 
   it('while placing, the trap is drawn flying into its target, not in the hand', () => {

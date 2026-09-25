@@ -8,8 +8,8 @@ import { VIEW, project } from './geometry';
 import { drawFrame } from './hud';
 import { ROOM, UNDER } from './layout';
 import { drawRoom } from './room';
-import { SPY_H, type SpyPalette } from './sprite-data';
-import { drawKufrikInHand, drawSprite, handOutline, spyImage } from './sprites';
+import { SPY_STAND_H, SPY_STAND_REACH, type SpyPalette } from './sprite-data';
+import { drawKufrikInHand, drawSpySprite, handOutline, spyImage } from './sprites';
 import { walkFrame } from './spy';
 import { drawCable, drawDevice } from './trapulator';
 
@@ -41,8 +41,8 @@ const CLIMB = 0.005;
 const MAX_PITCH = 0.28;
 /** Scene time when the mob starts storming in. */
 export const MOB_AT = 1.2;
-/** Half the spy sprite plus half a mob member, so nobody stands inside the loser. */
-export const MOB_CLEARANCE = 20;
+/** The spy's reach from his centre line (the nose) plus half a mob member and a gap, so nobody stands inside the loser. */
+export const MOB_CLEARANCE = SPY_STAND_REACH + 4 + 4;
 const MOB_SIZE = 8;
 const MOB_SPEED = 45;
 const MOB_GAP = 11;
@@ -131,11 +131,11 @@ function drawRunway(ctx: Ctx, winner: Spy, t: number, now: number): void {
   const pose = winnerPose(t);
   if (!pose.visible) return;
   const frame = pose.laughing ? (Math.floor(now * 6) % 2 === 0 ? 'laugh1' : 'laugh2') : walkFrame(now);
-  drawSprite(ctx, spyImage(palette(winner), frame), pose.x, GROUND_Y);
+  drawSpySprite(ctx, spyImage(palette(winner), frame), pose.x, GROUND_Y);
   drawKufrikInHand(ctx, frame, pose.x, GROUND_Y, false, handOutline(palette(winner)));
   if (pose.laughing) {
     const bx = pose.x + 16;
-    const by = GROUND_Y - SPY_H - 12;
+    const by = GROUND_Y - SPY_STAND_H - 12;
     r(ctx, bx, by, 60, 14, '#ffffff');
     r(ctx, bx + 2, by + 14, 4, 4, '#ffffff');
     text(ctx, T.laugh, bx + 30, by + 10, '#111111', 8, 'center');
@@ -155,8 +155,8 @@ function drawMobbed(ctx: Ctx, state: GameState, loser: Spy, t: number, now: numb
   const onFloor = loser.mode === 'normal' || loser.mode === 'searching';
   const { sx, sy } = project(onFloor ? loser.x : RULES.roomW / 2, onFloor ? loser.z : RULES.roomD / 2);
   const tremble = Math.floor(now * 25) % 2 === 0 ? 1 : 0;
-  drawSprite(ctx, spyImage(palette(loser), 'stand'), sx + tremble, sy, loser.facing < 0);
-  text(ctx, '!', sx, sy - SPY_H - 2, '#ff5050', 10, 'center');
+  drawSpySprite(ctx, spyImage(palette(loser), 'stand'), sx + tremble, sy, loser.facing < 0);
+  text(ctx, '!', sx, sy - SPY_STAND_H - 2, '#ff5050', 10, 'center');
 
   for (const m of mobPositions(t, sx, VIEW.left, VIEW.right)) drawMobMember(ctx, m, sy, now);
   if (t > MOB_AT + 1) text(ctx, T.mobShout, VIEW.cx, VIEW.top + 14, '#ff5050', 12, 'center');

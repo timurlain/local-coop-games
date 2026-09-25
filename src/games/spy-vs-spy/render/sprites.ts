@@ -1,6 +1,7 @@
 import type { RemedyKind, Thing } from '../logic/state';
 import {
-  ICONS, ICON_PALETTE, SPY_BACK_HANDS, SPY_FRAMES, SPY_HANDS, SPY_PALETTES, type IconName, type SpyFrame, type SpyPalette,
+  ICONS, ICON_PALETTE, SPY_BACK_HANDS, SPY_CANOPY, SPY_CENTER_X, SPY_FRAMES, SPY_HANDS, SPY_PALETTES,
+  type IconName, type SpyFrame, type SpyPalette,
 } from './sprite-data';
 
 /** Sentinel character marking the outline ring in `outlineRows`' output; never a real palette key. */
@@ -80,17 +81,41 @@ export function drawSprite(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement
   ctx.restore();
 }
 
+/**
+ * Draws a spy frame standing at (x, y): its body centre column (SPY_CENTER_X) on x, its bottom row just above y.
+ * Flipped, the image is mirrored about that column, so the spy turns on the spot.
+ */
+export function drawSpySprite(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, x: number, y: number, flip = false): void {
+  const cx = Math.round(x);
+  const top = Math.round(y - img.height);
+  if (!flip) {
+    ctx.drawImage(img, cx - SPY_CENTER_X, top);
+    return;
+  }
+  ctx.save();
+  ctx.translate(cx + SPY_CENTER_X + 1, top);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
+/** Screen pixel of image pixel (px, py) of a spy frame drawn with drawSpySprite at (x, y). */
+function spyPixel(frame: SpyFrame, [px, py]: readonly [number, number], x: number, y: number, flip: boolean): { hx: number; hy: number } {
+  const top = Math.round(y - SPY_FRAMES[frame].length);
+  return { hx: Math.round(x) + (flip ? SPY_CENTER_X - px : px - SPY_CENTER_X), hy: top + py };
+}
+
 /** Which hand: the carrying `front` hand (SPY_HANDS) or the `back` hand (SPY_BACK_HANDS, spec §2). */
 export type Hand = 'front' | 'back';
 
-/** Screen pixel of the frame's hand when the sprite is drawn with drawSprite at (x, y) = bottom-centre. */
+/** Screen pixel of the frame's hand when the spy is drawn with drawSpySprite at (x, y). */
 export function handPoint(frame: SpyFrame, x: number, y: number, flip = false, hand: Hand = 'front'): { hx: number; hy: number } {
-  const rows = SPY_FRAMES[frame];
-  const w = rows[0].length;
-  const left = Math.round(x - w / 2);
-  const top = Math.round(y - rows.length);
-  const [px, py] = (hand === 'back' ? SPY_BACK_HANDS : SPY_HANDS)[frame];
-  return { hx: left + (flip ? w - 1 - px : px), hy: top + py };
+  return spyPixel(frame, (hand === 'back' ? SPY_BACK_HANDS : SPY_HANDS)[frame], x, y, flip);
+}
+
+/** Screen pixel in the middle of the open umbrella's canopy (block, duck); the front hand for other frames. */
+export function canopyPoint(frame: SpyFrame, x: number, y: number, flip = false): { hx: number; hy: number } {
+  return spyPixel(frame, SPY_CANOPY[frame] ?? SPY_HANDS[frame], x, y, flip);
 }
 
 /** What a spy visibly carries in hand: the kufřík, a loose secret in a satchel (spec §6), or a remedy (round 4 §3). */

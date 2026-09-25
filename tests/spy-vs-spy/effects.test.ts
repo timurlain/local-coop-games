@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import {
-  BLOCK_SPARK_TIME, EFFECT_TIME, LAUGH_TIME, activeEffects, effectPose, effectsIn, laugher, spawnEffects, type EffectQueue,
+  BLOCK_SPARK_TIME, EFFECT_TIME, LAUGH_TIME, TRAP_GIGGLE_TIME, activeEffects, effectPose, effectsIn, laugher, spawnEffects,
+  type EffectQueue,
 } from '../../src/games/spy-vs-spy/render/effects';
 import { pickFrame } from '../../src/games/spy-vs-spy/render/spy';
 import { atFurniture, firstFurniture, openGame, place, remedy, secret } from './fixtures';
@@ -86,7 +87,7 @@ describe('spawnEffects (spec §7 table)', () => {
 });
 
 describe('blockSpark (round 4 §2: a blocked jab visibly stops)', () => {
-  it('spawns at the midpoint between attacker and defender, in their shared room, for BLOCK_SPARK_TIME', () => {
+  it('spawns at the defender, facing the attacker (off his open canopy), in their shared room, for BLOCK_SPARK_TIME', () => {
     const s = openGame();
     const a = place(s, 0, 4, 100, 20);
     const b = place(s, 1, 4, 110, 20);
@@ -96,7 +97,7 @@ describe('blockSpark (round 4 §2: a blocked jab visibly stops)', () => {
     expect(BLOCK_SPARK_TIME).toBe(0.3);
     expect(q).toHaveLength(1);
     expect(q[0]).toMatchObject({
-      kind: 'blockSpark', spy: 1, room: 4, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, start: 10, duration: BLOCK_SPARK_TIME,
+      kind: 'blockSpark', spy: 1, room: 4, x: b.x, z: b.z, facing: a.x >= b.x ? 1 : -1, start: 10, duration: BLOCK_SPARK_TIME,
     });
     expect(effectsIn(q, 4, 10.1).map((e) => e.kind)).toEqual(['blockSpark']);
     expect(activeEffects(q, 10 + BLOCK_SPARK_TIME - 0.01)).toHaveLength(1);
@@ -121,13 +122,44 @@ describe('blockSpark (round 4 §2: a blocked jab visibly stops)', () => {
     expect(effectPose(q, 1, 0.1)).toBeNull();
   });
 
-  it('lands between the two spies wherever they stand (RULES-driven, not a magic literal)', () => {
+  it('faces whichever side the attacker stands on (RULES-driven, not a magic literal)', () => {
     const s = openGame();
-    const a = place(s, 0, 4, 30, 5);
-    const b = place(s, 1, 4, 30 + RULES.fightRangeX, 5 + RULES.fightRangeZ);
+    const a = place(s, 0, 4, 30 + RULES.fightRangeX, 5 + RULES.fightRangeZ);
+    const b = place(s, 1, 4, 30, 5);
     const q: EffectQueue = [];
     spawnEffects(q, s, [{ type: 'blocked', spy: 1, kind: 'jab' }], 0);
-    expect(q[0]).toMatchObject({ x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 });
+    expect(q[0]).toMatchObject({ x: b.x, z: b.z, facing: 1 });
+    expect(a.x).toBeGreaterThan(b.x);
+    const q2: EffectQueue = [];
+    spawnEffects(q2, s, [{ type: 'blocked', spy: 0, kind: 'jab' }], 0);
+    expect(q2[0]).toMatchObject({ x: a.x, z: a.z, facing: -1 });
+  });
+});
+
+describe('giggle after setting a trap', () => {
+  it('a trapSet shows the giggle pose for TRAP_GIGGLE_TIME, bobbing between the two frames', () => {
+    const s = openGame();
+    place(s, 0, 4, 100, 20);
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [{ type: 'trapSet', spy: 0, trap: 'bomba' }], 10);
+    expect(TRAP_GIGGLE_TIME).toBeCloseTo(0.8);
+    expect(q).toHaveLength(1);
+    expect(q[0]).toMatchObject({ kind: 'giggle', spy: 0, room: 4, duration: TRAP_GIGGLE_TIME });
+    expect(effectPose(q, 0, 10)).toBe('giggle1');
+    expect(effectPose(q, 0, 10 + 1 / 6 + 0.01)).toBe('giggle2');
+    expect(effectPose(q, 0, 10 + 2 / 6 + 0.01)).toBe('giggle1');
+    expect(effectPose(q, 1, 10.1)).toBeNull();
+    expect(effectPose(q, 0, 10 + TRAP_GIGGLE_TIME)).toBeNull();
+  });
+
+  it('the pose shows while he stands, walking away cancels it', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [{ type: 'trapSet', spy: 0, trap: 'pruzina' }], 0);
+    const pose = effectPose(q, 0, 0.1);
+    expect(pickFrame(spy, false, false, 0.1, pose)).toBe('giggle1');
+    expect(pickFrame(spy, false, true, 0.1, pose)).toMatch(/^walk/);
   });
 });
 

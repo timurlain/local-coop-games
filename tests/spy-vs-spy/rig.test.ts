@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  RIG_CHARS, RIG_H, RIG_PALETTES, RIG_POSES, RIG_W, RIG_WEIGHTS, renderRig, solve, type RigPose, type RigPoseName,
+  RIG_CHARS, RIG_H, RIG_POSES, RIG_W, RIG_WEIGHTS, renderRig, solve, type RigPose, type RigPoseName,
 } from '../../src/games/spy-vs-spy/render/rig';
 import { downsample, outline, rasterize, type Paint } from '../../src/games/spy-vs-spy/render/rig/raster';
 import { BONES, KNEE_RADIUS, reach, rotate, soleY, step } from '../../src/games/spy-vs-spy/render/rig/skeleton';
@@ -88,7 +88,9 @@ describe('rig skeleton', () => {
         soleY(j.ankleFront, pose.footFront ?? 0), soleY(j.ankleBack, pose.footBack ?? 0),
         j.kneeFront[1] - KNEE_RADIUS, j.kneeBack[1] - KNEE_RADIUS,
       );
-      expect(low, name).toBeCloseTo(pose.rootY ?? 0, 6);
+      // a pose with a fixed hip height (stepping on guard) stands within a tenth of a pixel of the ground
+      if (pose.hipHeight === undefined) expect(low, name).toBeCloseTo(pose.rootY ?? 0, 6);
+      else expect(Math.abs(low - (pose.rootY ?? 0)), name).toBeLessThan(0.1);
     }
   });
 
@@ -121,12 +123,6 @@ describe('rig renderer', () => {
           for (const ch of r) expect(allowed.has(ch), `${name}: '${ch}'`).toBe(true);
         }
       }
-    }
-  });
-
-  it('every palette colours every rig character', () => {
-    for (const [pal, colours] of Object.entries(RIG_PALETTES)) {
-      expect(Object.keys(colours).sort(), pal).toEqual([...RIG_CHARS].sort());
     }
   });
 
@@ -166,9 +162,50 @@ describe('rig renderer', () => {
     expect(widest).toBeGreaterThanOrEqual(12);
   });
 
-  it('swingStrike: the closed umbrella is thrust forward, its ferrule out in front', () => {
+  it('swingStrike: the closed umbrella is thrust forward, its ferrule out in front and clear of the frame edge', () => {
     const { rows, hand } = renderRig(RIG_POSES.swingStrike);
     const ferrule = rows.flatMap((r) => [...r].flatMap((ch, x) => (ch === 'f' ? [x] : [])));
     expect(Math.min(...ferrule)).toBeGreaterThan(hand[0] + 5);
+    expect(Math.max(...ferrule)).toBeLessThanOrEqual(RIG_W - 3);
+  });
+
+  it('nothing touches the frame edges (a clipped umbrella or hat would be cut off in the game)', () => {
+    for (const name of NAMES) {
+      const { rows } = renderRig(RIG_POSES[name]);
+      expect(rows[0], `${name} top row`).toMatch(/^\.+$/);
+      for (const r of rows) {
+        expect(r[0], `${name} left column`).toBe('.');
+        expect(r[RIG_W - 1], `${name} right column`).toBe('.');
+      }
+    }
+  });
+
+  it('the hat keeps its fedora shape when the head nods: it follows only part of the tilt', () => {
+    const j = solve(RIG_POSES.giggle2);
+    expect(j.headAngle).toBeGreaterThan(20);
+    expect(j.hatAngle).toBeLessThan(j.headAngle * 0.6);
+    expect(j.hatAngle).toBeGreaterThan(0);
+  });
+
+  it('turning the head: refuse1 foreshortens the nose, refuse2 points it backwards', () => {
+    const noseTip = (name: RigPoseName): number => {
+      const { rows } = renderRig(RIG_POSES[name]);
+      const skin = rows.slice(0, 18).flatMap((r) => [...r].flatMap((ch, x) => (ch === 's' ? [x] : [])));
+      return name === 'refuse2' ? Math.min(...skin) : Math.max(...skin);
+    };
+    const cx = RIG_W / 2;
+    expect(noseTip('stand') - cx).toBeGreaterThanOrEqual(10);
+    expect(noseTip('refuse1') - cx).toBeLessThan(noseTip('stand') - cx - 4);
+    expect(noseTip('refuse1')).toBeGreaterThan(cx + 2);
+    expect(cx - noseTip('refuse2')).toBeGreaterThanOrEqual(8);
+  });
+
+  it('the canopy point is reported for the open umbrella only, on a drawn umbrella pixel', () => {
+    for (const name of NAMES) {
+      const f = renderRig(RIG_POSES[name]);
+      const open = (RIG_POSES[name] as RigPose).umbrella?.state === 'open';
+      expect(f.canopy !== null, name).toBe(open);
+      if (f.canopy) expect(f.rows[f.canopy[1]][f.canopy[0]], name).toMatch(/[uof]/);
+    }
   });
 });
