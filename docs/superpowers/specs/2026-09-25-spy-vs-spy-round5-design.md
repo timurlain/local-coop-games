@@ -6,6 +6,8 @@ Status: approved in conversation. Base `feat/round-4`. Later specs win.
 ## 1. Trap targets highlighted
 - While a spy has a trap selected (and is not in a shared room), **every valid target in his current room** is highlighted in his own view: free furniture for bomba/pružina, doors (not a hidden exit) without a door trap for elektrina/pistole; for časovaná the floor under the spy. The one in reach gets the stronger marker (existing red marker); the others a softer pulsing outline/glow. Pure helper `placeTargetsInRoom(state, spy)` (tested).
 
+- **Larger placement reach** (user request): a trap can be placed from a bit further away — furniture reach x 14 → 22 (and z reach 8 → 12 for wall pieces; free-standing pieces use a matching radius), door reach 6 → 10. Use the same reach for searching (one consistent "in reach" notion), keeping pieces' reach zones from overlapping each other and the doors (adjust slot spacing if needed).
+
 ## 2. Respawn elsewhere
 - A defeated spy respawns (after the usual 3 s) in a **different room**: chosen with the gameplay RNG among rooms that are not the room he died in, not the opponent's current room, not the exit room; at the room centre; `enteredAt` stamped; visited set. If no such room exists, any room ≠ opponent's. The death animation/angel still plays in the room of death. Tests.
 
