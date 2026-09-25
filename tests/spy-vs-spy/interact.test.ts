@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { updateAction, updateSearching } from '../../src/games/spy-vs-spy/logic/interact';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { doorKey, type GameEvent, type GameState, type Spy, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
-import { atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, secret, taken } from './fixtures';
+import { step } from '../../src/games/spy-vs-spy/logic/step';
+import {
+  akceAndWait, atFurniture, firstFurniture, input, kufrik, openGame, place, remedy, run, secret, taken, TICK,
+} from './fixtures';
 
 function act(s: GameState, spy: Spy, inp: SpyInput, dt: number, ev: GameEvent[]) {
   updateAction(s, spy, inp, dt, ev);
@@ -227,5 +230,76 @@ describe('fight takes priority', () => {
     act(s, spy, input({ action: true }), 1 / 60, ev);
     expect(spy.mode).toBe('normal');
     expect(ev[0]).toEqual({ type: 'swing', spy: 0 });
+  });
+});
+
+describe('round 4 fix: in a shared room, Akce is only ever a door or an attack — never a refusal', () => {
+  it('at a door with a trap selected: opens the door regardless of the opponent (spy 0, Bílý)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 0); // at the N door
+    place(s, 1, 4, 40, 20); // shares the room, far from the door
+    spy.selected = 'bomba';
+    const key = doorKey(4, 1);
+    const ev = run(s, [input({ action: true }), input()], RULES.doorOpenTime + TICK * 3);
+    expect(s.doorOpen[key]?.phase).toBe('open');
+    expect(ev).toContainEqual({ type: 'doorOpened', spy: 0, key });
+    expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
+    expect(ev.filter((e) => e.type === 'swing')).toEqual([]);
+    expect(spy.selected).toBe('bomba'); // the selection is untouched
+    expect(spy.placing).toBeNull();
+  });
+
+  it('at a door with a trap selected: opens the door regardless of the opponent (spy 1, Černý)', () => {
+    const s = openGame();
+    place(s, 0, 4, 40, 20);
+    const spy = place(s, 1, 4, 100, 0); // at the N door
+    spy.selected = 'elektrina';
+    const key = doorKey(4, 1);
+    const ev = run(s, [input(), input({ action: true })], RULES.doorOpenTime + TICK * 3);
+    expect(s.doorOpen[key]?.phase).toBe('open');
+    expect(ev).toContainEqual({ type: 'doorOpened', spy: 1, key });
+    expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
+    expect(spy.selected).toBe('elektrina');
+  });
+
+  it('far apart with a trap selected: starts a swing instead of refusing, and the strike misses', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 40, 20);
+    place(s, 1, 4, 160, 20); // shares the room, well out of fight range
+    spy.selected = 'bomba';
+    const ev = run(s, [input({ action: true }), input()], RULES.swingWindup + TICK * 2);
+    expect(ev).toContainEqual({ type: 'swing', spy: 0 });
+    expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
+    expect(ev.filter((e) => e.type === 'hit')).toEqual([]);
+    expect(spy.placing).toBeNull();
+    expect(spy.selected).toBe('bomba'); // still in hand for later
+  });
+
+  it('in fight range with a trap selected: hits, same as without one', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    const opp = place(s, 1, 4, 110, 20);
+    spy.selected = 'bomba';
+    const ev = run(s, [input({ action: true }), input()], RULES.swingWindup + TICK * 2);
+    expect(ev).toContainEqual({ type: 'hit', spy: 1 });
+    expect(opp.health).toBe(RULES.health - RULES.jabDamage);
+    expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
+  });
+
+  it('the selected trap works again once the opponent leaves the room', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 4); // x = 65, well clear of the N/S door zone
+    const spy = atFurniture(s, 0, f);
+    place(s, 1, 4, f.x + 100, 20); // shares the room, far away
+    spy.selected = 'bomba';
+    const ev1 = step(s, [input({ action: true }), input()], TICK);
+    expect(ev1).toContainEqual({ type: 'swing', spy: 0 });
+    expect(ev1.filter((e) => e.type === 'refused')).toEqual([]);
+    expect(spy.placing).toBeNull(); // ignored while shared, not placed either
+    step(s, [input(), input()], TICK); // release Akce
+    place(s, 1, 5, 0, 0); // opponent leaves the room
+    const ev2 = akceAndWait(s);
+    expect(f.trap).toEqual({ kind: 'bomba', owner: 0 });
+    expect(ev2.filter((e) => e.type === 'refused')).toEqual([]);
   });
 });

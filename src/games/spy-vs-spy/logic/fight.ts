@@ -38,10 +38,14 @@ export function updateDucking(state: GameState, spy: Spy, input: SpyInput): void
  * Akce in a fight (spec §8): starts a jab, or a head bash while holding up. The press only starts
  * the wind-up; `updateSwing` lands the strike at its end. Returns true when the press was used for
  * fighting (even during a wind-up or the cooldown).
+ *
+ * Round 4 fix: starting the wind-up no longer requires range — a shared room is enough (the caller,
+ * `updateAction`, only reaches this once a door has been ruled out). Range is judged where it always
+ * was, at the strike (`strike`, below): an opponent out of reach just makes the swing miss.
  */
 export function trySwing(state: GameState, spy: Spy, kind: AttackKind, events: GameEvent[]): boolean {
   const o = sameRoomOpponent(state, spy);
-  if (o === null || spy.mode !== 'normal' || !inFightRange(spy, o)) return false;
+  if (o === null || spy.mode !== 'normal') return false;
   if (spy.attack !== null || spy.swingCooldown > 0) return true;
   const windup = kind === 'bash' ? RULES.bashWindup : RULES.swingWindup;
   spy.attack = kind;

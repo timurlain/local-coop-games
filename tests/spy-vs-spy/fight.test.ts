@@ -58,11 +58,17 @@ describe('trySwing (spec §8: the press only starts the wind-up)', () => {
     expect(ev).toEqual([]);
   });
 
-  it('returns false when nobody is in range', () => {
+  it('starts anyway when the opponent shares the room but is out of range (round 4 fix): the strike judges range', () => {
     const { s, a, b } = duel();
     b.x = 100 + RULES.fightRangeX + 1;
-    expect(trySwing(s, a, 'jab', [])).toBe(false);
-    b.x = 110;
+    const ev: GameEvent[] = [];
+    expect(trySwing(s, a, 'jab', ev)).toBe(true);
+    expect(a.attack).toBe('jab');
+    expect(ev).toEqual([{ type: 'swing', spy: 0 }]);
+  });
+
+  it('returns false when nobody shares the room', () => {
+    const { s, a, b } = duel();
     b.room = 5;
     expect(trySwing(s, a, 'jab', [])).toBe(false);
   });

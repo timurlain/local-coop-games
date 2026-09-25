@@ -6,30 +6,43 @@ import { startPlacing, triggerDoorTrap, triggerFurnitureTrap } from './traps';
 import type { Dir, Furniture, GameEvent, GameState, Spy, SpyInput } from './state';
 
 /**
- * Akce handling for a spy in 'normal' mode. While the opponent shares this room (spec §3), Akce
- * only ever swings (if in range) — no search, no hide, no trap placement.
+ * Akce handling for a spy in 'normal' mode. While the opponent shares this room (spec §3, round 4
+ * fix), Akce is only ever a door or an attack: a door in reach opens (priority over swinging,
+ * regardless of range or a selected trap), otherwise the spy always starts a swing — even out of
+ * range, where the strike simply misses at the end of the wind-up (`trySwing`/`strike`). A selected
+ * trap is ignored there: no placing, no head-shake; the selection just sits until the room clears.
+ * Search and hide stay disallowed in a shared room.
  */
 export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
-  const shared = sharesRoom(state, spy);
   if (!input.action || spy.prev.action) return;
+  const shared = sharesRoom(state, spy);
   // Spec §8: Akce while holding up is the head bash, otherwise a jab.
-  if (trySwing(state, spy, input.moveY === -1 ? 'bash' : 'jab', events)) return;
+  const kind = input.moveY === -1 ? 'bash' : 'jab';
+
+  if (shared) {
+    const d = doorAt(state, spy);
+    if (d !== null) {
+      tryOpenDoor(state, spy, d, events);
+      return;
+    }
+    trySwing(state, spy, kind, events);
+    return;
+  }
 
   // A trap in hand (round 4 §1): Akce puts it down on a valid target, or the spy shakes his head
-  // (no target, target already trapped, shared room). It never opens a door, searches or hides.
+  // (no target, target already trapped). It never opens a door, searches or hides.
   if (spy.selected !== null) {
     startPlacing(state, spy, events);
     return;
   }
 
-  // A door in reach (spec §5): Akce opens it — doors still work in a shared room, out of fight range.
+  // A door in reach (spec §5): Akce opens it.
   const d = doorAt(state, spy);
   if (d !== null) {
     tryOpenDoor(state, spy, d, events);
     return;
   }
 
-  if (shared) return;
   const f = furnitureAt(state, spy);
   if (f !== null) startSearch(state, spy, f, events);
 }

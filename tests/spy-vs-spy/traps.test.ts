@@ -394,12 +394,18 @@ describe('refused: the head shake (round 4 §1)', () => {
     expectRefused(s, 'elektrina');
   });
 
-  it('shared room, opponent out of fight range — even casovana', () => {
+  it('round 4 fix: shared room, opponent out of fight range — swings instead of refusing, even with casovana selected', () => {
     const s = openGame();
-    place(s, 0, 4, 40, 20);
+    const spy = place(s, 0, 4, 40, 20);
     place(s, 1, 4, 160, 20);
     select(s, 'casovana');
-    expectRefused(s, 'casovana');
+    const stock = spy.stock.casovana;
+    const ev = step(s, [input({ action: true }), IDLE], TICK);
+    expect(ev).toContainEqual({ type: 'swing', spy: 0 });
+    expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
+    expect(spy.placing).toBeNull();
+    expect(spy.selected).toBe('casovana'); // the selection is untouched, just ignored
+    expect(spy.stock.casovana).toBe(stock);
   });
 
   it('shared room in fight range swings instead of refusing', () => {
