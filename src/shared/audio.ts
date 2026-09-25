@@ -96,9 +96,16 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     noise(c, { dur: 0.03, vol: 0.15, delay: 0.06, lowpass: 8000 });
   },
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },
+  /**
+   * the electric bucket (round 6 §6): a tinny clang as it lands on the head, the old crackle, then a mains buzz
+   * pulsing for the second the X-ray flickers
+   */
   zap: (c) => {
-    for (let i = 0; i < 6; i++) tone(c, { freq: 800 + (i % 2) * 400, dur: 0.04, delay: i * 0.04, type: 'sawtooth', vol: 0.1 });
-    noise(c, { dur: 0.3, vol: 0.1, lowpass: 4000 });
+    tone(c, { freq: 1500, to: 1100, dur: 0.18, type: 'triangle', vol: 0.12, delay: 0.2 });
+    noise(c, { dur: 0.05, vol: 0.15, delay: 0.2, lowpass: 6000 });
+    for (let i = 0; i < 6; i++) tone(c, { freq: 800 + (i % 2) * 400, dur: 0.04, delay: 0.22 + i * 0.04, type: 'sawtooth', vol: 0.1 });
+    noise(c, { dur: 0.3, vol: 0.1, delay: 0.22, lowpass: 4000 });
+    for (let i = 0; i < 11; i++) tone(c, { freq: i % 2 === 0 ? 110 : 165, dur: 0.09, delay: 0.26 + i * 0.09, type: 'sawtooth', vol: 0.07 });
   },
   boing: (c) => tone(c, { freq: 200, to: 900, dur: 0.35, type: 'triangle', vol: 0.25 }),
   shot: (c) => noise(c, { dur: 0.2, vol: 0.5, lowpass: 3000 }),
