@@ -5,7 +5,7 @@ import { line, poly, r, shade, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawDecor } from './decor';
 import { drawFloor, drawRug, type ThemeLook } from './floor';
-import { drawFurniture, drawReachMarker } from './furniture';
+import { drawFurniture, drawReachMarker, drawSoftMarker } from './furniture';
 import { ROOM } from './layout';
 import { drawIcon } from './sprites';
 
@@ -88,6 +88,9 @@ export interface RoomMarks {
   /** where the trap in hand goes right now (red marker), round 4 §1 */
   armedFurniture?: number | null;
   armedDoor?: Dir | null;
+  /** the other valid targets for the trap in hand in this room, highlighted softly (round 5 §1) */
+  softFurniture?: readonly number[];
+  softDoors?: readonly Dir[];
   /** false leaves the airport exit out (hidden from this viewer, spec §4) */
   showExit?: boolean;
   /** false leaves free-standing pieces to the caller, which depth-sorts them with the spies (round 5 §5) */
@@ -109,7 +112,8 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, now: number
 
   for (const { dir, isExit } of doorsToDraw(room, marks.showExit ?? true)) {
     const key = doorKeyFor(state, roomId, dir);
-    drawDoor(ctx, dir, isExit, dir === marks.armedDoor, leafFraction(state.doorOpen[key]));
+    const soft = marks.softDoors?.includes(dir) ?? false;
+    drawDoor(ctx, dir, isExit, dir === marks.armedDoor, soft, leafFraction(state.doorOpen[key]), now);
   }
   if (look.light === 'chandelier') drawChandelier(ctx, now);
 
@@ -130,7 +134,11 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, now: number
 /** One piece of `state` with the markers `marks` gives it. */
 export function drawPiece(ctx: Ctx, state: GameState, id: number, now: number, marks: RoomMarks): void {
   const f = state.furniture[id];
-  drawFurniture(ctx, f, state.rooms[f.room].theme, { near: id === marks.near, armed: id === marks.armedFurniture }, now);
+  drawFurniture(ctx, f, state.rooms[f.room].theme, {
+    near: id === marks.near,
+    armed: id === marks.armedFurniture,
+    soft: marks.softFurniture?.includes(id) ?? false,
+  }, now);
 }
 
 /** y of the left side wall's floor edge (backLeft, backY)→(frontLeft, frontY), extended to any x. */
@@ -314,7 +322,12 @@ export function leafFraction(door: DoorRuntimeState | undefined): number {
   return 1 - (1 - LEAF_OPEN) * Math.min(1, Math.max(0, progress));
 }
 
-function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: number): void {
+function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, soft: boolean, leaf: number, now: number): void {
+  // the red marker for the door in reach, a soft pulsing one for the other doors a door trap could go on (round 5 §1)
+  const mark = (x: number, top: number): void => {
+    if (armed) drawReachMarker(ctx, x, top, ARMED_RED);
+    else if (soft) drawSoftMarker(ctx, x, top, now);
+  };
   const fill = isExit ? '#2e7dd1' : '#4a2c18';
   const panel = isExit ? '#5aa0e8' : '#5e3a20';
   const frame = isExit ? '#f4f4f4' : '#c9a36b';
@@ -345,7 +358,7 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: num
       } else {
         r(ctx, cx - half, top + 1, leafW, 1, shade(fill, 1.3));
       }
-      if (armed) drawReachMarker(ctx, cx, top, ARMED_RED);
+      mark(cx, top);
       break;
     }
     case 'S': {
@@ -357,7 +370,7 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: num
       const leafW = Math.max(2, Math.round(w * leaf));
       r(ctx, a.sx, VIEW.frontY, leafW, VIEW.bottom - VIEW.frontY, fill);
       if (isExit && closed) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
-      if (armed) drawReachMarker(ctx, (a.sx + b.sx) / 2, VIEW.frontY - 2, ARMED_RED);
+      mark((a.sx + b.sx) / 2, VIEW.frontY - 2);
       break;
     }
     case 'W':
@@ -389,7 +402,7 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: num
       line(ctx, p0.sx, p0.sy - h0, p1.sx, p1.sy - h1, frame);
       line(ctx, p0.sx, p0.sy, p0.sx, p0.sy - h0, frame);
       line(ctx, p1.sx, p1.sy, p1.sx, p1.sy - h1, frame);
-      if (armed) drawReachMarker(ctx, (p0.sx + p1.sx) / 2, Math.min(p0.sy - h0, p1.sy - h1), ARMED_RED);
+      mark((p0.sx + p1.sx) / 2, Math.min(p0.sy - h0, p1.sy - h1));
       break;
     }
   }

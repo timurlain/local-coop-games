@@ -1,10 +1,10 @@
 import { kill } from './death';
 import { sharesRoom } from './fight';
-import { doorAt, doorKeyFor, furnitureAt } from './places';
+import { doorAt, doorKeyFor, exitVisibleTo, furnitureAt } from './places';
 import { RULES } from './rules';
 import {
-  TRAPS, isActive,
-  type DoorTrapKind, type Furniture, type FurnitureTrapKind, type GameEvent, type GameState,
+  DIRS, TRAPS, isActive,
+  type Dir, type DoorTrapKind, type Furniture, type FurnitureTrapKind, type GameEvent, type GameState,
   type PlaceTarget, type RemedyKind, type Spy, type SpyInput, type TimeBomb, type TrapKind,
 } from './state';
 
@@ -128,6 +128,38 @@ export function placeTargetFor(state: GameState, spy: Spy, trap: TrapKind): Plac
     }
     case 'casovana':
       return { on: 'floor' };
+  }
+}
+
+/** A valid target somewhere in the spy's room (round 5 §1); a door carries its side for the render. */
+export type RoomTarget =
+  | { on: 'furniture'; furniture: number }
+  | { on: 'door'; key: string; dir: Dir }
+  | { on: 'floor' };
+
+/**
+ * Every valid target for the trap in hand in the spy's current room (round 5 §1), wherever he stands in it: untrapped
+ * furniture for bomba/pružina, untrapped doors for elektřina/pistole (the exit only while he can see it), the floor
+ * under him for časovaná. Empty with no trap in hand, none of it in stock, or in a shared room (Akce would be
+ * refused). The one in reach (`placeTargetFor`) is always among them.
+ */
+export function placeTargetsInRoom(state: GameState, spy: Spy): RoomTarget[] {
+  const trap = spy.selected;
+  if (trap === null || spy.stock[trap] <= 0 || sharesRoom(state, spy)) return [];
+  const room = state.rooms[spy.room];
+  switch (trap) {
+    case 'bomba':
+    case 'pruzina':
+      return room.furniture.filter((id) => state.furniture[id].trap === null).map((id) => ({ on: 'furniture', furniture: id }));
+    case 'elektrina':
+    case 'pistole': {
+      const exit = exitVisibleTo(state, spy) ? room.exit : null;
+      return DIRS.filter((d) => room.doors[d] || exit === d)
+        .map((dir) => ({ on: 'door' as const, key: doorKeyFor(state, room.id, dir), dir }))
+        .filter((t) => !state.doorTraps[t.key]);
+    }
+    case 'casovana':
+      return [{ on: 'floor' }];
   }
 }
 

@@ -1,13 +1,14 @@
 import { HALVES, withViewport } from '../../../shared/splitscreen';
-import { sharesRoom } from '../logic/fight';
 import { doorAt, exitVisibleTo, furnitureAt } from '../logic/places';
-import { placeTargetFor } from '../logic/traps';
+import { placeTargetFor, placeTargetsInRoom } from '../logic/traps';
 import { cs } from '../../../shared/i18n/cs';
-import { isActive, type GameState, type PlayerId } from '../logic/state';
+import { isActive, type Dir, type GameState, type PlayerId, type Spy } from '../logic/state';
 import { drawDebug } from './debug';
 import { r, text } from './draw';
 import { drawEffectAt, effectPose, effectsIn, type EffectQueue } from './effects';
 import { drawFrame, drawMessages, drawUnder } from './hud';
+import { softPulse } from './furniture';
+import { project } from './geometry';
 import { ROOM } from './layout';
 import { drawBigMap } from './map';
 import { drawPiece, drawRoom, type RoomMarks } from './room';
@@ -51,6 +52,53 @@ function drawDarkRoom(ctx: CanvasRenderingContext2D): void {
     r(ctx, ROOM.x + inset * 2, ROOM.y + inset, ROOM.w - inset * 4, ROOM.h - inset * 2, color);
   });
   text(ctx, cs.spy.duel, ROOM.x + ROOM.w / 2, ROOM.y + ROOM.h / 2 + 2, '#8a8a96', 6, 'center');
+}
+
+/** The trap-target markers of one viewer's own half (round 5 §1). */
+export interface TrapMarks {
+  /** where the trap in hand goes right now (red); none when nothing valid is in reach */
+  armedFurniture: number | null;
+  armedDoor: Dir | null;
+  /** časovaná: the floor under the spy, always in reach */
+  floor: boolean;
+  /** every other valid target in the room (soft pulsing glow) */
+  softFurniture: number[];
+  softDoors: Dir[];
+}
+
+/**
+ * Markers for the trap in `viewer`'s hand, shown in his own view only: the target in reach in red (round 4 §1), every
+ * other valid target in the room softly (round 5 §1). None without a trap in hand, while not free to place (dead,
+ * searching, ...) or in a shared room, where Akce would be refused.
+ */
+export function trapMarks(state: GameState, viewer: Spy): TrapMarks {
+  const none: TrapMarks = { armedFurniture: null, armedDoor: null, floor: false, softFurniture: [], softDoors: [] };
+  if (viewer.mode !== 'normal' || viewer.selected === null) return none;
+  const all = placeTargetsInRoom(state, viewer);
+  if (all.length === 0) return none;
+  const target = placeTargetFor(state, viewer, viewer.selected);
+  const armedFurniture = target?.on === 'furniture' ? target.furniture : null;
+  const armedDoor = target?.on === 'door' ? doorAt(state, viewer) : null;
+  return {
+    armedFurniture,
+    armedDoor,
+    floor: target?.on === 'floor',
+    softFurniture: all.flatMap((t) => (t.on === 'furniture' && t.furniture !== armedFurniture ? [t.furniture] : [])),
+    softDoors: all.flatMap((t) => (t.on === 'door' && t.dir !== armedDoor ? [t.dir] : [])),
+  };
+}
+
+/** Časovaná in hand: a small red ring pulsing on the floor at the spy's feet, where it would be put down. */
+function drawFloorTarget(ctx: CanvasRenderingContext2D, spy: Spy, now: number): void {
+  const { sx, sy } = project(spy.x, spy.z);
+  ctx.save();
+  ctx.globalAlpha = 0.5 + 0.4 * softPulse(now);
+  ctx.strokeStyle = '#ff3030';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(sx, sy - 0.5, 9, 2.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** One thing standing on the floor, drawn back to front (round 5 §5). */
@@ -111,18 +159,15 @@ export function renderGame(
         drawBigMap(ctx, state, viewer, now);
       } else {
         const near = viewer.mode === 'normal' ? furnitureAt(state, viewer) : null;
-        // Where the trap in hand would go right now (round 4 §1), a red marker in the viewer's own half;
-        // none when nothing valid is in reach (or in a shared room, where it would be refused).
-        const target = viewer.mode === 'normal' && viewer.selected !== null && !sharesRoom(state, viewer)
-          ? placeTargetFor(state, viewer, viewer.selected) : null;
+        const trap = trapMarks(state, viewer);
         const marks: RoomMarks = {
+          ...trap,
           near: near?.id ?? null,
-          armedFurniture: target?.on === 'furniture' ? target.furniture : null,
-          armedDoor: target?.on === 'door' ? doorAt(state, viewer) : null,
           showExit: exitShownIn(state, viewer.id),
           freePieces: false,
         };
         drawRoom(ctx, state, viewer.room, now, marks);
+        if (trap.floor) drawFloorTarget(ctx, viewer, now);
         for (const layer of roomLayers(ctx, state, viewer.room, now, marks, effects)) layer.draw();
         if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
       }

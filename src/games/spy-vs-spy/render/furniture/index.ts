@@ -39,10 +39,25 @@ export function drawReachMarker(ctx: Ctx, x: number, top: number, color: string)
   r(ctx, x, top - 3, 1, 1, color);
 }
 
-/** Markers over one piece: in reach of the viewer (white), where the trap in hand goes right now (red). */
+/** 0..1, pulsing about 1.5 times a second: the soft highlight of the other trap targets (round 5 §1). */
+export function softPulse(now: number): number {
+  return 0.5 + 0.5 * Math.sin(now * Math.PI * 3);
+}
+
+/** The soft marker of a valid trap target out of reach (round 5 §1): a pale gold chevron, pulsing. */
+export function drawSoftMarker(ctx: Ctx, x: number, top: number, now: number): void {
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.5 * softPulse(now);
+  drawReachMarker(ctx, x, top, '#ffe08a');
+  ctx.restore();
+}
+
+/** Markers over one piece: in reach of the viewer (white), where the trap in hand goes right now (red), another valid
+ *  target for it in the room (soft pulsing glow, round 5 §1). */
 export interface PieceMarks {
   near?: boolean;
   armed?: boolean;
+  soft?: boolean;
 }
 
 /**
@@ -53,6 +68,7 @@ export interface PieceMarks {
 export function drawFurniture(ctx: Ctx, f: Furniture, theme: RoomTheme, marks: PieceMarks, now: number): void {
   const { x, y, k } = furnitureBase(f);
   if (f.z > 0) floorShadow(ctx, x, y, k);
+  if (marks.soft && !marks.armed) softGlow(ctx, x, y, k, now);
   withScale(x, y, k, () => drawPiece(ctx, f, theme, x, y, marks, now));
 }
 
@@ -60,6 +76,17 @@ function drawPiece(ctx: Ctx, f: Furniture, theme: RoomTheme, x: number, y: numbe
   const top = DRAWERS[f.kind](ctx, f, theme, x, y, now);
   if (marks.near) drawReachMarker(ctx, x, top, '#ffffff');
   if (marks.armed) drawReachMarker(ctx, x, top - 3, '#ff3030');
+  else if (marks.soft) drawSoftMarker(ctx, x, top - 3, now);
+}
+
+/** A warm pulsing glow on the floor under a piece that could take the trap in hand (round 5 §1). */
+function softGlow(ctx: Ctx, x: number, y: number, k: number, now: number): void {
+  ctx.save();
+  ctx.fillStyle = `rgba(255,214,110,${(0.12 + 0.18 * softPulse(now)).toFixed(3)})`;
+  ctx.beginPath();
+  ctx.ellipse(x, y - 1, 17 * k, 3.5 * k, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 /** A flat dark ellipse grounding a free-standing piece on the floor. */
