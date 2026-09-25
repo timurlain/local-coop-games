@@ -126,6 +126,15 @@ export function drawIcon(ctx: CanvasRenderingContext2D, name: IconName, cx: numb
   drawSprite(ctx, iconImage(name), cx, bottomY);
 }
 
+/** An icon with a 1-px `outline` around it, so a dark icon still reads in front of Černý's coat. */
+export function drawIconOutlined(ctx: CanvasRenderingContext2D, name: IconName, cx: number, bottomY: number, outline: string): void {
+  const rows = ICONS[name];
+  const inks = [...new Set(rows.join(''))].filter((ch) => ch !== '.');
+  const sil = bake(`sil:${name}:${outline}`, rows, Object.fromEntries(inks.map((ch) => [ch, outline])));
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) drawSprite(ctx, sil, cx + dx, bottomY + dy);
+  drawIcon(ctx, name, cx, bottomY);
+}
+
 /** An icon scaled by `k` about its centre (cx, cy); used where one shrinks into a target. */
 export function drawIconScaled(ctx: CanvasRenderingContext2D, name: IconName, cx: number, cy: number, k: number): void {
   const img = iconImage(name);

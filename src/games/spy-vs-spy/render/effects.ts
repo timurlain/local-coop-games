@@ -8,8 +8,8 @@ import { line, r, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawGuard } from './guard';
 import { doorCentre } from './room';
-import { SPY_H, type SpyFrame } from './sprite-data';
-import { drawIcon, drawIconScaled, drawInHand, handPoint, thingIcon } from './sprites';
+import { ICONS, SPY_H, type SpyFrame } from './sprite-data';
+import { drawIcon, drawIconOutlined, drawIconScaled, drawInHand, handPoint, thingIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -339,7 +339,7 @@ function drawDisarm(ctx: Ctx, state: GameState, e: Effect, t: number): void {
   const withSpy = spy.room === e.room && spy.mode !== 'dead';
   switch (e.remedy) {
     case 'destnik':
-      if (withSpy) umbrella(ctx, frame, sx, sy, flip, h, t);
+      if (withSpy) umbrella(ctx, h, t);
       break;
     case 'voda':
       water(ctx, frame, sx, sy, flip, h, e.facing, t, withSpy);
@@ -356,9 +356,11 @@ function drawDisarm(ctx: Ctx, state: GameState, e: Effect, t: number): void {
 }
 
 /** The umbrella opens over his head; blue drops pour onto it and run off its rim, a yellow spark at the top. */
-function umbrella(ctx: Ctx, frame: SpyFrame, sx: number, sy: number, flip: boolean, h: Pt, t: number): void {
-  drawInHand(ctx, 'destnik_open', frame, sx, sy, flip);
-  const top = h.y - 5; // the canopy's crown (its handle row 5 sits on the hand)
+function umbrella(ctx: Ctx, h: Pt, t: number): void {
+  // The canopy's crown sits 5 px above the raised hand (its handle row); at the back wall that would be under the
+  // view's top edge, so there it comes down over the hat, leaving room for the drops and the spark above it.
+  const top = Math.max(h.y - 5, VIEW.top + 6);
+  drawIcon(ctx, 'destnik_open', h.x, top + ICONS.destnik_open.length);
   if (t > 0.9) return;
   // drops falling onto the canopy
   for (let i = 0; i < 5; i++) {
@@ -461,7 +463,7 @@ function cutString(ctx: Ctx, e: Effect, h: Pt, t: number, withSpy: boolean): voi
   const floor = e.door === 'S' ? VIEW.frontY - 1 : Math.max(d.y + 6, project(e.x, e.z).sy - 1);
   if (t < cutAt) {
     line(ctx, d.x, d.y, h.x, h.y, STRING);
-    drawIcon(ctx, 'pistole', Math.round(d.x), Math.round(d.y) + 4);
+    drawIconOutlined(ctx, 'pistole', Math.round(d.x), Math.round(d.y) + 4, STRING);
   } else {
     const k = (t - cutAt) / (1 - cutAt);
     // the two loose ends droop and fade
@@ -475,7 +477,7 @@ function cutString(ctx: Ctx, e: Effect, h: Pt, t: number, withSpy: boolean): voi
     const fall = Math.min(1, k / 0.6);
     const y = d.y + 4 + (floor - d.y - 4) * fall * fall;
     const bounce = k > 0.6 ? Math.round(Math.sin(((k - 0.6) / 0.4) * Math.PI) * 2) : 0;
-    drawIcon(ctx, 'pistole', Math.round(d.x), Math.round(y) - bounce);
+    drawIconOutlined(ctx, 'pistole', Math.round(d.x), Math.round(y) - bounce, STRING);
   }
   if (!withSpy) return;
   // the scissors at the hand, snapping shut at the cut
