@@ -51,8 +51,8 @@ export const RULES = {
   regenDelay: 2.5,
   /** seconds between each +1 strength recovery tick once it has started */
   regenInterval: 2.5,
-  fightRangeX: 24,
-  fightRangeZ: 8,
+  fightRangeX: 48,
+  fightRangeZ: 16,
   /** after the strike lands, before another swing may start (spec §8) */
   swingCooldown: 0.4,
   /** jab (Akce) wind-up; the damage lands at its end (spec §8) */

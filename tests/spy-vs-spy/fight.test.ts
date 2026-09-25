@@ -174,6 +174,17 @@ describe('updateSwing: the strike (spec §8)', () => {
     expect(b.health).toBe(RULES.health - 1);
   });
 
+  it('lands at 40 units apart, well within the doubled range (round 4 §1: the club reaches twice as far)', () => {
+    const s = openGame();
+    const a = place(s, 0, 4, 100, 20);
+    const b = place(s, 1, 4, 140, 20); // 40 units apart in x, same z
+    expect(RULES.fightRangeX).toBe(48);
+    expect(RULES.fightRangeZ).toBe(16);
+    const ev = swingAndStrike(s, a, 'jab');
+    expect(b.health).toBe(RULES.health - 1);
+    expect(ev).toContainEqual({ type: 'hit', spy: 1 });
+  });
+
   it('misses when the opponent left range during the wind-up', () => {
     const { s, a, b } = duel();
     trySwing(s, a, 'bash', []);
