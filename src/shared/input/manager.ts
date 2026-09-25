@@ -73,6 +73,11 @@ export class InputManager {
     return this.get(id)[key] && !(this.previous.get(id)?.[key] ?? false);
   }
 
+  /** Any keyboard key went down this tick. */
+  anyKeyPressed(): boolean {
+    return this.tickPresses.size > 0;
+  }
+
   /** Raw key press this tick (for F1, KeyM and other non-player keys). */
   keyPressed(code: string): boolean {
     return this.tickPresses.has(code);

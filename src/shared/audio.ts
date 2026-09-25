@@ -8,7 +8,8 @@ export type SfxName =
   | 'lowtime'
   | 'grumble'
   | 'umbrella' | 'hiss' | 'snip'
-  | 'salvage' | 'resupply';
+  | 'salvage' | 'resupply'
+  | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine';
 
 interface ToneOpts {
   freq: number;
@@ -116,6 +117,29 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     noise(c, { dur: 0.05, vol: 0.12, lowpass: 900 });
     clickClack(c, 0.12);
     tone(c, { freq: 660, to: 1100, dur: 0.12, delay: 0.3, type: 'triangle', vol: 0.1 });
+  },
+  /** the escape scene (round 6 §5): a bunch of keys jingling as the klíč flies out */
+  jingle: (c) => [0, 0.04, 0.09, 0.15].forEach((delay, i) =>
+    tone(c, { freq: 2600 + (i % 2) * 700, to: 2200, dur: 0.06, delay, type: 'triangle', vol: 0.07 })),
+  /** the lock turning: two dry clicks */
+  click: (c) => {
+    tone(c, { freq: 1800, dur: 0.02, type: 'square', vol: 0.1 });
+    noise(c, { dur: 0.02, vol: 0.12, lowpass: 7000 });
+    tone(c, { freq: 1200, dur: 0.03, delay: 0.07, type: 'square', vol: 0.12 });
+    noise(c, { dur: 0.03, vol: 0.15, delay: 0.07, lowpass: 5000 });
+  },
+  /** coins chinking on the counter */
+  coins: (c) => [0, 0.07, 0.12, 0.2, 0.26].forEach((delay, i) =>
+    tone(c, { freq: 3200 - (i % 3) * 450, to: 2500, dur: 0.08, delay, type: 'sine', vol: 0.09 })),
+  /** paper: a short rustle */
+  paper: (c) => { noise(c, { dur: 0.12, vol: 0.12, lowpass: 7000 }); noise(c, { dur: 0.08, vol: 0.08, delay: 0.1, lowpass: 5000 }); },
+  /** the rubber stamp's thud on the desk */
+  stamp: (c) => { tone(c, { freq: 160, to: 70, dur: 0.12, type: 'sine', vol: 0.4 }); noise(c, { dur: 0.05, vol: 0.2, lowpass: 900 }); },
+  /** the airliner's engines opening up as it rolls */
+  engine: (c) => {
+    tone(c, { freq: 55, to: 110, dur: 1, type: 'sawtooth', vol: 0.08 });
+    tone(c, { freq: 82, to: 165, dur: 1, type: 'sawtooth', vol: 0.06 });
+    noise(c, { dur: 1, vol: 0.1, lowpass: 400 });
   },
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },
   /**

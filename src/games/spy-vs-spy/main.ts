@@ -16,12 +16,13 @@ import { laugher, spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
 import { pushToast, toastFor, type ToastQueue } from './render/toast';
 import { LOW_TIME } from './render/trapulator';
+import { escapeCues, escapeOver, renderEscape } from './render/escape';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { TITLE_CARD_TIME, renderTitleCard } from './render/title';
 import { renderGame } from './render/view';
 import { levelReadout, migrateSettings } from './settings';
 
-type Screen = 'menu' | 'title' | 'play' | 'pause' | 'victory' | 'result';
+type Screen = 'menu' | 'title' | 'play' | 'pause' | 'escape' | 'victory' | 'result';
 
 const T = cs.spy;
 const SETTINGS_KEY = 'spy-vs-spy/settings';
@@ -51,6 +52,8 @@ let fpsTime = performance.now();
 /** Countdown per spy to the next footstep sound while walking. */
 const stepTimers: [number, number] = [0, 0];
 let victoryT = 0;
+/** Seconds into the escape scene that plays before the victory (round 6 §5). */
+let escapeT = 0;
 /** Seconds the match title card has been showing; the gameplay clock does not run meanwhile. */
 let titleT = 0;
 /** Render-side toasts under each frame, fed from logic events. */
@@ -233,6 +236,9 @@ function update(dt: number): void {
     case 'play':
       updatePlay(dt);
       break;
+    case 'escape':
+      updateEscape(dt);
+      break;
     case 'victory':
       updateVictory(dt);
       break;
@@ -322,12 +328,24 @@ function updatePlay(dt: number): void {
   }
   if (s.result) {
     if (s.result.kind === 'win') {
-      screen = 'victory';
-      victoryT = 0;
+      screen = 'escape';
+      escapeT = 0;
       music.stop();
     } else {
       finish(s);
     }
+  }
+}
+
+/** The escape scene: no controls; each item's sound on cue; any key or button skips straight to the victory. */
+function updateEscape(dt: number): void {
+  const before = escapeT;
+  escapeT += dt;
+  for (const name of escapeCues(before, escapeT)) sfx.play(name);
+  const pressed = input.anyKeyPressed() || slotPressed('action') || slotPressed('pause') || slotDevices().some((d) => input.pressed(d, 'trap'));
+  if (escapeOver(escapeT, pressed)) {
+    screen = 'victory';
+    victoryT = 0;
   }
 }
 
@@ -417,7 +435,11 @@ function render(): void {
     frames = 0;
     fpsTime = now;
   }
-  if (screen === 'victory' && state?.result?.kind === 'win') {
+  if (screen === 'escape' && state?.result?.kind === 'win') {
+    // the loser's half stays on the frozen match; the winner's half shows the escape
+    renderGame(ctx, scale, state, now / 1000, { on: false, fps }, toasts, effects);
+    renderEscape(ctx, scale, state.result.winner, escapeT, now / 1000);
+  } else if (screen === 'victory' && state?.result?.kind === 'win') {
     renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
   } else if (state && screen !== 'menu') {
     renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts, effects);

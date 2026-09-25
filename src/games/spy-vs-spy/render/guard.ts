@@ -137,3 +137,23 @@ export function drawGuard(ctx: Ctx, dir: Dir, spyX: number, elapsed: number): vo
     }
   }
 }
+
+/** The guard standing at screen (x, y) = his feet, facing left when `flip` (the passport officer, round 6 §5). */
+export function drawGuardAt(ctx: Ctx, x: number, y: number, flip: boolean): void {
+  const rows = GUARD_FRAMES.stand;
+  const img = bake('guard:stand', rows, GUARD_PALETTE);
+  const left = Math.round(x - (flip ? W - 1 - GUARD_CENTER_X : GUARD_CENTER_X));
+  const top = Math.round(y - rows.length);
+  if (!flip) {
+    ctx.drawImage(img, left, top);
+    return;
+  }
+  ctx.save();
+  ctx.translate(left + W, top);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
+/** Rows from the guard's feet up to his shoulder, px. */
+export const GUARD_SHOULDER_H = STAND_LEGS.length + TUNIC.length - 2;
