@@ -5,7 +5,7 @@ import { line, poly, r, shade, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawDecor } from './decor';
 import { drawFloor, drawRug, type ThemeLook } from './floor';
-import { drawFurniture, drawReachMarker, drawSoftMarker } from './furniture';
+import { drawFurniture, drawReachMarker, drawSoftMarker, drawTrapMark } from './furniture';
 import { ROOM } from './layout';
 import { drawIcon } from './sprites';
 
@@ -100,8 +100,13 @@ export interface RoomMarks {
 /**
  * Draws one room in logical coordinates of a half-viewport: background, decorations, doors, furniture and time
  * bombs. Free-standing pieces are drawn here too unless `marks.freePieces` is false.
+ *
+ * `tops`, when given, collects each drawn piece's top (screen y) by furniture id — for `drawTrapMarks` to place
+ * the trap-in-hand marker over it later, after the spies (round 5 §1/§3).
  */
-export function drawRoom(ctx: Ctx, state: GameState, roomId: number, now: number, marks: RoomMarks = {}): void {
+export function drawRoom(
+  ctx: Ctx, state: GameState, roomId: number, now: number, marks: RoomMarks = {}, tops?: Map<number, number>,
+): void {
   const room = state.rooms[roomId];
   const look = LOOKS[room.theme];
   const bg = background(ctx, room.theme, room.rug);
@@ -112,15 +117,14 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, now: number
 
   for (const { dir, isExit } of doorsToDraw(room, marks.showExit ?? true)) {
     const key = doorKeyFor(state, roomId, dir);
-    const soft = marks.softDoors?.includes(dir) ?? false;
-    drawDoor(ctx, dir, isExit, dir === marks.armedDoor, soft, leafFraction(state.doorOpen[key]), now);
+    drawDoor(ctx, dir, isExit, leafFraction(state.doorOpen[key]), now);
   }
   if (look.light === 'chandelier') drawChandelier(ctx, now);
 
   for (const id of room.furniture) {
     const f = state.furniture[id];
     if (f.z > 0 && marks.freePieces === false) continue;
-    drawPiece(ctx, state, f.id, now, marks);
+    drawPiece(ctx, state, f.id, now, marks, tops);
   }
 
   for (const bomb of state.timeBombs) {
@@ -131,14 +135,36 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, now: number
   }
 }
 
-/** One piece of `state` with the markers `marks` gives it. */
-export function drawPiece(ctx: Ctx, state: GameState, id: number, now: number, marks: RoomMarks): void {
+/** One piece of `state` with the markers `marks` gives it; records its top into `tops` (see `drawRoom`). */
+export function drawPiece(ctx: Ctx, state: GameState, id: number, now: number, marks: RoomMarks, tops?: Map<number, number>): void {
   const f = state.furniture[id];
-  drawFurniture(ctx, f, state.rooms[f.room].theme, {
+  const top = drawFurniture(ctx, f, state.rooms[f.room].theme, {
     near: id === marks.near,
     armed: id === marks.armedFurniture,
     soft: marks.softFurniture?.includes(id) ?? false,
   }, now);
+  tops?.set(id, top);
+}
+
+/**
+ * The trap-in-hand markers of `marks` — furniture (from `tops`, filled by an earlier `drawRoom`/`drawPiece` pass)
+ * and doors — drawn after the spies, so a spy standing at the target never covers the marker with his hat
+ * (round 5 §1/§3). Piece depth order is untouched: only the marker overlay runs late, not the piece itself.
+ */
+export function drawTrapMarks(ctx: Ctx, state: GameState, roomId: number, marks: RoomMarks, tops: Map<number, number>, now: number): void {
+  const room = state.rooms[roomId];
+  if (marks.armedFurniture !== null && marks.armedFurniture !== undefined) {
+    const top = tops.get(marks.armedFurniture);
+    if (top !== undefined) drawTrapMark(ctx, state.furniture[marks.armedFurniture], top, { armed: true }, now);
+  }
+  for (const id of marks.softFurniture ?? []) {
+    const top = tops.get(id);
+    if (top !== undefined) drawTrapMark(ctx, state.furniture[id], top, { soft: true }, now);
+  }
+  for (const { dir } of doorsToDraw(room, marks.showExit ?? true)) {
+    const soft = marks.softDoors?.includes(dir) ?? false;
+    drawDoorMark(ctx, dir, dir === marks.armedDoor, soft, now);
+  }
 }
 
 /** y of the left side wall's floor edge (backLeft, backY)→(frontLeft, frontY), extended to any x. */
@@ -322,12 +348,7 @@ export function leafFraction(door: DoorRuntimeState | undefined): number {
   return 1 - (1 - LEAF_OPEN) * Math.min(1, Math.max(0, progress));
 }
 
-function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, soft: boolean, leaf: number, now: number): void {
-  // the red marker for the door in reach, a soft pulsing one for the other doors a door trap could go on (round 5 §1)
-  const mark = (x: number, top: number): void => {
-    if (armed) drawReachMarker(ctx, x, top, ARMED_RED);
-    else if (soft) drawSoftMarker(ctx, x, top, now);
-  };
+function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, leaf: number, now: number): void {
   const fill = isExit ? '#2e7dd1' : '#4a2c18';
   const panel = isExit ? '#5aa0e8' : '#5e3a20';
   const frame = isExit ? '#f4f4f4' : '#c9a36b';
@@ -358,7 +379,6 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, soft: boo
       } else {
         r(ctx, cx - half, top + 1, leafW, 1, shade(fill, 1.3));
       }
-      mark(cx, top);
       break;
     }
     case 'S': {
@@ -370,7 +390,6 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, soft: boo
       const leafW = Math.max(2, Math.round(w * leaf));
       r(ctx, a.sx, VIEW.frontY, leafW, VIEW.bottom - VIEW.frontY, fill);
       if (isExit && closed) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
-      mark((a.sx + b.sx) / 2, VIEW.frontY - 2);
       break;
     }
     case 'W':
@@ -402,10 +421,43 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, soft: boo
       line(ctx, p0.sx, p0.sy - h0, p1.sx, p1.sy - h1, frame);
       line(ctx, p0.sx, p0.sy, p0.sx, p0.sy - h0, frame);
       line(ctx, p1.sx, p1.sy, p1.sx, p1.sy - h1, frame);
-      mark((p0.sx + p1.sx) / 2, Math.min(p0.sy - h0, p1.sy - h1));
       break;
     }
   }
+}
+
+/** Where a door's trap marker sits — the top of its frame — purely from geometry (no drawing needed). */
+function doorMarkPoint(dir: Dir): { x: number; top: number } {
+  switch (dir) {
+    case 'N': {
+      const cx = wallX(RULES.roomW / 2);
+      return { x: cx, top: VIEW.backY - N_DOOR_H };
+    }
+    case 'S': {
+      const a = project(RULES.roomW / 2 - RULES.doorHalfX, RULES.roomD);
+      const b = project(RULES.roomW / 2 + RULES.doorHalfX, RULES.roomD);
+      return { x: (a.sx + b.sx) / 2, top: VIEW.frontY - 2 };
+    }
+    case 'W':
+    case 'E': {
+      const x = dir === 'W' ? 0 : RULES.roomW;
+      const p0 = project(x, RULES.roomD / 2 - RULES.doorHalfZ);
+      const p1 = project(x, RULES.roomD / 2 + RULES.doorHalfZ);
+      const [h0, h1] = SIDE_DOOR_H;
+      return { x: (p0.sx + p1.sx) / 2, top: Math.min(p0.sy - h0, p1.sy - h1) };
+    }
+  }
+}
+
+/**
+ * The red "in reach" or soft pulsing marker for a door's trap target (round 5 §1), drawn in a pass after the
+ * spies so a spy standing in the doorway never covers it (round 5 §3 — same fix as `drawTrapMark`).
+ */
+function drawDoorMark(ctx: Ctx, dir: Dir, armed: boolean, soft: boolean, now: number): void {
+  if (!armed && !soft) return;
+  const { x, top } = doorMarkPoint(dir);
+  if (armed) drawReachMarker(ctx, x, top, ARMED_RED);
+  else drawSoftMarker(ctx, x, top, now);
 }
 
 /** Screen point in the middle of a door's opening (where a door trap is put, round 4 §4). */

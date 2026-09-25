@@ -63,20 +63,39 @@ export interface PieceMarks {
 /**
  * Draws one piece, scaled like the floor it stands on (pieces are authored at 1 px per logic unit): against the back
  * wall at the wall scale, or free-standing on the floor at its front edge, bigger the nearer it is (round 5 §5), with a
- * soft shadow under it.
+ * soft shadow under it. Returns the piece's top (screen y), so a caller can place the trap marker over it later,
+ * after the spies are drawn (round 5 §1/§3: a spy standing at the piece must not cover the marker with his hat) —
+ * see `drawTrapMark`, which does not redraw the piece.
  */
-export function drawFurniture(ctx: Ctx, f: Furniture, theme: RoomTheme, marks: PieceMarks, now: number): void {
+export function drawFurniture(ctx: Ctx, f: Furniture, theme: RoomTheme, marks: PieceMarks, now: number): number {
   const { x, y, k } = furnitureBase(f);
   if (f.z > 0) floorShadow(ctx, x, y, k);
   if (marks.soft && !marks.armed) softGlow(ctx, x, y, k, now);
-  withScale(x, y, k, () => drawPiece(ctx, f, theme, x, y, marks, now));
+  let top = 0;
+  withScale(x, y, k, () => {
+    top = drawPiece(ctx, f, theme, x, y, marks, now);
+  });
+  return top;
 }
 
-function drawPiece(ctx: Ctx, f: Furniture, theme: RoomTheme, x: number, y: number, marks: PieceMarks, now: number): void {
+function drawPiece(ctx: Ctx, f: Furniture, theme: RoomTheme, x: number, y: number, marks: PieceMarks, now: number): number {
   const top = DRAWERS[f.kind](ctx, f, theme, x, y, now);
   if (marks.near) drawReachMarker(ctx, x, top, '#ffffff');
-  if (marks.armed) drawReachMarker(ctx, x, top - 3, '#ff3030');
-  else if (marks.soft) drawSoftMarker(ctx, x, top - 3, now);
+  return top;
+}
+
+/**
+ * The trap-in-hand marker over a piece (armed red, or soft pulsing gold), drawn on its own so it can run in a
+ * pass after the spies (round 5 §1/§3) while `drawFurniture`'s piece — and its depth order among the spies —
+ * stays put. `top` is the value `drawFurniture` returned for this piece earlier in the same frame.
+ */
+export function drawTrapMark(ctx: Ctx, f: Furniture, top: number, marks: PieceMarks, now: number): void {
+  if (!marks.armed && !marks.soft) return;
+  const { x, y, k } = furnitureBase(f);
+  withScale(x, y, k, () => {
+    if (marks.armed) drawReachMarker(ctx, x, top - 3, '#ff3030');
+    else drawSoftMarker(ctx, x, top - 3, now);
+  });
 }
 
 /** A warm pulsing glow on the floor under a piece that could take the trap in hand (round 5 §1). */

@@ -11,7 +11,7 @@ import { softPulse } from './furniture';
 import { project } from './geometry';
 import { ROOM } from './layout';
 import { drawBigMap } from './map';
-import { drawPiece, drawRoom, type RoomMarks } from './room';
+import { drawPiece, drawRoom, drawTrapMarks, type RoomMarks } from './room';
 import { drawSpy, trackMotion } from './spy';
 import { currentToast, type ToastQueue } from './toast';
 import { drawCable, drawDevice } from './trapulator';
@@ -119,11 +119,12 @@ export function depthSorted(layers: readonly Layer[]): Layer[] {
  *  him, one behind him is covered. */
 function roomLayers(
   ctx: CanvasRenderingContext2D, state: GameState, roomId: number, now: number, marks: RoomMarks, effects: EffectQueue,
+  tops?: Map<number, number>,
 ): Layer[] {
   const layers: Layer[] = [];
   for (const id of state.rooms[roomId].furniture) {
     const f = state.furniture[id];
-    if (f.z > 0) layers.push({ z: f.z, rank: 0, draw: () => drawPiece(ctx, state, id, now, marks) });
+    if (f.z > 0) layers.push({ z: f.z, rank: 0, draw: () => drawPiece(ctx, state, id, now, marks, tops) });
   }
   for (const s of state.spies) {
     if (s.room === roomId) layers.push({ z: s.z, rank: 1, draw: () => drawSpy(ctx, state, s, now, effectPose(effects, s.id, now)) });
@@ -166,9 +167,13 @@ export function renderGame(
           showExit: exitShownIn(state, viewer.id),
           freePieces: false,
         };
-        drawRoom(ctx, state, viewer.room, now, marks);
+        const tops = new Map<number, number>();
+        drawRoom(ctx, state, viewer.room, now, marks, tops);
         if (trap.floor) drawFloorTarget(ctx, viewer, now);
-        for (const layer of roomLayers(ctx, state, viewer.room, now, marks, effects)) layer.draw();
+        for (const layer of roomLayers(ctx, state, viewer.room, now, marks, effects, tops)) layer.draw();
+        // Trap markers last (round 5 §1/§3): drawn after the spies, so one standing at the target
+        // never hides the marker under his hat.
+        drawTrapMarks(ctx, state, viewer.room, marks, tops, now);
         if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
       }
       drawMessages(ctx, viewer);
