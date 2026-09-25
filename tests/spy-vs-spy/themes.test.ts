@@ -95,7 +95,7 @@ describe('wall decorations and rugs', () => {
     });
   });
 
-  it('keeps decorations clear of tall furniture and of the exit sign above a north exit', () => {
+  it('keeps decorations clear of tall furniture and of a north door or exit (round 4 §5: taller doors)', () => {
     forAll((s) => {
       for (const r of s.rooms) {
         for (const d of r.decor) {
@@ -103,7 +103,7 @@ describe('wall decorations and rugs', () => {
             const f = s.furniture[id];
             if (TALL_FURNITURE.includes(f.kind)) expect(Math.abs(d.x - f.x)).toBeGreaterThanOrEqual(DECOR_W);
           }
-          if (r.exit === 'N') expect(Math.abs(d.x - RULES.roomW / 2)).toBeGreaterThanOrEqual(DECOR_W);
+          if (r.exit === 'N' || r.doors.N) expect(Math.abs(d.x - RULES.roomW / 2)).toBeGreaterThanOrEqual(DECOR_W);
         }
       }
     });

@@ -25,10 +25,10 @@ const LOOKS: Readonly<Record<RoomTheme, ThemeLook>> = {
   pracovna: { wall: '#48264a', motif: '#5a345a', pattern: 'diamonds', floor: 'carpet', base: '#1f4030', accent: '#b8903e', light: 'chandelier' },
 };
 const BG = '#101018';
-/** Height of the back-wall (N) door; its top stays below the decoration band. */
-const N_DOOR_H = 27;
-/** Heights of a side (W/E) door at its back and front jamb; the front one is nearer, so taller. */
-const SIDE_DOOR_H = [26, 30] as const;
+/** Height of the back-wall (N) door, tall enough for a 36-px spy (round 4 §5); no decoration hangs above it. */
+export const N_DOOR_H = 34;
+/** Heights of a side (W/E) door at its back and front jamb; the front one is nearer, so taller (round 4 §5). */
+export const SIDE_DOOR_H = [33, 38] as const;
 /** Dark-wood wainscoting along the bottom of the back wall, px. */
 const WAINSCOT_H = 11;
 const WOOD = '#3e2616';
@@ -313,17 +313,18 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, armed: boolean, leaf: num
       const leafW = Math.max(2, Math.round(half * 2 * leaf));
       r(ctx, cx - half, top + 1, leafW, N_DOOR_H - 1, fill);
       if (closed) {
-        r(ctx, cx - half + 1, top + 2, half * 2 - 2, 4, isExit ? '#9ad0ff' : '#e8d49a');
-        for (const dx of [-half / 2, half / 2]) r(ctx, Math.round(cx + dx), top + 2, 1, 4, frame);
-        r(ctx, cx - half, top + 6, half * 2, 1, frame);
+        // fanlight, transom bar, two raised panels per leaf, the meeting stile and the brass knobs
+        r(ctx, cx - half + 1, top + 2, half * 2 - 2, 5, isExit ? '#9ad0ff' : '#e8d49a');
+        for (const dx of [-half / 2, half / 2]) r(ctx, Math.round(cx + dx), top + 2, 1, 5, frame);
+        r(ctx, cx - half, top + 7, half * 2, 1, frame);
         for (const sx of [cx - half + 2, cx + 2]) {
-          r(ctx, sx, top + 9, half - 4, 6, panel);
-          r(ctx, sx, top + 17, half - 4, 7, panel);
+          r(ctx, sx, top + 10, half - 4, 8, panel);
+          r(ctx, sx, top + 21, half - 4, 9, panel);
         }
-        r(ctx, cx - 0.5, top + 7, 1, N_DOOR_H - 7, shade(fill, 0.6));
-        r(ctx, cx - 2, top + 16, 1, 1, BRASS);
-        r(ctx, cx + 1, top + 16, 1, 1, BRASS);
-        if (isExit) drawIcon(ctx, 'plane', cx, top + 13);
+        r(ctx, cx - 0.5, top + 8, 1, N_DOOR_H - 8, shade(fill, 0.6));
+        r(ctx, cx - 2, top + 19, 1, 1, BRASS);
+        r(ctx, cx + 1, top + 19, 1, 1, BRASS);
+        if (isExit) drawIcon(ctx, 'plane', cx, top + 17);
       } else {
         r(ctx, cx - half, top + 1, leafW, 1, shade(fill, 1.3));
       }

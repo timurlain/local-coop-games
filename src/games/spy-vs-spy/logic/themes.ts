@@ -92,7 +92,8 @@ export function decorate(
   room: Room, furniture: readonly { x: number; kind: FurnitureKind }[], rng: RngState, host: HostCountry,
 ): void {
   const blocked = furniture.filter((f) => TALL_FURNITURE.includes(f.kind)).map((f) => f.x);
-  if (room.exit === 'N') blocked.push(RULES.roomW / 2);
+  // the back-wall door (or exit) reaches up into the decoration band (round 4 §5)
+  if (room.exit === 'N' || room.doors.N) blocked.push(RULES.roomW / 2);
   const free: number[] = [];
   for (let x = DECOR_W / 2; x <= RULES.roomW - DECOR_W / 2; x += DECOR_STEP) {
     if (blocked.every((b) => Math.abs(x - b) >= DECOR_W)) free.push(x);

@@ -13,7 +13,7 @@ import { HANDLE_ROW, HAND_ICONS, handPoint, heldIcon } from '../../src/games/spy
 import {
   FIGHT_WALK_CYCLE, WALK_CYCLE, digFrame, fightWalkFrame, pickFrame, walkFrame,
 } from '../../src/games/spy-vs-spy/render/spy';
-import { leafFraction } from '../../src/games/spy-vs-spy/render/room';
+import { N_DOOR_H, SIDE_DOOR_H, doorCentre, leafFraction } from '../../src/games/spy-vs-spy/render/room';
 
 describe('project', () => {
   it('maps the floor corners onto the trapezoid inside the room view', () => {
@@ -387,5 +387,30 @@ describe('leafFraction (spec §5: closed vs open door drawing)', () => {
   it('stays at the open sliver for the whole 1.5 s open window', () => {
     expect(leafFraction({ phase: 'open', timer: 1.5 })).toBeCloseTo(0.15, 5);
     expect(leafFraction({ phase: 'open', timer: 0.01 })).toBeCloseTo(0.15, 5);
+  });
+});
+
+describe('taller doors (round 4 §5)', () => {
+  it('the back door is about 25 % taller than before, fits a 36-px spy standing in front and stays under the cornice', () => {
+    expect(N_DOOR_H).toBeGreaterThanOrEqual(Math.round(27 * 1.25));
+    expect(VIEW.backY - N_DOOR_H).toBeGreaterThan(VIEW.wallTop);
+  });
+
+  it('side doors grow the same way, their tops (and the exit sign above) inside the room view', () => {
+    expect(SIDE_DOOR_H[0]).toBeGreaterThanOrEqual(Math.round(26 * 1.25));
+    expect(SIDE_DOOR_H[1]).toBeGreaterThanOrEqual(Math.round(30 * 1.25));
+    const front = project(0, RULES.roomD / 2 + RULES.doorHalfZ);
+    const back = project(0, RULES.roomD / 2 - RULES.doorHalfZ);
+    // the plane icon (8 px) sits 2 px above the front jamb's top
+    expect(Math.min(front.sy - SIDE_DOOR_H[1], back.sy - SIDE_DOOR_H[0]) - 2 - 8).toBeGreaterThanOrEqual(VIEW.top);
+  });
+
+  it('a door trap flies into the middle of the opening', () => {
+    expect(doorCentre('N')).toEqual({ x: wallX(RULES.roomW / 2), y: VIEW.backY - N_DOOR_H / 2 });
+    for (const dir of ['W', 'E', 'S'] as const) {
+      const c = doorCentre(dir);
+      expect(c.y).toBeGreaterThan(VIEW.top);
+      expect(c.y).toBeLessThan(VIEW.bottom);
+    }
   });
 });
