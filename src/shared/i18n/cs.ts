@@ -23,7 +23,7 @@ export const cs = {
       ' · Stejná past znovu = odzbrojit' +
       ' · Pasti: ťukni G/pravý Ctrl/X = další past do ruky, podrž = mapa, akce u nábytku či dveří = nastražit.' +
       ' Ne před soupeřem.' +
-      ' · Souboj: akce = úder (s nahoru rána do hlavy), drž G/pravý Ctrl/X = kryt deštníkem, dolů = přikrčit se',
+      ' · Souboj: akce = úder (s nahoru rána do hlavy), drž G/pravý Ctrl/X = kryt deštníkem, + dolů = přikrčit se',
     back: '← Zpět na hry',
     paused: 'Pauza',
     padLost: 'Ovladač odpojen',
@@ -102,6 +102,7 @@ export const cs = {
       hasicak: 'Hasičská skříňka',
       naradi: 'Bedna na nářadí',
       lekarnicka: 'Lékárnička',
+      zbrojnice: 'Zbrojní skříň',
     },
     traps: {
       bomba: 'Bomba',

@@ -20,7 +20,18 @@ export const PART = {
   head: 8,
 } as const;
 
-type WorldPaint = { readonly shape: Shape; readonly ch: string; readonly part: number };
+export type WorldPaint = { readonly shape: Shape; readonly ch: string; readonly part: number };
+
+/** Variations of the drawn figure (the cartoon deaths, round 6 §6). */
+export interface PartOptions {
+  /** Draw the hat (default true); a bomb crumbles it off. */
+  readonly hat?: boolean;
+  /** A bullet hole through the hat's crown, painted 'O'. */
+  readonly hatHole?: boolean;
+}
+
+/** Hat-local centre and radius of the bullet hole (the crown, behind the centre line). */
+export const HAT_HOLE: { readonly at: Vec; readonly r: number } = { at: [-2.6, 10.4], r: 0.95 };
 
 /** Places an upright-authored polygon at `origin`, turned to world angle `angle`. */
 function poly(origin: Vec, angle: number, pts: readonly Vec[]): Shape {
@@ -120,7 +131,7 @@ function leg(knee: Vec, ankle: Vec, hip: Vec, tilt: number, part: number): World
 }
 
 /** Every shape of the posed spy, back to front, in world space. */
-export function buildParts(pose: RigPose, j: Joints): WorldPaint[] {
+export function buildParts(pose: RigPose, j: Joints, opts: PartOptions = {}): WorldPaint[] {
   const shrug = pose.shrug ?? 0;
   return [
     // back arm (sleeve, cuff, shaded hand)
@@ -134,7 +145,7 @@ export function buildParts(pose: RigPose, j: Joints): WorldPaint[] {
     { shape: poly(j.hip, j.spineAngle, coat(shrug)), ch: 'b', part: PART.body },
     { shape: poly(j.hip, j.spineAngle, BELT), ch: 'o', part: PART.body },
     // front arm (its hand grips over the umbrella), then the head, nearest of all unless the arm is raised over it
-    ...(pose.armOverHead ? [...head(j), ...frontArm(pose, j, PART.head + 1)] : [...frontArm(pose, j, 0), ...head(j)]),
+    ...(pose.armOverHead ? [...head(j, opts), ...frontArm(pose, j, PART.head + 1)] : [...frontArm(pose, j, 0), ...head(j, opts)]),
   ];
 }
 
@@ -150,13 +161,29 @@ function frontArm(pose: RigPose, j: Joints, lift: number): WorldPaint[] {
 }
 
 /** Face, nose, eye and hat. */
-function head(j: Joints): WorldPaint[] {
-  return [
+function head(j: Joints, opts: PartOptions = {}): WorldPaint[] {
+  const paints: WorldPaint[] = [
     { shape: poly(j.neckTop, j.headAngle, turned(FACE, j.headTurn)), ch: 's', part: PART.head },
     { shape: poly(j.neckTop, j.headAngle, turned(NOSE, j.headTurn)), ch: 's', part: PART.head },
-    { shape: dot(pointOn(j.neckTop, j.headAngle, turned([EYE], j.headTurn)[0]), 0.55), ch: 'd', part: PART.head },
-    { shape: poly(j.neckTop, j.hatAngle, turned(HAT, j.headTurn)), ch: 'b', part: PART.head },
+    { shape: dot(headPoint(j, EYE), 0.55), ch: 'd', part: PART.head },
   ];
+  if (opts.hat === false) return paints;
+  paints.push({ shape: poly(j.neckTop, j.hatAngle, turned(HAT, j.headTurn)), ch: 'b', part: PART.head });
+  if (opts.hatHole) paints.push({ shape: dot(hatPoint(j, HAT_HOLE.at), HAT_HOLE.r), ch: 'O', part: PART.head });
+  return paints;
+}
+
+/** Head-local face shape, nose, hat and eye, for renderers that draw the head differently (the X-ray). */
+export const HEAD_SHAPES = { FACE, NOSE, HAT, EYE } as const;
+
+/** World position of a point given in head-local coordinates (x forward, y up from the top of the neck). */
+export function headPoint(j: Joints, p: Vec): Vec {
+  return pointOn(j.neckTop, j.headAngle, turned([p], j.headTurn)[0]);
+}
+
+/** World position of a point given in hat-local coordinates. */
+export function hatPoint(j: Joints, p: Vec): Vec {
+  return pointOn(j.neckTop, j.hatAngle, turned([p], j.headTurn)[0]);
 }
 
 /** Turns head points about the neck: mirrored for a negative `turn`, the front part (nose, brim) foreshortened. */
@@ -172,17 +199,65 @@ function pointOn(origin: Vec, angle: number, p: Vec): Vec {
   return [origin[0] + x, origin[1] + y];
 }
 
-/** Maps world units to output pixels: x centred on `cx`, the ground (y = 0) at pixel row edge `ground`. */
-export function toPixels(paints: readonly WorldPaint[], cx: number, ground: number, scale: number): Paint[] {
-  const m = (p: Vec): Vec => [cx + 0.5 + p[0] * scale, ground - p[1] * scale];
+/** How the figure is placed in the output image: the pixel scale, a vertical squash and a tilt (round 6 §6). */
+export interface Placement {
+  /** Column of the centre line and the pixel row edge of the ground. */
+  readonly cx: number;
+  readonly ground: number;
+  readonly scale: number;
+  /** Vertical scale (defaults to `scale`): smaller flattens the figure, larger stretches it. */
+  readonly scaleY?: number;
+  /** Clockwise turn about the foot point, degrees; the turned figure is lifted so its lowest point stays on the ground. */
+  readonly tilt?: number;
+}
+
+/** Lowest world y of the painted shapes after turning them by `tilt`. */
+function lowest(paints: readonly WorldPaint[], tilt: number): number {
+  const y = (p: Vec): number => rotate(p, tilt)[1];
+  let low = Infinity;
+  for (const { shape } of paints) {
+    switch (shape.kind) {
+      case 'poly':
+        for (const p of shape.pts) low = Math.min(low, y(p));
+        break;
+      case 'capsule':
+        low = Math.min(low, y(shape.a) - shape.ra, y(shape.b) - shape.rb);
+        break;
+      case 'circle':
+        low = Math.min(low, y(shape.c) - shape.r);
+        break;
+    }
+  }
+  return low;
+}
+
+/**
+ * The world → output-pixel mapping for `paints` placed by `at` (continuous coordinates): x centred on `cx`, the
+ * ground (y = 0) at pixel row edge `ground`. Untilted, the mapping is the plain scale, so the game frames are
+ * unchanged.
+ */
+export function worldToPixel(paints: readonly WorldPaint[], at: Placement): (p: Vec) => Vec {
+  const tilt = at.tilt ?? 0;
+  const sy = at.scaleY ?? at.scale;
+  const lift = tilt === 0 ? 0 : -lowest(paints, tilt);
+  return (p: Vec): Vec => {
+    const [x, y] = tilt === 0 ? p : rotate(p, tilt);
+    return [at.cx + 0.5 + x * at.scale, at.ground - (y + lift) * sy];
+  };
+}
+
+/** Maps world paints to output pixels (see `worldToPixel`); radii follow the mean of the two scales. */
+export function toPixels(paints: readonly WorldPaint[], at: Placement): Paint[] {
+  const m = worldToPixel(paints, at);
+  const rs = (at.scale + (at.scaleY ?? at.scale)) / 2;
   return paints.map(({ shape, ch, part }) => {
     switch (shape.kind) {
       case 'poly':
         return { ch, part, shape: { kind: 'poly', pts: shape.pts.map(m) } };
       case 'capsule':
-        return { ch, part, shape: { kind: 'capsule', a: m(shape.a), b: m(shape.b), ra: shape.ra * scale, rb: shape.rb * scale } };
+        return { ch, part, shape: { kind: 'capsule', a: m(shape.a), b: m(shape.b), ra: shape.ra * rs, rb: shape.rb * rs } };
       case 'circle':
-        return { ch, part, shape: { kind: 'circle', c: m(shape.c), r: shape.r * scale } };
+        return { ch, part, shape: { kind: 'circle', c: m(shape.c), r: shape.r * rs } };
     }
   });
 }

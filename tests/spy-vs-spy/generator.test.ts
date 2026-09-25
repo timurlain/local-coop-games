@@ -72,12 +72,12 @@ describe('createGame', () => {
     });
   });
 
-  it('places 4 secrets and the kufrik in distinct furniture, none of them fixtures', () => {
+  it('places 6 secrets (round 6 §3: two pas, two peníze) and the kufrik in distinct furniture, none of them fixtures', () => {
     forAll((s) => {
       const hidden = s.furniture.filter((f) => f.hidden !== null);
-      expect(hidden).toHaveLength(5);
+      expect(hidden).toHaveLength(7);
       const secrets = hidden.flatMap((f) => (f.hidden!.kind === 'secret' ? [f.hidden!.secret] : []));
-      expect(secrets.sort()).toEqual(['klic', 'pas', 'penize', 'plany']);
+      expect(secrets.sort()).toEqual(['klic', 'pas', 'pas', 'penize', 'penize', 'plany']);
       expect(hidden.filter((f) => f.hidden!.kind === 'kufrik')).toHaveLength(1);
       for (const f of hidden) expect(f.source).toBeNull();
       expect(s.furniture.every((f) => f.trap === null)).toBe(true);
@@ -87,9 +87,9 @@ describe('createGame', () => {
   it('never puts more than one secret item in the same room (round 5)', () => {
     forAll((s) => {
       const hidden = s.furniture.filter((f) => f.hidden !== null);
-      expect(hidden).toHaveLength(5);
+      expect(hidden).toHaveLength(7);
       const rooms = hidden.map((f) => f.room);
-      expect(new Set(rooms).size).toBe(5);
+      expect(new Set(rooms).size).toBe(7);
     });
   });
 
@@ -232,11 +232,11 @@ describe('level table (spec §4)', () => {
   });
 
   it('fails loudly when too few rooms could ever keep a non-fixture piece (round 5: one secret per room)', () => {
-    // a 3×2 embassy (level 1 before round 5): fit within furniturePerRoom.max, but worst-case fixture placement
-    // (2 fixtures paired up per room) could empty 4 of its 6 rooms, leaving only 2 — short of the 5 needed.
+    // a 3×2 embassy (level 1 before round 5): 8 fixtures in 6 rooms could not all keep a non-fixture piece, and
+    // 6 rooms are fewer than the 7 needed for the 6 secret items and the kufřík (round 6 §3).
     expect(() => minFurniturePerRoom(6)).toThrow();
-    // level 1's actual size (9 rooms, 3×3) sits exactly on the boundary: 8 fixtures could empty at most 4 rooms,
-    // leaving exactly 5 — still enough for the 4 secrets and the kufřík.
+    // level 1's actual size (9 rooms, 3×3): 8 fixtures fit while every room keeps a non-fixture piece, and 9 rooms
+    // hold the 7 things.
     expect(minFurniturePerRoom(9)).toBe(RULES.furniturePerRoom.min);
   });
 

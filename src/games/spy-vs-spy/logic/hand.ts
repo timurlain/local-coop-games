@@ -1,4 +1,4 @@
-import { SECRETS, type Furniture, type PlayerId, type Spy, type Thing } from './state';
+import { SECRETS, type Furniture, type PlayerId, type SecretKind, type Spy, type Thing } from './state';
 
 /**
  * The kind of thing that happened on a search (spec §3.3, §7), covering every row of the v1
@@ -11,15 +11,18 @@ import { SECRETS, type Furniture, type PlayerId, type Spy, type Thing } from './
  * - `putBack`: the hand held a source's own remedy; it goes back, hand empty.
  * - `hidden`: the furniture's hidden slot was empty and the hand held something — it goes in, hand empty
  *   (round 4 §2: Akce at furniture with something in hand always searches first, then hides on a miss).
+ * - `alreadyHave` (round 6 §3): the found secret is a kind the spy already has (the loose secret in hand or in the
+ *   held kufřík) — one of a kind, so it stays hidden and the spy shrugs. A loose secret meeting a kufřík that
+ *   already holds its kind is not this: the kufřík is taken and the loose secret left in the piece (`swapped`).
  */
-export type SearchOutcome = 'nothing' | 'took' | 'stored' | 'swapped' | 'putBack' | 'hidden';
+export type SearchOutcome = 'nothing' | 'took' | 'stored' | 'swapped' | 'putBack' | 'hidden' | 'alreadyHave';
 
 export interface SearchResult {
   outcome: SearchOutcome;
   /**
    * The thing relevant to the outcome: the item taken for `took`/`swapped`, the secret that went
    * into the kufřík for `stored` (even when the hand ended up holding the kufřík), null for
-   * `nothing`/`putBack`.
+   * `nothing`/`putBack`/`hidden`/`alreadyHave`.
    */
   found: Thing | null;
   /**
@@ -68,6 +71,9 @@ export function resolveSearch(spy: Spy, f: Furniture): SearchResult {
     return { outcome: 'hidden', found: null };
   }
 
+  if (found.kind === 'secret' && hasKind(held, found.secret)) {
+    return { outcome: 'alreadyHave', found: null };
+  }
   if (held === null) {
     const stolenFrom = take(found, spy);
     spy.hand = found;
@@ -82,7 +88,7 @@ export function resolveSearch(spy: Spy, f: Furniture): SearchResult {
     f.hidden = null;
     return { outcome: 'stored', found, stolenFrom };
   }
-  if (held.kind === 'secret' && found.kind === 'kufrik') {
+  if (held.kind === 'secret' && found.kind === 'kufrik' && !found.contents.includes(held.secret)) {
     // Taking the kufřík (spec §7): any secrets already inside take its holder, not their own.
     const stolenFrom = take(found, spy);
     found.contents.push(held.secret);
@@ -90,10 +96,19 @@ export function resolveSearch(spy: Spy, f: Furniture): SearchResult {
     f.hidden = null;
     return { outcome: 'stored', found: held, stolenFrom };
   }
+  // Everything else swaps, including (round 6 §3) a loose secret meeting a kufřík that already holds its kind: the
+  // kufřík never holds two of one kind, so the loose one stays in the piece where the kufřík was.
   const stolenFrom = take(found, spy);
   spy.hand = found;
   f.hidden = held;
   return { outcome: 'swapped', found, stolenFrom };
+}
+
+/** Round 6 §3: whether `hand` already carries a secret of `kind` — loose, or inside the kufřík. */
+export function hasKind(hand: Thing | null, kind: SecretKind): boolean {
+  if (hand?.kind === 'secret') return hand.secret === kind;
+  if (hand?.kind === 'kufrik') return hand.contents.includes(kind);
+  return false;
 }
 
 export function hasAllSecrets(thing: Thing | null): boolean {

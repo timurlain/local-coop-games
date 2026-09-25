@@ -1,3 +1,4 @@
+import { updateArmouryTimers } from './armoury';
 import { cancelDoorOpening, cancelSwing, dropHand, updateDead } from './death';
 import { sharesRoom, updateBlocking, updateDucking, updateHealthRegen, updateSwing } from './fight';
 import { updateAction, updateDoorOpening, updateSearching } from './interact';
@@ -19,10 +20,12 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
   for (const spy of state.spies) updateClock(state, spy, dt, events);
 
   // Judge both spies' blocking/ducking for this tick before either one's swing can land (spec §8).
-  // Order-independent (only reads room/x as left by the previous tick, mutates neither), so it runs
-  // once here rather than inside the per-spy loop below — otherwise whichever spy the alternating
-  // order happens to process first would land a strike against the target's stance from last tick,
-  // since the target's own stance update for this tick wouldn't have run yet.
+  // Both read the same trap/moveY inputs and are mutually exclusive (round 6 §1: trap+down is a duck,
+  // not a block), so they're computed together here. Order-independent (only reads room/x as left by
+  // the previous tick, mutates neither), so it runs once here rather than inside the per-spy loop
+  // below — otherwise whichever spy the alternating order happens to process first would land a
+  // strike against the target's stance from last tick, since the target's own stance update for this
+  // tick wouldn't have run yet.
   for (const spy of state.spies) {
     updateBlocking(state, spy, inputs[spy.id]);
     updateDucking(state, spy, inputs[spy.id]);
@@ -41,6 +44,7 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     const input = inputs[spy.id];
     spy.swingCooldown = Math.max(0, spy.swingCooldown - dt);
     spy.refuseTimer = Math.max(0, spy.refuseTimer - dt);
+    updateArmouryTimers(spy, dt);
     // A strike lands in this spy's turn of the alternating order (fairness above), judged against
     // the opponent's stance as last set; ducking is re-decided below only if the spy is free to.
     updateSwing(state, spy, dt, events);
@@ -148,11 +152,12 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   }
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
-  // Duck (spec §8): shared room + holding down + not swinging; a ducking spy doesn't move.
+  // Duck (round 6 §1): shared room + Trapulator held + down + not swinging; a ducking spy doesn't move.
+  // Down alone always walks; trap alone (without down) is the block above instead.
   updateDucking(state, spy, input);
   if (spy.ducking) return false;
-  // Guard stance (round 4 §2): holding away from an opponent within fight range stands his ground
-  // instead of walking — the block frame, immobile, same idea as ducking above.
+  // Block (round 4 §2, play test 5): the Trapulator held in a shared room stands his ground instead of
+  // walking — the open-umbrella frame, immobile, same idea as ducking above.
   if (guarding) return false;
   if (spy.mode !== 'normal' || spy.placing !== null) return false;
   return updateMovement(state, spy, input, dt, events);

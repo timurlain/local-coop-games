@@ -79,7 +79,7 @@ export function pickHost(rng: RngState): { host: HostCountry; year: number } {
 /** Width of a wall decoration, logic units (= screen px on the back wall). */
 export const DECOR_W = 20;
 /** Furniture drawn high enough to reach the decoration band; decorations keep clear of it. */
-export const TALL_FURNITURE: readonly FurnitureKind[] = ['obraz', 'skrin', 'knihovna', 'vesak', 'kredenc', 'radio', 'gramofon'];
+export const TALL_FURNITURE: readonly FurnitureKind[] = ['obraz', 'skrin', 'knihovna', 'vesak', 'kredenc', 'radio', 'gramofon', 'zbrojnice'];
 const DECOR_STEP = 5;
 const DECOR_GAP = 4;
 const RUG_CHANCE = 1 / 3;

@@ -311,9 +311,9 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(b.health).toBe(RULES.health - 2);
   });
 
-  it('holding down in a shared room ducks: no movement, and the head bash is stopped', () => {
+  it('holding the Trapulator + down in a shared room ducks: no movement, and the head bash is stopped', () => {
     const { s, a, b } = duel();
-    const duck = input({ moveY: 1 });
+    const duck = input({ trap: true, moveY: 1 });
     step(s, [input({ action: true, moveY: -1 }), duck], 1 / 60);
     const ev = run(s, [IDLE, duck], RULES.bashWindup + 0.05);
     expect(b.ducking).toBe(true);
@@ -323,9 +323,36 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(a.swingCooldown).toBeGreaterThan(0);
   });
 
+  it('down alone in fight range walks instead of ducking (round 6 §1)', () => {
+    const { s, b } = duel();
+    const ev = run(s, [IDLE, input({ moveY: 1 })], 0.2);
+    expect(b.ducking).toBe(false);
+    expect(b.z).toBeGreaterThan(20);
+    expect(ev).not.toContainEqual({ type: 'blocked', spy: 1 });
+  });
+
+  it('the Trapulator alone (without down) blocks and stops a jab (round 6 §1)', () => {
+    const { s, b } = duel();
+    step(s, [input({ action: true }), input({ trap: true })], 1 / 60);
+    const ev = run(s, [IDLE, input({ trap: true })], RULES.swingWindup + 0.02);
+    expect(b.blocking).toBe(true);
+    expect(b.ducking).toBe(false);
+    expect(b.health).toBe(RULES.health);
+    expect(ev).toContainEqual({ type: 'blocked', spy: 1, kind: 'jab' });
+  });
+
+  it('the Trapulator + down is not a block, so a jab lands (round 6 §1)', () => {
+    const { s, b } = duel();
+    step(s, [input({ action: true }), input({ trap: true, moveY: 1 })], 1 / 60);
+    const ev = run(s, [IDLE, input({ trap: true, moveY: 1 })], RULES.swingWindup + 0.02);
+    expect(b.blocking).toBe(false);
+    expect(ev).toContainEqual({ type: 'hit', spy: 1 });
+    expect(b.health).toBe(RULES.health - 1);
+  });
+
   it('ducking does not stop a jab', () => {
     const { s, b } = duel();
-    const duck = input({ moveY: 1 });
+    const duck = input({ trap: true, moveY: 1 });
     step(s, [input({ action: true }), duck], 1 / 60);
     run(s, [IDLE, duck], RULES.swingWindup + 0.05);
     expect(b.health).toBe(RULES.health - 1);
@@ -333,7 +360,7 @@ describe('two attacks and ducking (spec §8)', () => {
 
   it('a ducking spy that stands up is hit by the bash', () => {
     const { s, b } = duel();
-    step(s, [input({ action: true, moveY: -1 }), input({ moveY: 1 })], 1 / 60);
+    step(s, [input({ action: true, moveY: -1 }), input({ trap: true, moveY: 1 })], 1 / 60);
     run(s, [IDLE, IDLE], RULES.bashWindup + 0.05);
     expect(b.ducking).toBe(false);
     expect(b.health).toBe(RULES.health - 2);
@@ -347,7 +374,7 @@ describe('two attacks and ducking (spec §8)', () => {
     s.tick = 1;
     a.attack = 'bash';
     a.strikeIn = 0.001; // lands this tick
-    const ev = step(s, [IDLE, input({ moveY: 1 })], 1 / 60);
+    const ev = step(s, [IDLE, input({ trap: true, moveY: 1 })], 1 / 60);
     expect(b.ducking).toBe(true);
     expect(b.health).toBe(RULES.health);
     expect(ev).toContainEqual({ type: 'blocked', spy: 1, kind: 'bash' });
@@ -361,13 +388,13 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(spy.z).toBeGreaterThan(10);
   });
 
-  it('holding down in a shared room with the opponent out of fight range walks towards the '
+  it('holding the Trapulator + down in a shared room with the opponent out of fight range walks towards the '
     + 'front and out the S door instead of ducking (L3 review)', () => {
     const { s, b } = duel();
     b.x = RULES.roomW - 5; // far from a in x: out of fight range even though sharing the room
     b.z = 10;
     openDoor(s, 1, 'S');
-    const ev = run(s, [IDLE, input({ moveY: 1 })], 1);
+    const ev = run(s, [IDLE, input({ trap: true, moveY: 1 })], 1);
     expect(b.ducking).toBe(false);
     expect(b.z).toBeGreaterThan(10);
     expect(ev).not.toContainEqual({ type: 'blocked', spy: 1 });

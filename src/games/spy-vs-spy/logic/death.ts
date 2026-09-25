@@ -1,7 +1,7 @@
 import { pick } from '../../../shared/rng';
 import { RULES } from './rules';
 import {
-  DIRS, isActive, neighbor, opponentOf,
+  DIRS, canHold, isActive, neighbor, opponentOf,
   type DeathCause, type Furniture, type GameEvent, type GameState, type PlayerId, type Spy,
 } from './state';
 
@@ -46,21 +46,22 @@ export function cancelDoorOpening(state: GameState, spy: Spy): void {
 }
 
 /**
- * Re-hides the hand item in the nearest free furniture (spec §3.5).
+ * Re-hides the hand item in the nearest free furniture that can hold it (spec §3.5; round 6 §4: `canHold`, so never a
+ * fixture or the armoury).
  * Returns the furniture id that received it, or null when nothing was held or a remedy vanished.
  */
 export function dropHand(state: GameState, spy: Spy): number | null {
   const thing = spy.hand;
   if (thing === null) return null;
   spy.hand = null;
-  const free = nearestFurniture(state, spy.room, (f) => f.hidden === null);
+  const free = nearestFurniture(state, spy.room, (f) => canHold(f) && f.hidden === null);
   if (free) {
     free.hidden = thing;
     return free.id;
   }
   // Remedies are infinite at their sources, losing one costs nothing.
   if (thing.kind === 'remedy') return null;
-  const replace = nearestFurniture(state, spy.room, (f) => f.hidden?.kind === 'remedy');
+  const replace = nearestFurniture(state, spy.room, (f) => canHold(f) && f.hidden?.kind === 'remedy');
   if (!replace) throw new Error('embassy has no room left for a secret item');
   replace.hidden = thing;
   return replace.id;

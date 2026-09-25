@@ -7,7 +7,9 @@ export type SfxName =
   | 'laugh' | 'mob'
   | 'lowtime'
   | 'grumble'
-  | 'umbrella' | 'hiss' | 'snip';
+  | 'umbrella' | 'hiss' | 'snip'
+  | 'salvage' | 'resupply'
+  | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine';
 
 interface ToneOpts {
   freq: number;
@@ -57,6 +59,14 @@ function noise(c: AudioContext, { dur, vol = 0.3, delay = 0, lowpass = 2000 }: N
   src.stop(t0 + dur);
 }
 
+/** Two short metallic clicks, like a rifle bolt worked back and forth. */
+function clickClack(c: AudioContext, delay: number): void {
+  tone(c, { freq: 1900, dur: 0.025, delay, type: 'square', vol: 0.12 });
+  noise(c, { dur: 0.03, vol: 0.18, delay, lowpass: 7000 });
+  tone(c, { freq: 1300, dur: 0.03, delay: delay + 0.09, type: 'square', vol: 0.12 });
+  noise(c, { dur: 0.035, vol: 0.2, delay: delay + 0.09, lowpass: 6000 });
+}
+
 const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   join: (c) => { tone(c, { freq: 440, dur: 0.08 }); tone(c, { freq: 660, dur: 0.1, delay: 0.08 }); },
   search: (c) => noise(c, { dur: 0.25, vol: 0.12, lowpass: 1200 }),
@@ -95,10 +105,53 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     tone(c, { freq: 3100, to: 2600, dur: 0.12, delay: 0.06, type: 'triangle', vol: 0.1 });
     noise(c, { dur: 0.03, vol: 0.15, delay: 0.06, lowpass: 8000 });
   },
+  /** round 6 §4, a disarmed trap kept: after the disarm sound, a bolt's click-clack and a small bright „ding-ding" */
+  salvage: (c) => {
+    clickClack(c, 0.5);
+    tone(c, { freq: 880, dur: 0.07, delay: 0.66, type: 'triangle', vol: 0.12 });
+    tone(c, { freq: 1320, dur: 0.1, delay: 0.73, type: 'triangle', vol: 0.12 });
+  },
+  /** round 6 §4, a trap from the armoury: the cabinet door's wooden clunk, a bolt's click-clack, a rising chirp */
+  resupply: (c) => {
+    tone(c, { freq: 170, to: 110, dur: 0.08, type: 'sine', vol: 0.3 });
+    noise(c, { dur: 0.05, vol: 0.12, lowpass: 900 });
+    clickClack(c, 0.12);
+    tone(c, { freq: 660, to: 1100, dur: 0.12, delay: 0.3, type: 'triangle', vol: 0.1 });
+  },
+  /** the escape scene (round 6 §5): a bunch of keys jingling as the klíč flies out */
+  jingle: (c) => [0, 0.04, 0.09, 0.15].forEach((delay, i) =>
+    tone(c, { freq: 2600 + (i % 2) * 700, to: 2200, dur: 0.06, delay, type: 'triangle', vol: 0.07 })),
+  /** the lock turning: two dry clicks */
+  click: (c) => {
+    tone(c, { freq: 1800, dur: 0.02, type: 'square', vol: 0.1 });
+    noise(c, { dur: 0.02, vol: 0.12, lowpass: 7000 });
+    tone(c, { freq: 1200, dur: 0.03, delay: 0.07, type: 'square', vol: 0.12 });
+    noise(c, { dur: 0.03, vol: 0.15, delay: 0.07, lowpass: 5000 });
+  },
+  /** coins chinking on the counter */
+  coins: (c) => [0, 0.07, 0.12, 0.2, 0.26].forEach((delay, i) =>
+    tone(c, { freq: 3200 - (i % 3) * 450, to: 2500, dur: 0.08, delay, type: 'sine', vol: 0.09 })),
+  /** paper: a short rustle */
+  paper: (c) => { noise(c, { dur: 0.12, vol: 0.12, lowpass: 7000 }); noise(c, { dur: 0.08, vol: 0.08, delay: 0.1, lowpass: 5000 }); },
+  /** the rubber stamp's thud on the desk */
+  stamp: (c) => { tone(c, { freq: 160, to: 70, dur: 0.12, type: 'sine', vol: 0.4 }); noise(c, { dur: 0.05, vol: 0.2, lowpass: 900 }); },
+  /** the airliner's engines opening up as it rolls */
+  engine: (c) => {
+    tone(c, { freq: 55, to: 110, dur: 1, type: 'sawtooth', vol: 0.08 });
+    tone(c, { freq: 82, to: 165, dur: 1, type: 'sawtooth', vol: 0.06 });
+    noise(c, { dur: 1, vol: 0.1, lowpass: 400 });
+  },
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },
+  /**
+   * the electric bucket (round 6 §6): a tinny clang as it lands on the head, the old crackle, then a mains buzz
+   * pulsing for the second the X-ray flickers
+   */
   zap: (c) => {
-    for (let i = 0; i < 6; i++) tone(c, { freq: 800 + (i % 2) * 400, dur: 0.04, delay: i * 0.04, type: 'sawtooth', vol: 0.1 });
-    noise(c, { dur: 0.3, vol: 0.1, lowpass: 4000 });
+    tone(c, { freq: 1500, to: 1100, dur: 0.18, type: 'triangle', vol: 0.12, delay: 0.2 });
+    noise(c, { dur: 0.05, vol: 0.15, delay: 0.2, lowpass: 6000 });
+    for (let i = 0; i < 6; i++) tone(c, { freq: 800 + (i % 2) * 400, dur: 0.04, delay: 0.22 + i * 0.04, type: 'sawtooth', vol: 0.1 });
+    noise(c, { dur: 0.3, vol: 0.1, delay: 0.22, lowpass: 4000 });
+    for (let i = 0; i < 11; i++) tone(c, { freq: i % 2 === 0 ? 110 : 165, dur: 0.09, delay: 0.26 + i * 0.09, type: 'sawtooth', vol: 0.07 });
   },
   boing: (c) => tone(c, { freq: 200, to: 900, dur: 0.35, type: 'triangle', vol: 0.25 }),
   shot: (c) => noise(c, { dur: 0.2, vol: 0.5, lowpass: 3000 }),

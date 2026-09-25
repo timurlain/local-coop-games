@@ -1,4 +1,5 @@
 import { cs } from '../../../shared/i18n/cs';
+import { armouryRoom } from '../logic/armoury';
 import { exitVisibleTo } from '../logic/places';
 import { DIRS, OPPOSITE, neighbor, type Dir, type GameState, type Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
@@ -98,6 +99,8 @@ function drawGrid(ctx: Ctx, state: GameState, spy: Spy, g: GridLayout, style: Gr
     else r(ctx, midX, y + g.cellH, t, g.gap, style.door);
   }
 
+  drawArmouryMark(ctx, state, g, style);
+
   if (style.dots) {
     const d = 3;
     for (const id of itemRooms(state, spy)) {
@@ -109,6 +112,29 @@ function drawGrid(ctx: Ctx, state: GameState, spy: Spy, g: GridLayout, style: Gr
       r(ctx, cx, cy, d, d, HAND_COLORS.secret);
     }
   }
+}
+
+const ARMOURY_MARK = '#d4b050';
+
+/**
+ * Round 6 §4: the armoury's room carries a small brass mark in its bottom-left corner for both spies, visited or not
+ * (never in the exit room, so it never meets the plane icon): a single pixel on the mini-map, a framed square with a
+ * rifle stroke on the big map.
+ */
+function drawArmouryMark(ctx: Ctx, state: GameState, g: GridLayout, style: GridStyle): void {
+  const id = armouryRoom(state);
+  if (id === null) return;
+  const room = state.rooms[id];
+  const { x, y } = cellAt(g, room.gx, room.gy);
+  if (!style.bigExit) {
+    r(ctx, x, y + g.cellH - 1, 1, 1, ARMOURY_MARK);
+    return;
+  }
+  const mx = x + 2;
+  const my = y + g.cellH - 7;
+  r(ctx, mx, my, 5, 5, '#1a1a1a');
+  r(ctx, mx + 1, my + 1, 3, 3, ARMOURY_MARK);
+  r(ctx, mx + 2, my + 1, 1, 3, '#3a2212');
 }
 
 /** Blue stub through the outward wall plus a plane mark: a white pixel on the mini-map, the plane icon on the big map. */

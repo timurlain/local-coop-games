@@ -61,6 +61,38 @@ export function iconImage(name: IconName): HTMLCanvasElement {
   return bake(`icon:${name}`, ICONS[name], ICON_PALETTE);
 }
 
+/** Rec. 601 luma of a `#rrggbb` colour, as a matching grey `#rrggbb`. */
+function luminance(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 0xff;
+  const g = (n >> 8) & 0xff;
+  const b = n & 0xff;
+  const y = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  const h = y.toString(16).padStart(2, '0');
+  return `#${h}${h}${h}`;
+}
+
+/** `ICON_PALETTE` with every colour replaced by its luminance grey, baked once (round 6 §2: a missing secret or
+ *  kufřík draws as a faded black-and-white silhouette instead of running a canvas filter every frame). */
+export const ICON_PALETTE_GREY: Record<string, string> = Object.fromEntries(
+  Object.entries(ICON_PALETTE).map(([ch, hex]) => [ch, luminance(hex)]),
+);
+
+/** Opacity of the greyscale silhouette drawn by `drawIconFaded` (round 6 §2). */
+export const FADED_ALPHA = 0.35;
+
+function iconImageGrey(name: IconName): HTMLCanvasElement {
+  return bake(`icon-grey:${name}`, ICONS[name], ICON_PALETTE_GREY);
+}
+
+/** A greyscale, `FADED_ALPHA`-faded silhouette of the icon, for a TAJNÉ slot the spy doesn't hold yet (round 6 §2). */
+export function drawIconFaded(ctx: CanvasRenderingContext2D, name: IconName, cx: number, bottomY: number): void {
+  const prev = ctx.globalAlpha;
+  ctx.globalAlpha = prev * FADED_ALPHA;
+  drawSprite(ctx, iconImageGrey(name), cx, bottomY);
+  ctx.globalAlpha = prev;
+}
+
 /** The icon with a baked-in 1px outline ring in `outline`, cached per icon + colour like the other baked sprites. */
 export function outlinedIconImage(name: IconName, outline: string): HTMLCanvasElement {
   return bake(`icon+:${name}:${outline}`, outlineRows(ICONS[name]), { ...ICON_PALETTE, [OUTLINE_MARK]: outline });

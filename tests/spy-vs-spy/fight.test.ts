@@ -200,7 +200,7 @@ describe('updateSwing: the strike (spec §8)', () => {
   it('a head bash is stopped by ducking at the strike', () => {
     const { s, a, b } = duel();
     trySwing(s, a, 'bash', []);
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(true);
     const ev: GameEvent[] = [];
     updateSwing(s, a, RULES.bashWindup, ev);
@@ -211,7 +211,7 @@ describe('updateSwing: the strike (spec §8)', () => {
 
   it('ducking does not stop a jab', () => {
     const { s, a, b } = duel();
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     swingAndStrike(s, a, 'jab');
     expect(b.health).toBe(RULES.health - 1);
   });
@@ -262,42 +262,65 @@ describe('updateSwing: the strike (spec §8)', () => {
   });
 });
 
-describe('updateDucking (spec §8)', () => {
-  it('ducks only in a shared room, holding down, not swinging', () => {
+describe('updateDucking (round 6 §1: duck on the defence key)', () => {
+  it('ducks only in a shared room, holding the Trapulator + down, not swinging', () => {
     const { s, a, b } = duel();
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(true);
-    updateDucking(s, b, input({ moveY: 1, moveX: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1, moveX: 1 }));
     expect(b.ducking).toBe(true);
-    updateDucking(s, b, input({ moveY: -1 }));
+    updateDucking(s, b, input({ trap: true, moveY: -1 }));
     expect(b.ducking).toBe(false);
     trySwing(s, b, 'jab', []);
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(false);
     b.attack = null;
     a.room = 5;
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
+    expect(b.ducking).toBe(false);
+  });
+
+  it('down alone never ducks, only the Trapulator + down combination does', () => {
+    const { s, b } = duel();
     updateDucking(s, b, input({ moveY: 1 }));
     expect(b.ducking).toBe(false);
+  });
+
+  it('the Trapulator alone (without down) blocks, not ducks', () => {
+    const { s, b } = duel();
+    updateDucking(s, b, input({ trap: true }));
+    expect(b.ducking).toBe(false);
+    updateBlocking(s, b, input({ trap: true }));
+    expect(b.blocking).toBe(true);
+  });
+
+  it('Trapulator + down is a duck, not a block (exclusive on the same button, round 6 §1)', () => {
+    const { s, b } = duel();
+    const held = input({ trap: true, moveY: 1 });
+    updateDucking(s, b, held);
+    updateBlocking(s, b, held);
+    expect(b.ducking).toBe(true);
+    expect(b.blocking).toBe(false);
   });
 
   it('does not duck when the opponent shares the room but is out of fight range (L3 review)', () => {
     const { s, b } = duel();
     b.x = 100 + RULES.fightRangeX + 1;
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(false);
     b.x = 110;
     b.z = 20 + RULES.fightRangeZ + 1;
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(false);
   });
 
   it('ducks once the opponent is back within fight range', () => {
     const { s, a, b } = duel();
     b.x = 100 + RULES.fightRangeX + 1;
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(false);
     b.x = a.x + RULES.fightRangeX;
-    updateDucking(s, b, input({ moveY: 1 }));
+    updateDucking(s, b, input({ trap: true, moveY: 1 }));
     expect(b.ducking).toBe(true);
   });
 });

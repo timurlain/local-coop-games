@@ -2,11 +2,13 @@ import { RULES } from '../logic/rules';
 import { sameRoomOpponent } from '../logic/fight';
 import { doorAt } from '../logic/places';
 import { isActive, type Dir, type GameState, type Placing, type Spy } from '../logic/state';
-import { line, r, text } from './draw';
+import { r } from './draw';
 import { VIEW, hidingSpot, project } from './geometry';
 import { doorCentre } from './room';
-import { SPY_FRAMES, SPY_H, SPY_STAND_BACK, SPY_STAND_H, SPY_STAND_REACH, type SpyFrame, type SpyPalette } from './sprite-data';
+import { SPY_FRAMES, SPY_H, SPY_STAND_BACK, SPY_STAND_H, type SpyFrame } from './sprite-data';
 import type { EffectPose } from './effects';
+import { angel } from './death-phases';
+import { drawAngel, drawTrapDeath } from './deaths';
 import { drawIconScaled, drawInHand, drawSpySprite, handOutline, handPoint, heldIcon, spyImage, type HandIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
@@ -73,7 +75,7 @@ export function idleGiggle(idle: number): SpyFrame | null {
   return t < GIGGLE_LENGTH ? giggleFrame(t) : null;
 }
 
-export function baseColor(spy: Spy): SpyPalette {
+export function baseColor(spy: Spy): 'white' | 'black' {
   return spy.id === 0 ? 'white' : 'black';
 }
 
@@ -87,7 +89,7 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
   if (spy.mode === 'out' || spy.mode === 'escaped') return;
   const { sx, sy } = project(spy.x, spy.z);
   if (spy.mode === 'dead') {
-    drawDeath(ctx, spy, sx, sy, now);
+    drawDeath(ctx, spy, sx, sy);
     return;
   }
   const exit = state.rooms[spy.room].exit;
@@ -264,65 +266,27 @@ function drawTumble(ctx: Ctx, spy: Spy, exit: Dir): void {
 /** Height of the middle of the kneeling figure above the floor: the tumble turns about it. */
 const TUMBLE_PIVOT = Math.round((SPY_H - SPY_FRAMES.placeTrap.findIndex((r) => /[^.]/.test(r))) / 2);
 
-function drawDeath(ctx: Ctx, spy: Spy, sx: number, sy: number, now: number): void {
+/**
+ * A dead spy (round 6 §6): the cartoon gag of his trap (deaths.ts) or, after a fight, knocked flat; then the angel
+ * rising until he respawns.
+ */
+function drawDeath(ctx: Ctx, spy: Spy, sx: number, sy: number): void {
   const elapsed = RULES.respawnTime - spy.modeTimer;
-  const flip = spy.facing < 0;
-
-  if (elapsed >= 1.2) {
-    const rise = (elapsed - 1.2) * 25;
-    ctx.save();
-    ctx.globalAlpha = 0.6;
-    drawSpySprite(ctx, spyImage('ghost', 'stand'), sx, sy - rise, flip);
-    ctx.strokeStyle = '#e8c547';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(sx, sy - rise - SPY_STAND_H - 2, 7, 2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+  const cause = spy.deathCause ?? 'fight';
+  const at = { sx, sy, flip: spy.facing < 0, ceiling: VIEW.top };
+  const up = angel(cause, elapsed);
+  if (up) {
+    drawAngel(ctx, at, up.rise);
     return;
   }
-
-  switch (spy.deathCause) {
-    case 'bomba':
-    case 'casovana': {
-      drawSpySprite(ctx, spyImage('sooty', 'stand'), sx, sy, flip);
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, 0.8 - elapsed * 0.6);
-      ctx.fillStyle = '#9a9a9a';
-      for (const dx of [-7, 0, 7]) {
-        ctx.beginPath();
-        ctx.arc(sx + dx, sy - SPY_STAND_H - elapsed * 12, 4 + elapsed * 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-      break;
-    }
-    case 'pruzina':
-      for (let i = 0; i < 4; i++) line(ctx, sx - 3, sy - i * 3, sx + 3, sy - i * 3 - 1.5, '#cfcfcf');
-      drawSpySprite(ctx, spyImage(baseColor(spy), 'stand'), sx, sy - 12 - elapsed * 120, flip);
-      break;
-    case 'elektrina':
-      drawSpySprite(ctx, spyImage('soaked', 'stand'), sx, sy, flip);
-      if (Math.floor(now * 12) % 2 === 0) {
-        line(ctx, sx - 12, sy - 30, sx - 6, sy - 21, '#ffeb3b');
-        line(ctx, sx + 12, sy - 27, sx + 6, sy - 15, '#ffeb3b');
-      }
-      break;
-    case 'pistole': {
-      drawSpySprite(ctx, spyImage(baseColor(spy), 'stand'), sx, sy, flip);
-      // the BANG! card beside the head, clear of the nose
-      const fx = sx + (flip ? -(SPY_STAND_REACH + 24) : SPY_STAND_REACH + 2);
-      r(ctx, fx, sy - 40, 22, 9, '#f4f4f4');
-      text(ctx, 'BANG!', fx + 11, sy - 33, '#d23c3c', 6, 'center');
-      break;
-    }
-    default:
-      // fight: knocked flat
-      ctx.save();
-      // the sprite lies on its back, the back of the coat on the floor
-      ctx.translate(sx, sy - SPY_STAND_BACK);
-      ctx.rotate(((flip ? 1 : -1) * Math.PI) / 2);
-      drawSpySprite(ctx, spyImage('sooty', 'stand'), 0, SPY_H / 2, flip);
-      ctx.restore();
+  if (cause !== 'fight') {
+    drawTrapDeath(ctx, cause, baseColor(spy), at, elapsed);
+    return;
   }
+  // fight: knocked flat, the sprite on its back, the back of the coat on the floor
+  ctx.save();
+  ctx.translate(sx, sy - SPY_STAND_BACK);
+  ctx.rotate(((at.flip ? 1 : -1) * Math.PI) / 2);
+  drawSpySprite(ctx, spyImage('sooty', 'stand'), 0, SPY_H / 2, at.flip);
+  ctx.restore();
 }

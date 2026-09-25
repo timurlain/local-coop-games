@@ -1,11 +1,14 @@
 import { cs } from '../../../shared/i18n/cs';
 import { REMEDY_FOR } from '../logic/traps';
-import { SECRETS, TRAPS, type DoorTrapKind, type FurnitureTrapKind, type GameState, type RemedyKind, type Spy } from '../logic/state';
+import {
+  SECRETS, TRAPS, type DoorTrapKind, type FurnitureTrapKind, type GameState, type PlayerId, type RemedyKind,
+  type SecretKind, type Spy, type TrapKind,
+} from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { disc, line, r, roundRect, text } from './draw';
 import { DEV, DEVICE, FRAME, type Rect } from './layout';
 import { drawMiniMap } from './map';
-import { drawIcon } from './sprites';
+import { drawIcon, drawIconFaded } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 const D = cs.spy.device;
@@ -45,6 +48,31 @@ function iconIn(ctx: Ctx, name: Parameters<typeof drawIcon>[1], b: Rect): void {
   drawIcon(ctx, name, b.x + b.w / 2, b.y + Math.floor((b.h - 8) / 2) + 8);
 }
 
+/** Faded greyscale silhouette centred in a slot, for a TAJNÉ kind the spy doesn't hold (round 6 §2). */
+function iconInFaded(ctx: Ctx, name: Parameters<typeof drawIconFaded>[1], b: Rect): void {
+  drawIconFaded(ctx, name, b.x + b.w / 2, b.y + Math.floor((b.h - 8) / 2) + 8);
+}
+
+/** A TAJNÉ slot kind: the four secrets, plus the kufřík slot. */
+export type SecretSlotKind = SecretKind | 'kufrik';
+
+/**
+ * Round 6 §2: state of every TAJNÉ slot in device order (the four secrets, then kufřík) — pure and testable.
+ * `have` is true once the spy holds that kind: inside the kufřík's contents, loose in hand, or (for the kufřík
+ * slot) holding the kufřík itself. A slot with `have: false` draws as a faded silhouette (round 6 §2).
+ */
+export function secretSlots(state: GameState, spyId: PlayerId): { kind: SecretSlotKind; have: boolean }[] {
+  const hand = state.spies[spyId].hand;
+  const inCase = hand?.kind === 'kufrik' ? hand.contents : [];
+  const loose = hand?.kind === 'secret' ? hand.secret : null;
+  const slots: { kind: SecretSlotKind; have: boolean }[] = SECRETS.map((secret) => ({
+    kind: secret,
+    have: inCase.includes(secret) || loose === secret,
+  }));
+  slots.push({ kind: 'kufrik', have: hand?.kind === 'kufrik' });
+  return slots;
+}
+
 /** Coiled cable from the device's left edge to the TV frame. */
 export function drawCable(ctx: Ctx): void {
   const x0 = FRAME.x + FRAME.w;
@@ -73,9 +101,9 @@ export function drawDevice(ctx: Ctx, state: GameState, spy: Spy, now: number): v
   r(ctx, DEVICE.x + 1, DEVICE.y + 4, 1, DEVICE.h - 8, BODY_LIGHT);
 
   drawLed(ctx, spy, now);
-  drawButtons(ctx, spy);
+  drawButtons(ctx, spy, now);
   drawRemedy(ctx, spy);
-  drawSecrets(ctx, spy, now);
+  drawSecrets(ctx, state, spy, now);
 
   const m = DEV.minimap;
   framed(ctx, m, BODY_DARK, '#14161c');
@@ -99,8 +127,15 @@ function drawLed(ctx: Ctx, spy: Spy, now: number): void {
   if (low) r(ctx, cx - 1, cy - 2, 1, 1, '#ffd0c0');
 }
 
-/** The trap buttons with their stock; the trap in hand and MAPA (while held open) light up (round 4 §7). */
-function drawButtons(ctx: Ctx, spy: Spy): void {
+/** Round 6 §4: whether the stock digit of `trap` shows its highlight right now — it blinks (6 Hz) while
+ *  `spy.stockFlash` names it, after a salvage or an armoury resupply. */
+export function stockFlashOn(spy: Spy, trap: TrapKind, now: number): boolean {
+  return spy.stockFlash?.trap === trap && Math.floor(now * 6) % 2 === 0;
+}
+
+/** The trap buttons with their stock; the trap in hand and MAPA (while held open) light up (round 4 §7); a digit that
+ *  just went up blinks (round 6 §4). */
+function drawButtons(ctx: Ctx, spy: Spy, now: number): void {
   text(ctx, D.traps, DEV.traps[0].x, DEV.buttonLabelY, LABEL, 5);
   text(ctx, D.map, DEV.map.x + DEV.map.w / 2, DEV.buttonLabelY, LABEL, 5, 'center');
   TRAPS.forEach((trap, i) => {
@@ -109,6 +144,7 @@ function drawButtons(ctx: Ctx, spy: Spy): void {
     framed(ctx, b, HAND_COLORS.trap, lit ? '#ffe27a' : KEY);
     drawIcon(ctx, trap, b.x + b.w / 2, b.y + 9);
     const stock = spy.stock[trap];
+    if (stockFlashOn(spy, trap, now)) r(ctx, b.x + 1, b.y + b.h - 6, b.w - 2, 6, '#ffe27a');
     text(ctx, String(stock), b.x + b.w / 2, b.y + b.h - 1, stock > 0 ? '#1a1a1a' : '#9a9aa0', 5, 'center');
   });
 
@@ -134,18 +170,30 @@ function drawRemedy(ctx: Ctx, spy: Spy): void {
   line(ctx, h.x + 1, h.y + h.h - 2, h.x + h.w - 2, h.y + 1, HAND_COLORS.trap);
 }
 
-function drawSecrets(ctx: Ctx, spy: Spy, now: number): void {
+/**
+ * The TAJNÉ row and the kufřík slot always show every kind (round 6 §2): a faded silhouette while the spy
+ * doesn't have it, full colour once he does. A loose secret in hand keeps its flash (spec §6) instead of
+ * drawing solid.
+ */
+function drawSecrets(ctx: Ctx, state: GameState, spy: Spy, now: number): void {
   text(ctx, D.secrets, DEV.traps[0].x, DEV.secretsLabelY, LABEL, 5);
-  const hand = spy.hand;
-  const inCase = hand?.kind === 'kufrik' ? hand.contents : [];
-  const loose = hand?.kind === 'secret' ? hand.secret : null;
+  const loose = spy.hand?.kind === 'secret' ? spy.hand.secret : null;
   const flashOn = Math.floor(now * 4) % 2 === 0;
+  const slots = secretSlots(state, spy.id);
   SECRETS.forEach((secret, i) => {
     const b = DEV.secrets[i];
     framed(ctx, b, HAND_COLORS.secret, SLOT_BG);
-    if (inCase.includes(secret) || (loose === secret && flashOn)) iconIn(ctx, secret, b);
+    const have = slots[i].have;
+    if (have && secret === loose) {
+      if (flashOn) iconIn(ctx, secret, b);
+    } else if (have) {
+      iconIn(ctx, secret, b);
+    } else {
+      iconInFaded(ctx, secret, b);
+    }
   });
   const k = DEV.kufrik;
   framed(ctx, k, HAND_COLORS.kufrik, SLOT_BG);
-  if (hand?.kind === 'kufrik') iconIn(ctx, 'kufrik', k);
+  if (slots[SECRETS.length].have) iconIn(ctx, 'kufrik', k);
+  else iconInFaded(ctx, 'kufrik', k);
 }
