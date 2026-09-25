@@ -181,8 +181,7 @@ describe('orchestration', () => {
     const f = firstFurniture(s, 0);
     const spy0 = atFurniture(s, 0, f);
     spy0.blocking = true; // stale flag from an earlier moment, before the opponent left
-    step(s, [input({ action: true }), IDLE], 1 / 60); // press: starts the hold (spy 1 is far away in room 8)
-    step(s, [input({ action: true }), IDLE], RULES.hideHold); // holds long enough; empty hand falls back to a search
+    step(s, [input({ action: true }), IDLE], 1 / 60); // press starts the search immediately (spy 1 is far away in room 8)
     expect(spy0.mode).toBe('searching');
     expect(spy0.blocking).toBe(false);
     // spy 1 steps into range and swings while spy 0 is searching
@@ -238,9 +237,8 @@ describe('meeting: shared room (spec §3)', () => {
     const f = firstFurniture(s, 4);
     const spy = atFurniture(s, 0, f);
     place(s, 1, 4, f.x + RULES.fightRangeX + 1, 0); // same room, out of range
-    const ev = run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
+    const ev = run(s, [input({ action: true }), IDLE], 0.1);
     expect(spy.mode).toBe('normal');
-    expect(spy.holdTarget).toBeNull();
     expect(ev.filter((e) => e.type === 'searchStart' || e.type === 'hidden')).toHaveLength(0);
   });
 
@@ -257,8 +255,7 @@ describe('meeting: shared room (spec §3)', () => {
     const f = firstFurniture(s, 0);
     f.hidden = secret('pas');
     const spy = atFurniture(s, 0, f); // spy 1 starts far away in room 8
-    step(s, [input({ action: true }), IDLE], 1 / 60); // press: starts the hold
-    step(s, [IDLE, IDLE], 1 / 60); // release: search starts
+    step(s, [input({ action: true }), IDLE], 1 / 60); // press starts the search immediately
     expect(spy.mode).toBe('searching');
     place(s, 1, 0, f.x + 50, 20); // opponent walks into the room mid-search
     const ev = run(s, [IDLE, IDLE], RULES.searchTime + 0.1);
@@ -271,11 +268,11 @@ describe('meeting: shared room (spec §3)', () => {
     const f = firstFurniture(s, 4);
     const spy = atFurniture(s, 0, f);
     const other = place(s, 1, 4, 100, 20);
-    run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
+    run(s, [input({ action: true }), IDLE], 0.1);
     expect(spy.mode).toBe('normal'); // blocked while shared
     other.room = 7; // opponent leaves
     step(s, [IDLE, IDLE], 1 / 60); // release Akce so the next press is a fresh edge
-    const ev = run(s, [input({ action: true }), IDLE], RULES.hideHold + 0.1);
+    const ev = run(s, [input({ action: true }), IDLE], 0.1);
     expect(ev.filter((e) => e.type === 'searchStart')).toHaveLength(1);
   });
 });

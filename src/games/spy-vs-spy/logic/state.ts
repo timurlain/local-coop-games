@@ -167,9 +167,6 @@ export interface Spy {
   /** countdown for 'searching' and 'dead' */
   modeTimer: number;
   searchTarget: number | null;
-  /** furniture id while Akce is being held (hide vs search decision) */
-  holdTarget: number | null;
-  holdTime: number;
   deathCause: DeathCause | null;
   /** the trap in hand (round 4 §1), chosen by tapping the Trapulator; its stock is spent only when placed */
   selected: TrapKind | null;

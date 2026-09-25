@@ -19,7 +19,7 @@ export const cs = {
     },
     controls:
       'Bílý: WASD, F akce, G pasti · Černý: šipky, Enter akce, pravý Shift pasti · ' +
-      'Gamepad: A akce, X pasti, Start pauza · Podrž akci u nábytku = schovat · Esc pauza · F1 ladění' +
+      'Gamepad: A akce, X pasti, Start pauza · Akce u nábytku: hledat, s věcí v ruce ji tam schováš · Esc pauza · F1 ladění' +
       ' · Stejná past znovu = odzbrojit' +
       ' · Pasti: drž G/pravý Shift/X, šipkami vyber, F nastraž, pak F u nábytku či dveří. Ne před soupeřem.',
     back: '← Zpět na hry',

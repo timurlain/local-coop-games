@@ -141,7 +141,6 @@ export function startPlacing(state: GameState, spy: Spy, events: GameEvent[]): v
     return;
   }
   spy.placing = { trap, target, timer: RULES.placeTime };
-  spy.holdTarget = null;
 }
 
 /** Every tick while placing (the spy is immobile): finishes after `placeTime`. An opponent walking in, or the target

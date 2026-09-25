@@ -33,7 +33,7 @@ describe('kill', () => {
     expect(s.spies[0].clock).toBe(OPEN_RULES.clockSeconds - RULES.deathPenalty);
   });
 
-  it('clears the map, a placement, the Trapulator press and a pending hold, but keeps the trap in hand', () => {
+  it('clears the map, a placement and the Trapulator press, but keeps the trap in hand', () => {
     const s = openGame();
     const spy = s.spies[0];
     spy.mapOpen = true;
@@ -41,7 +41,6 @@ describe('kill', () => {
     spy.selected = 'bomba';
     spy.placing = { trap: 'bomba', target: { on: 'furniture', furniture: 0 }, timer: 0.2 };
     spy.refuseTimer = 0.3;
-    spy.holdTarget = 3;
     kill(s, spy, 'pistole', []);
     expect(spy.mapOpen).toBe(false);
     expect(spy.trapPress).toBeNull();
@@ -49,7 +48,6 @@ describe('kill', () => {
     expect(spy.refuseTimer).toBe(0);
     expect(spy.selected).toBe('bomba');
     expect(spy.stock.bomba).toBe(OPEN_RULES.trapStockPerSpy.bomba);
-    expect(spy.holdTarget).toBeNull();
   });
 
   it('re-hides the hand item in a free furniture of the same room', () => {

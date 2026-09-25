@@ -1,5 +1,5 @@
 import { sharesRoom, trySwing } from './fight';
-import { canHide, hide, resolveSearch } from './hand';
+import { resolveSearch } from './hand';
 import { doorAt, doorKeyFor, furnitureAt } from './places';
 import { RULES } from './rules';
 import { startPlacing, triggerDoorTrap, triggerFurnitureTrap } from './traps';
@@ -11,32 +11,6 @@ import type { Dir, Furniture, GameEvent, GameState, Spy, SpyInput } from './stat
  */
 export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
   const shared = sharesRoom(state, spy);
-  if (spy.holdTarget !== null) {
-    if (shared) {
-      // The opponent walked in while we were deciding hide vs. search: bail out of both.
-      spy.holdTarget = null;
-    } else {
-      const f = state.furniture[spy.holdTarget];
-      if (!input.action) {
-        spy.holdTarget = null;
-        startSearch(state, spy, f, events);
-        return;
-      }
-      spy.holdTime += dt;
-      if (spy.holdTime >= RULES.hideHold) {
-        spy.holdTarget = null;
-        if (canHide(spy, f)) {
-          const thing = spy.hand!;
-          hide(spy, f);
-          events.push({ type: 'hidden', spy: spy.id, thing, furniture: f.id });
-        } else {
-          startSearch(state, spy, f, events);
-        }
-      }
-      return;
-    }
-  }
-
   if (!input.action || spy.prev.action) return;
   // Spec §8: Akce while holding up is the head bash, otherwise a jab.
   if (trySwing(state, spy, input.moveY === -1 ? 'bash' : 'jab', events)) return;
@@ -57,10 +31,7 @@ export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: nu
 
   if (shared) return;
   const f = furnitureAt(state, spy);
-  if (f !== null) {
-    spy.holdTarget = f.id;
-    spy.holdTime = 0;
-  }
+  if (f !== null) startSearch(state, spy, f, events);
 }
 
 /** Starts opening the door at `dir`, unless it is already opening or open (a second Akce press
@@ -129,6 +100,10 @@ export function updateSearching(state: GameState, spy: Spy, dt: number, events: 
       break;
     case 'swapped':
       events.push({ type: 'swapped', spy: spy.id, gave: gave!, took: found!, furniture: f.id, stolenFrom });
+      break;
+    case 'hidden':
+      // Round 4 §2: empty furniture on a search with something in hand — it goes in.
+      events.push({ type: 'hidden', spy: spy.id, thing: gave!, furniture: f.id });
       break;
   }
 }

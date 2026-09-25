@@ -287,7 +287,6 @@ describe('placing a trap from the hand (round 4 §1)', () => {
     expect(spy.clock).toBeCloseTo(clock - (1 + Math.round((RULES.placeTime - 3 * TICK) / TICK) + 4) * TICK - RULES.trapSetCost, 6);
     expect(ev.filter((e) => e.type === 'trapSet')).toEqual([{ type: 'trapSet', spy: 0, trap: 'bomba' }]);
     expect(spy.score).toBe(30);
-    expect(spy.holdTarget).toBeNull();
     expect(spy.mode).toBe('normal');
   });
 

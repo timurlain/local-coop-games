@@ -9,8 +9,10 @@ import { SECRETS, type Furniture, type PlayerId, type Spy, type Thing } from './
  *   hand held the kufřík, or the found thing was the kufřík and the hand held a secret.
  * - `swapped`: any other non-empty-hand combination — the hand item is hidden, the found thing taken.
  * - `putBack`: the hand held a source's own remedy; it goes back, hand empty.
+ * - `hidden`: the furniture's hidden slot was empty and the hand held something — it goes in, hand empty
+ *   (round 4 §2: Akce at furniture with something in hand always searches first, then hides on a miss).
  */
-export type SearchOutcome = 'nothing' | 'took' | 'stored' | 'swapped' | 'putBack';
+export type SearchOutcome = 'nothing' | 'took' | 'stored' | 'swapped' | 'putBack' | 'hidden';
 
 export interface SearchResult {
   outcome: SearchOutcome;
@@ -57,8 +59,14 @@ export function resolveSearch(spy: Spy, f: Furniture): SearchResult {
   }
 
   const found = f.hidden;
-  if (found === null) return { outcome: 'nothing', found: null };
   const held = spy.hand;
+
+  if (found === null) {
+    if (held === null) return { outcome: 'nothing', found: null };
+    f.hidden = held;
+    spy.hand = null;
+    return { outcome: 'hidden', found: null };
+  }
 
   if (held === null) {
     const stolenFrom = take(found, spy);
@@ -86,15 +94,6 @@ export function resolveSearch(spy: Spy, f: Furniture): SearchResult {
   spy.hand = found;
   f.hidden = held;
   return { outcome: 'swapped', found, stolenFrom };
-}
-
-export function canHide(spy: Spy, f: Furniture): boolean {
-  return spy.hand !== null && f.hidden === null;
-}
-
-export function hide(spy: Spy, f: Furniture): void {
-  f.hidden = spy.hand;
-  spy.hand = null;
 }
 
 export function hasAllSecrets(thing: Thing | null): boolean {

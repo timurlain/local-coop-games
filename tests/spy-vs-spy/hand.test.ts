@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canHide, hasAllSecrets, hide, resolveSearch } from '../../src/games/spy-vs-spy/logic/hand';
+import { hasAllSecrets, resolveSearch } from '../../src/games/spy-vs-spy/logic/hand';
 import { atFurniture, firstFurniture, kufrik, openGame, remedy, secret, taken } from './fixtures';
 
 function setup() {
@@ -10,12 +10,19 @@ function setup() {
 }
 
 describe('resolveSearch — normal furniture', () => {
-  it('any hand + empty furniture → nothing found', () => {
+  it('empty hand + empty furniture → nothing found', () => {
+    const { f, spy } = setup();
+    expect(resolveSearch(spy, f)).toEqual({ outcome: 'nothing', found: null });
+    expect(spy.hand).toBeNull();
+    expect(f.hidden).toBeNull();
+  });
+
+  it('full hand + empty furniture → hidden (round 4 §2)', () => {
     const { f, spy } = setup();
     spy.hand = secret('pas');
-    expect(resolveSearch(spy, f)).toEqual({ outcome: 'nothing', found: null });
-    expect(spy.hand).toEqual(secret('pas'));
-    expect(f.hidden).toBeNull();
+    expect(resolveSearch(spy, f)).toEqual({ outcome: 'hidden', found: null });
+    expect(spy.hand).toBeNull();
+    expect(f.hidden).toEqual(secret('pas'));
   });
 
   it('empty hand takes the thing', () => {
@@ -148,25 +155,6 @@ describe('resolveSearch — remedy sources', () => {
     expect(resolveSearch(spy, f)).toEqual({ outcome: 'putBack', found: null });
     expect(spy.hand).toBeNull();
     expect(f.hidden).toBeNull();
-  });
-});
-
-describe('hide', () => {
-  it('is allowed only with a full hand and a free hidden slot', () => {
-    const { f, spy } = setup();
-    expect(canHide(spy, f)).toBe(false);
-    spy.hand = secret('pas');
-    expect(canHide(spy, f)).toBe(true);
-    f.hidden = secret('klic');
-    expect(canHide(spy, f)).toBe(false);
-  });
-
-  it('moves the hand item into the furniture', () => {
-    const { f, spy } = setup();
-    spy.hand = secret('pas');
-    hide(spy, f);
-    expect(spy.hand).toBeNull();
-    expect(f.hidden).toEqual(secret('pas'));
   });
 });
 

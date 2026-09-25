@@ -32,7 +32,6 @@ export const RULES = {
   furniturePerRoom: { min: 2, max: 4 },
   extraDoorChance: 0.5,
   searchTime: 0.5,
-  hideHold: 0.4,
   timeBombFuse: 15,
   /** clock cost to the placer of any successfully-placed trap (incl. the time bomb) */
   trapSetCost: 3,

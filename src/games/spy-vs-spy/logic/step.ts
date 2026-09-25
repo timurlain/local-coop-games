@@ -104,7 +104,6 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   cancelTrapButton(spy);
   spy.placing = null;
   spy.refuseTimer = 0;
-  spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
   spy.kickTimer = 0;
@@ -121,11 +120,10 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   if (spy.kickTimer > 0) {
     spy.kickTimer = Math.max(0, spy.kickTimer - dt);
     cancelTrapButton(spy);
-    spy.holdTarget = null;
     return false;
   }
   // Opening a door (spec §5) or putting a trap down (round 4 §1): the spy is fully immobile — no
-  // movement, no Trapulator, no fighting — same idea as a search or a hide-hold taking over the tick.
+  // movement, no Trapulator, no fighting — same idea as a search taking over the tick.
   if (spy.doorOpening !== null) {
     cancelTrapButton(spy);
     updateDoorOpening(state, spy, dt, events);
@@ -140,7 +138,6 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   // hold opens the map, and only the open map holds him still (no Akce, no blocking either).
   updateTrapButton(state, spy, input, dt, events);
   if (spy.mapOpen) {
-    spy.holdTarget = null;
     spy.blocking = false;
     return false;
   }
@@ -149,7 +146,7 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   // Duck (spec §8): shared room + holding down + not swinging; a ducking spy doesn't move.
   updateDucking(state, spy, input);
   if (spy.ducking) return false;
-  if (spy.mode !== 'normal' || spy.holdTarget !== null || spy.placing !== null) return false;
+  if (spy.mode !== 'normal' || spy.placing !== null) return false;
   return updateMovement(state, spy, input, dt, events);
 }
 

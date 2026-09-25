@@ -9,22 +9,33 @@ function act(s: GameState, spy: Spy, inp: SpyInput, dt: number, ev: GameEvent[])
   spy.prev = inp;
 }
 
-describe('tap = search', () => {
-  it('press starts a hold, release starts the search, search finds the thing', () => {
+describe('Akce at furniture always searches (round 4 §2)', () => {
+  it('press starts the search immediately — no hold, tap and hold are the same', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     f.hidden = secret('pas');
     const spy = atFurniture(s, 0, f);
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    expect(spy.holdTarget).toBe(f.id);
-    act(s, spy, input(), 1 / 60, ev);
     expect(spy.mode).toBe('searching');
     expect(ev).toContainEqual({ type: 'searchStart', spy: 0 });
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(spy.mode).toBe('normal');
     expect(spy.hand).toEqual(taken(secret('pas'), 0));
     expect(ev).toContainEqual({ type: 'found', spy: 0, thing: taken(secret('pas'), 0), furniture: f.id });
+  });
+
+  it('holding the button down (no release) behaves exactly like a tap', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.hidden = secret('pas');
+    const spy = atFurniture(s, 0, f);
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    act(s, spy, input({ action: true }), 1 / 60, ev); // held, not released — nothing extra happens
+    expect(spy.mode).toBe('searching');
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(spy.hand).toEqual(taken(secret('pas'), 0));
   });
 
   it('searching a trapped furniture kills at the start of the search', () => {
@@ -34,7 +45,6 @@ describe('tap = search', () => {
     const spy = atFurniture(s, 0, f);
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input(), 1 / 60, ev);
     expect(spy.mode).toBe('dead');
     expect(ev).toContainEqual({ type: 'died', spy: 0, cause: 'bomba' });
   });
@@ -44,39 +54,55 @@ describe('tap = search', () => {
     const spy = place(s, 0, 4, 100, 20);
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    expect(spy.holdTarget).toBeNull();
+    expect(spy.mode).toBe('normal');
     expect(ev).toEqual([]);
   });
 });
 
-describe('hold = hide', () => {
-  it('hides the hand item after holding long enough', () => {
+describe('something in hand + empty furniture → hidden (round 4 §2)', () => {
+  it('holding a secret at empty furniture puts it in — hidden event, hand empty, no shrug', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
-    const spy = atFurniture(s, 0, f);
+    const spy = atFurniture(s, 0, f); // empty furniture
     spy.hand = secret('klic');
     const ev: GameEvent[] = [];
-    act(s, spy, input({ action: true }), 1 / 60, ev); // press: hold starts, no time yet
-    act(s, spy, input({ action: true }), 0.25, ev);
-    act(s, spy, input({ action: true }), 0.25, ev);
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    expect(spy.mode).toBe('searching');
+    updateSearching(s, spy, RULES.searchTime, ev);
     expect(spy.hand).toBeNull();
     expect(f.hidden).toEqual(secret('klic'));
     expect(ev).toContainEqual({ type: 'hidden', spy: 0, thing: secret('klic'), furniture: f.id });
+    expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
     expect(spy.mode).toBe('normal');
   });
 
-  it('falls back to a search when hiding is impossible', () => {
+  it('holding a kufrik at empty furniture puts it in', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
-    const spy = atFurniture(s, 0, f); // empty hand
+    const spy = atFurniture(s, 0, f);
+    spy.hand = kufrik('pas');
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input({ action: true }), 0.25, ev);
-    act(s, spy, input({ action: true }), 0.25, ev);
-    expect(spy.mode).toBe('searching');
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(spy.hand).toBeNull();
+    expect(f.hidden).toEqual(kufrik('pas'));
+    expect(ev).toContainEqual({ type: 'hidden', spy: 0, thing: kufrik('pas'), furniture: f.id });
   });
 
-  it('holding onto an occupied piece falls back to a search that swaps (user decision)', () => {
+  it('holding a remedy at empty furniture puts it in', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    const spy = atFurniture(s, 0, f);
+    spy.hand = remedy('destnik');
+    const ev: GameEvent[] = [];
+    act(s, spy, input({ action: true }), 1 / 60, ev);
+    updateSearching(s, spy, RULES.searchTime, ev);
+    expect(spy.hand).toBeNull();
+    expect(f.hidden).toEqual(remedy('destnik'));
+    expect(ev).toContainEqual({ type: 'hidden', spy: 0, thing: remedy('destnik'), furniture: f.id });
+  });
+
+  it('holding a secret at furniture that already holds a secret swaps instead (unchanged table)', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     f.hidden = secret('klic');
@@ -84,27 +110,26 @@ describe('hold = hide', () => {
     spy.hand = secret('pas');
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input({ action: true }), 0.25, ev);
-    act(s, spy, input({ action: true }), 0.25, ev);
-    expect(spy.mode).toBe('searching');
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: taken(secret('klic'), 0), furniture: f.id });
-    expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
+    expect(ev.filter((e) => e.type === 'found' || e.type === 'hidden')).toHaveLength(0);
   });
 });
 
-describe('search outcome events (spec §7)', () => {
+describe('empty hand + empty furniture → shrug', () => {
   it('nothing found emits found with a null thing', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     const spy = atFurniture(s, 0, f);
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'found', spy: 0, thing: null, furniture: f.id });
+    expect(ev.filter((e) => e.type === 'hidden')).toHaveLength(0);
   });
+});
 
+describe('search outcome events (spec §7)', () => {
   it('a swap emits swapped with gave and took, not found', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
@@ -113,7 +138,6 @@ describe('search outcome events (spec §7)', () => {
     spy.hand = secret('pas');
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'swapped', spy: 0, gave: secret('pas'), took: taken(secret('klic'), 0), furniture: f.id });
     expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
@@ -127,7 +151,6 @@ describe('search outcome events (spec §7)', () => {
     spy.hand = kufrik('pas');
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'stored', spy: 0, secret: 'klic', furniture: f.id });
     expect(ev.filter((e) => e.type === 'found')).toHaveLength(0);
@@ -141,7 +164,6 @@ describe('search outcome events (spec §7)', () => {
     spy.hand = secret('penize');
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'stored', spy: 0, secret: 'penize', furniture: f.id });
     expect(spy.hand).toEqual(taken(kufrik('plany', 'penize'), 0));
@@ -155,7 +177,6 @@ describe('search outcome events (spec §7)', () => {
     spy.hand = remedy('voda');
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    act(s, spy, input(), 1 / 60, ev);
     updateSearching(s, spy, RULES.searchTime, ev);
     expect(ev).toContainEqual({ type: 'found', spy: 0, thing: null, furniture: f.id });
     expect(spy.hand).toBeNull();
@@ -163,7 +184,7 @@ describe('search outcome events (spec §7)', () => {
 });
 
 describe('a trap in hand (round 4 §1)', () => {
-  it('Akce with bomba in hand starts placing it on the furniture in reach (no hide/search hold)', () => {
+  it('Akce with bomba in hand starts placing it on the furniture in reach (no search/hide)', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     const spy = atFurniture(s, 0, f);
@@ -171,7 +192,7 @@ describe('a trap in hand (round 4 §1)', () => {
     act(s, spy, input({ action: true }), 1 / 60, []);
     expect(spy.placing).toEqual({ trap: 'bomba', target: { on: 'furniture', furniture: f.id }, timer: RULES.placeTime });
     expect(f.trap).toBeNull(); // only after the placing time
-    expect(spy.holdTarget).toBeNull();
+    expect(spy.mode).toBe('normal');
   });
 
   it('refuses when there is no valid target and keeps the trap in hand', () => {
@@ -204,7 +225,7 @@ describe('fight takes priority', () => {
     place(s, 1, 0, f.x + 10, 0);
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    expect(spy.holdTarget).toBeNull();
+    expect(spy.mode).toBe('normal');
     expect(ev[0]).toEqual({ type: 'swing', spy: 0 });
   });
 });

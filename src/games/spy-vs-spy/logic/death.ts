@@ -17,7 +17,6 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   spy.mapOpen = false;
   spy.placing = null;
   spy.refuseTimer = 0;
-  spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
   spy.kickTimer = 0;
