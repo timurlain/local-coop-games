@@ -4,28 +4,88 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Hry pro dva</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Limelight&family=Poiret+One&display=swap" />
     <style>
-      :root { --bg: #14141c; --card: #22222e; --text: #eeeeee; --muted: #a0a0b0; --accent: #e8c547; }
+      :root {
+        --bg: #120e0a;
+        --card: #1c160f;
+        --text: #efe4c4;
+        --muted: #a8977a;
+        --gold: #d9b45a;
+        --gold-dark: #8a6a24;
+        --sepia: #b98e5e;
+      }
       * { box-sizing: border-box; }
-      body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
-      main { max-width: 900px; margin: 0 auto; padding: 48px 16px; }
-      h1 { font-size: 40px; margin: 0 0 8px; }
-      p.lead { color: var(--muted); margin: 0 0 32px; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: 'Poiret One', Georgia, serif;
+        font-weight: 700;
+        background:
+          repeating-conic-gradient(from 180deg at 50% 110%, rgba(217, 180, 90, 0.05) 0deg 3deg, transparent 3deg 9deg),
+          radial-gradient(ellipse at 50% 30%, #2a2014, var(--bg) 70%);
+        background-color: var(--bg);
+      }
+      main { max-width: 900px; margin: 0 auto; padding: 56px 16px; }
+      h1 {
+        font-family: 'Limelight', Georgia, serif;
+        font-weight: 400;
+        font-size: 48px;
+        letter-spacing: 3px;
+        margin: 0 0 8px;
+        color: var(--gold);
+        text-shadow: 0 2px 0 #3a2a10;
+      }
+      .rule { width: min(360px, 80%); height: 9px; margin: 0 0 18px; display: flex; justify-content: center;
+        background: linear-gradient(var(--gold-dark), var(--gold-dark)) center / 100% 1px no-repeat; }
+      .rule span { width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 0 3px var(--bg); }
+      p.lead { color: var(--muted); margin: 0 0 32px; font-size: 19px; }
       ul.games { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-      a.card { display: block; background: var(--card); border-radius: 12px; padding: 20px; color: inherit; text-decoration: none; border: 2px solid transparent; }
-      a.card:hover, a.card:focus-visible { border-color: var(--accent); }
-      a.card h2 { margin: 0 0 8px; }
+      a.card {
+        position: relative;
+        display: block;
+        background: var(--card);
+        padding: 22px;
+        color: inherit;
+        text-decoration: none;
+        border: 1px solid var(--gold-dark);
+        outline: 1px solid transparent;
+        outline-offset: 3px;
+      }
+      a.card::before {
+        content: '';
+        position: absolute;
+        inset: 5px;
+        pointer-events: none;
+        background:
+          linear-gradient(var(--gold), var(--gold)) top left / 12px 1px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) top left / 1px 12px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) top right / 12px 1px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) top right / 1px 12px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) bottom left / 12px 1px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) bottom left / 1px 12px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) bottom right / 12px 1px no-repeat,
+          linear-gradient(var(--gold), var(--gold)) bottom right / 1px 12px no-repeat;
+      }
+      a.card:hover, a.card:focus-visible { border-color: var(--gold); outline-color: var(--gold-dark); }
+      a.card h2 { font-family: 'Limelight', Georgia, serif; font-weight: 400; margin: 0 0 2px; color: var(--gold); letter-spacing: 1px; }
+      a.card .subtitle { margin: 0 0 10px; color: var(--sepia); letter-spacing: 4px; font-size: 15px; }
       a.card p { margin: 0; color: var(--muted); }
     </style>
   </head>
   <body>
     <main>
       <h1>Hry pro dva</h1>
+      <div class="rule" aria-hidden="true"><span></span></div>
       <p class="lead">Lokální hry pro více hráčů u jednoho počítače. Klávesnice nebo gamepady.</p>
       <ul class="games">
         <li>
           <a class="card" href="./src/games/spy-vs-spy/index.html">
             <h2>Spy vs Spy</h2>
+            <p class="subtitle">Praha, 193x</p>
             <p>Dva špióni, jedna ambasáda, spousta pastí. 2 hráči, rozdělená obrazovka.</p>
           </a>
         </li>

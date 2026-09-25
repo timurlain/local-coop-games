@@ -1,41 +1,43 @@
-import { Sfx, type SfxName } from '../../shared/audio';
+import { Sfx, getAudioContext, type SfxName } from '../../shared/audio';
 import { cs } from '../../shared/i18n/cs';
 import type { PlayerActions } from '../../shared/input/actions';
 import { InputManager, type DeviceId } from '../../shared/input/manager';
 import { startLoop } from '../../shared/loop';
+import { Music } from '../../shared/music';
 import { randomSeed } from '../../shared/rng';
 import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
 import { createGame } from './logic/generator';
-import { RULES } from './logic/rules';
-import type { EmbassySize, GameEvent, GameState, Spy, SpyInput } from './logic/state';
+import { LEVELS, levelRules } from './logic/rules';
+import { rankFor } from './logic/score';
+import type { GameEvent, GameState, PlayerId, RemedyKind, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
+import { laugher, spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
+import { pushToast, toastFor, type ToastQueue } from './render/toast';
+import { LOW_TIME } from './render/trapulator';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
+import { TITLE_CARD_TIME, renderTitleCard } from './render/title';
 import { renderGame } from './render/view';
+import { levelReadout, migrateSettings } from './settings';
 
-type Screen = 'menu' | 'play' | 'pause' | 'victory' | 'result';
-interface Settings {
-  size: EmbassySize;
-  clock: number;
-  muted: boolean;
-}
+type Screen = 'menu' | 'title' | 'play' | 'pause' | 'victory' | 'result';
 
 const T = cs.spy;
 const SETTINGS_KEY = 'spy-vs-spy/settings';
-const SIZES: readonly EmbassySize[] = ['mala', 'stredni', 'velka'];
 const STEP_INTERVAL = 0.3;
+/** The music speeds up while either clock is under a minute. */
+const HURRY_TEMPO = 1.25;
 
 const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
 const canvas = $<HTMLCanvasElement>('game');
 const ctx = canvas.getContext('2d')!;
 const input = new InputManager(window);
 const sfx = new Sfx();
-const settings = loadJson<Settings>(SETTINGS_KEY, { size: 'stredni', clock: RULES.defaultClock, muted: false });
-if (!SIZES.includes(settings.size)) settings.size = 'stredni';
-if (!RULES.clockOptions.includes(settings.clock)) settings.clock = RULES.defaultClock;
-if (typeof settings.muted !== 'boolean') settings.muted = false;
+const music = new Music(getAudioContext);
+const settings = migrateSettings(loadJson<Record<string, unknown>>(SETTINGS_KEY, {}));
 sfx.muted = settings.muted;
+music.muted = !settings.music;
 const urlSeed = parseSeed(new URLSearchParams(location.search).get('seed'));
 
 let screen: Screen = 'menu';
@@ -49,6 +51,14 @@ let fpsTime = performance.now();
 /** Countdown per spy to the next footstep sound while walking. */
 const stepTimers: [number, number] = [0, 0];
 let victoryT = 0;
+/** Seconds the match title card has been showing; the gameplay clock does not run meanwhile. */
+let titleT = 0;
+/** Render-side toasts under each frame, fed from logic events. */
+let toasts: [ToastQueue, ToastQueue] = [[], []];
+/** Render-side search / hide / swap / drop feedback, fed from logic events. */
+let effects: EffectQueue = [];
+/** Whole second of each clock at which the low-time beep last sounded. */
+const lastBeep: [number, number] = [-1, -1];
 
 function parseSeed(raw: string | null): number | null {
   if (raw === null) return null;
@@ -60,24 +70,35 @@ function parseSeed(raw: string | null): number | null {
 
 function setupMenu(): void {
   $('menu-title').textContent = T.title;
-  $('size-label').textContent = T.sizeLabel;
-  $('clock-label').textContent = T.clockLabel;
+  $('menu-subtitle').textContent = T.subtitle;
+  // canvas text (title card) needs the art-deco faces loaded; the DOM menu loads them via CSS
+  document.fonts?.load('14px "Limelight"').catch(() => undefined);
+  document.fonts?.load('8px "Poiret One"').catch(() => undefined);
+  $('level-label').textContent = T.levelLabel;
+  $('hide-airport-label').textContent = T.hideAirport;
   $('mute-label').textContent = T.mute;
+  $('music-label').textContent = T.music;
   $('controls').textContent = T.controls;
   $('back').textContent = T.back;
   $('toosmall-title').textContent = T.tooSmall;
 
-  const size = $<HTMLSelectElement>('size');
-  for (const key of SIZES) size.add(new Option(T.sizes[key], key, false, key === settings.size));
-  size.onchange = () => {
-    settings.size = size.value as EmbassySize;
+  const level = $<HTMLSelectElement>('level');
+  const readout = $('level-readout');
+  for (const n of LEVELS) {
+    const { cols, rows } = levelRules(n);
+    level.add(new Option(T.levelOption(n, cols, rows), String(n), false, n === settings.level));
+  }
+  readout.textContent = levelReadout(settings.level);
+  level.onchange = () => {
+    settings.level = Number(level.value);
+    readout.textContent = levelReadout(settings.level);
     saveJson(SETTINGS_KEY, settings);
   };
 
-  const clock = $<HTMLSelectElement>('clock');
-  for (const sec of RULES.clockOptions) clock.add(new Option(T.clockOption(sec), String(sec), false, sec === settings.clock));
-  clock.onchange = () => {
-    settings.clock = Number(clock.value);
+  const hideAirport = $<HTMLInputElement>('hide-airport');
+  hideAirport.checked = settings.hideAirport;
+  hideAirport.onchange = () => {
+    settings.hideAirport = hideAirport.checked;
     saveJson(SETTINGS_KEY, settings);
   };
 
@@ -86,6 +107,14 @@ function setupMenu(): void {
   mute.onchange = () => {
     settings.muted = mute.checked;
     sfx.muted = mute.checked;
+    saveJson(SETTINGS_KEY, settings);
+  };
+
+  const musicBox = $<HTMLInputElement>('music');
+  musicBox.checked = settings.music;
+  musicBox.onchange = () => {
+    settings.music = musicBox.checked;
+    music.muted = !musicBox.checked;
     saveJson(SETTINGS_KEY, settings);
   };
   renderSlots();
@@ -114,17 +143,32 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
-  state = createGame(urlSeed ?? randomSeed(), settings.size, settings.clock);
+  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport });
   state.spies.forEach((spy, i) => {
     spy.prev = toSpyInput(input.get(slots[i]!));
   });
   stepTimers[0] = 0;
   stepTimers[1] = 0;
-  screen = 'play';
+  toasts = [[], []];
+  effects = [];
+  lastBeep[0] = -1;
+  lastBeep[1] = -1;
+  titleT = 0;
+  screen = 'title';
   show(null);
 }
 
+/** Title card done (or skipped with Akce): the match starts; held buttons don't count as fresh presses. */
+function beginPlay(): void {
+  state!.spies.forEach((spy, i) => {
+    spy.prev = toSpyInput(input.get(slots[i]!));
+  });
+  screen = 'play';
+  music.start();
+}
+
 function toMenu(): void {
+  music.stop();
   screen = 'menu';
   state = null;
   slots = [null, null];
@@ -133,17 +177,27 @@ function toMenu(): void {
 }
 
 function pause(reason: string): void {
+  music.pause();
   screen = 'pause';
   $('pause-title').textContent = reason;
   $('pause-hint').textContent = T.resumeHint;
   show('pause');
 }
 
+/** Result screen (spec §7): both spies' score and rank, winner first — Bílý then Černý on a draw. */
 function finish(s: GameState): void {
   const r = s.result!;
+  music.stop();
   $('result-title').textContent = r.kind === 'win' ? T.winner(r.winner === 0 ? T.white : T.black) : T.draw;
   $('result-time').textContent = r.kind === 'win' ? T.timeLeft(formatClock(s.spies[r.winner].clock)) : '';
+  $('result-host').textContent = T.titleCard(s.host, s.year);
   $('result-seed').textContent = `${T.seed}: ${s.seed}`;
+  const order: [PlayerId, PlayerId] = r.kind === 'win' && r.winner === 1 ? [1, 0] : [0, 1];
+  order.forEach((id, i) => {
+    const spy = s.spies[id];
+    const name = id === 0 ? T.white : T.black;
+    $(`result-score-${i}`).textContent = T.scoreLine(name, spy.score, rankFor(spy.score));
+  });
   $('result-hint').textContent = T.rematchHint;
   screen = 'result';
   show('result');
@@ -162,6 +216,20 @@ function update(dt: number): void {
     case 'menu':
       updateMenu();
       break;
+    case 'title':
+      if (slotDevices().some((d) => !input.isConnected(d))) {
+        beginPlay();
+        pause(T.padLost);
+        break;
+      }
+      if (slotPressed('pause')) {
+        beginPlay();
+        pause(T.paused);
+        break;
+      }
+      titleT += dt;
+      if (titleT >= TITLE_CARD_TIME || slotPressed('action')) beginPlay();
+      break;
     case 'play':
       updatePlay(dt);
       break;
@@ -172,6 +240,7 @@ function update(dt: number): void {
       if (slotPressed('pause') && slotDevices().every((d) => input.isConnected(d))) {
         screen = 'play';
         show(null);
+        music.resume();
       } else if (input.keyPressed('KeyM')) {
         toMenu();
       }
@@ -228,10 +297,17 @@ function updatePlay(dt: number): void {
   }
   const before: [string, string] = [posKey(s.spies[0]), posKey(s.spies[1])];
   const inputs: [SpyInput, SpyInput] = [toSpyInput(input.get(slots[0]!)), toSpyInput(input.get(slots[1]!))];
-  for (const e of step(s, inputs, dt)) {
+  const now = performance.now() / 1000;
+  const events = step(s, inputs, dt);
+  for (const e of events) {
     const name = soundFor(e);
     if (name) sfx.play(name);
+    if (laugher(s, e) !== null) sfx.play('laugh');
+    toastOn(e, now);
   }
+  spawnEffects(effects, s, events, now);
+  for (const spy of s.spies) lowTimeBeep(spy);
+  music.setTempo(s.spies.some((spy) => spy.clock < LOW_TIME) ? HURRY_TEMPO : 1);
   for (const spy of s.spies) {
     if (spy.mode !== 'normal') continue;
     if (posKey(spy) !== before[spy.id]) {
@@ -248,6 +324,7 @@ function updatePlay(dt: number): void {
     if (s.result.kind === 'win') {
       screen = 'victory';
       victoryT = 0;
+      music.stop();
     } else {
       finish(s);
     }
@@ -263,14 +340,44 @@ function updateVictory(dt: number): void {
   if (victoryT >= VICTORY_DURATION || skipped) finish(state!);
 }
 
+/** A remedy, secret or kufřík entering the hand shows its name under that player's frame. */
+function toastOn(e: GameEvent, now: number): void {
+  switch (e.type) {
+    case 'found':
+      if (e.thing) pushToast(toasts[e.spy], toastFor(e.thing), now);
+      break;
+    case 'swapped':
+      pushToast(toasts[e.spy], toastFor(e.took), now);
+      break;
+    case 'stored':
+      pushToast(toasts[e.spy], toastFor({ kind: 'secret', secret: e.secret, lastHolder: null }), now);
+      break;
+  }
+}
+
+/** Once per second per player while the clock is under LOW_TIME. */
+function lowTimeBeep(spy: Spy): void {
+  if (spy.mode === 'out' || spy.mode === 'escaped' || spy.clock <= 0 || spy.clock >= LOW_TIME) return;
+  const sec = Math.ceil(spy.clock);
+  if (sec === lastBeep[spy.id]) return;
+  lastBeep[spy.id] = sec;
+  sfx.play('lowtime');
+}
+
+/** The sound of each remedy defusing its trap (round 4 §3). */
+const DISARM_SOUND: Readonly<Record<RemedyKind, SfxName>> = { destnik: 'umbrella', voda: 'hiss', kleste: 'snip', nuzky: 'snip' };
+
 function soundFor(e: GameEvent): SfxName | null {
   switch (e.type) {
     case 'searchStart': return 'search';
-    case 'found': return e.thing ? 'found' : null;
-    case 'hidden': return 'hide';
+    case 'found': return e.thing ? 'found' : 'nothing';
+    case 'stored': return 'found';
+    case 'swapped': return 'swap';
+    case 'hidden': return 'thud';
+    case 'dropped': return e.thing ? 'clatter' : null;
     case 'trapSet': return 'trapSet';
-    case 'trapFailed': return 'fail';
-    case 'disarmed': return 'found';
+    case 'refused': return 'grumble';
+    case 'disarmed': return DISARM_SOUND[e.remedy];
     case 'died':
       switch (e.cause) {
         case 'bomba': return 'bomb';
@@ -283,10 +390,13 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'hit': return 'hit';
     case 'blocked': return 'block';
     case 'door': return 'door';
-    case 'locked': return 'locked';
+    case 'doorOpened': return 'door';
+    case 'bump': return 'bump';
+    case 'bounced': return 'boot';
     case 'tick': return 'tick';
     case 'explode': return 'bomb';
     case 'timeout': return 'fail';
+    case 'mapOpened': return 'door';
     case 'respawn':
     case 'escaped':
     case 'draw':
@@ -307,7 +417,8 @@ function render(): void {
   if (screen === 'victory' && state?.result?.kind === 'win') {
     renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
   } else if (state && screen !== 'menu') {
-    renderGame(ctx, scale, state, now / 1000, { on: debug, fps });
+    renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts, effects);
+    if (screen === 'title') renderTitleCard(ctx, scale, state, titleT);
   } else {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000000';
@@ -323,6 +434,10 @@ function resize(): void {
 window.addEventListener('resize', resize);
 window.addEventListener('blur', () => {
   if (screen === 'play') pause(T.paused);
+  else if (screen === 'title') {
+    beginPlay();
+    pause(T.paused);
+  }
 });
 window.addEventListener('pointerdown', () => sfx.unlock());
 

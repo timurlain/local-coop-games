@@ -14,9 +14,13 @@ describe('furnitureAt', () => {
   it('ignores furniture that is too far in x or z', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
-    place(s, 0, 0, f.x, 10);
-    expect(furnitureAt(s, s.spies[0])).toBeNull();
-    place(s, 0, 0, f.x + 15, 0);
+    place(s, 0, 0, f.x, 12);
+    expect(furnitureAt(s, s.spies[0])?.id).toBe(f.id);
+    place(s, 0, 0, f.x, 13);
+    expect(furnitureAt(s, s.spies[0])?.id).not.toBe(f.id);
+    place(s, 0, 0, f.x + 22, 0);
+    expect(furnitureAt(s, s.spies[0])?.id).toBe(f.id);
+    place(s, 0, 0, f.x + 23, 0);
     expect(furnitureAt(s, s.spies[0])?.id).not.toBe(f.id);
   });
 });

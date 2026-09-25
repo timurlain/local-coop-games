@@ -1,17 +1,31 @@
+import { dropHand } from './death';
 import { hasAllSecrets } from './hand';
 import { doorAt, doorKeyFor } from './places';
 import { RULES } from './rules';
-import { triggerDoorTrap } from './traps';
+import { recordTrail } from './trail';
 import { neighbor, type Dir, type GameEvent, type GameState, type Spy, type SpyInput } from './state';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
+/**
+ * Advances one spy's position and door-crossing for this tick.
+ * Returns true when the spy just passed an internal door into a new room (not the exit, not
+ * blocked by a closed door) — the caller (`step`) uses this to judge entering-drops only after
+ * BOTH spies have moved this tick (spec §3; see step.ts for why).
+ */
+export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
   if (input.moveX !== 0) spy.facing = input.moveX;
   spy.x = clamp(spy.x + input.moveX * RULES.speedX * dt, 0, RULES.roomW);
   spy.z = clamp(spy.z + input.moveY * RULES.speedZ * dt, 0, RULES.roomD);
   const dir = pushingDoor(state, spy, input);
-  if (dir !== null) goThrough(state, spy, dir, events);
+  if (dir === null) return false;
+  const key = doorKeyFor(state, spy.room, dir);
+  if (state.doorOpen[key]?.phase !== 'open') {
+    // Closed door (spec §5): no pass, just a bump — once per fresh push, not every tick held.
+    if (isFreshPush(spy, input, dir)) events.push({ type: 'bump', spy: spy.id });
+    return false;
+  }
+  return goThrough(state, spy, dir, events);
 }
 
 /** A door the spy is standing at AND pressing into. */
@@ -24,27 +38,34 @@ function pushingDoor(state: GameState, spy: Spy, input: SpyInput): Dir | null {
   return null;
 }
 
-function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): void {
-  const key = doorKeyFor(state, spy.room, dir);
+/** True only on the tick the relevant direction was newly pressed into this door, so a held
+ *  direction against a closed door bumps once, not every tick (spec §5, "once per push"). */
+function isFreshPush(spy: Spy, input: SpyInput, dir: Dir): boolean {
+  switch (dir) {
+    case 'N': return spy.prev.moveY !== -1;
+    case 'S': return spy.prev.moveY !== 1;
+    case 'W': return spy.prev.moveX !== -1;
+    case 'E': return spy.prev.moveX !== 1;
+  }
+}
 
+function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): boolean {
   if (state.rooms[spy.room].exit === dir) {
     if (!hasAllSecrets(spy.hand)) {
-      if (spy.lockedMsg <= 0) {
-        spy.lockedMsg = RULES.lockedMsgTime;
-        events.push({ type: 'locked', spy: spy.id });
-      }
-      return;
+      kickBack(spy, dir);
+      events.push({ type: 'bounced', spy: spy.id });
+      return false;
     }
-    if (!triggerDoorTrap(state, spy, key, events)) return;
     spy.mode = 'escaped';
     events.push({ type: 'escaped', spy: spy.id });
-    return;
+    return false;
   }
 
-  if (!triggerDoorTrap(state, spy, key, events)) return;
   const next = neighbor(state, spy.room, dir)!;
   spy.room = next;
+  spy.enteredAt = state.tick;
   spy.visited[next] = true;
+  recordTrail(spy.trail, dir);
   switch (dir) {
     case 'N':
       spy.x = RULES.roomW / 2;
@@ -64,4 +85,39 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): v
       break;
   }
   events.push({ type: 'door', spy: spy.id });
+  return true;
+}
+
+/** The airport guard (spec §9) kicks a spy without the full kufřík `RULES.guardKick` units back from the exit
+ *  at `dir`, into the room; it tumbles, immobile, for `RULES.guardKickTime`. No time penalty. */
+function kickBack(spy: Spy, dir: Dir): void {
+  const k = RULES.guardKick;
+  switch (dir) {
+    case 'N': spy.z += k; break;
+    case 'S': spy.z -= k; break;
+    case 'W': spy.x += k; break;
+    case 'E': spy.x -= k; break;
+  }
+  spy.x = clamp(spy.x, 0, RULES.roomW);
+  spy.z = clamp(spy.z, 0, RULES.roomD);
+  spy.kickTimer = RULES.guardKickTime;
+}
+
+/**
+ * Entering a room where the opponent is active (spec §3): the entering spy drops everything —
+ * the trap in hand is emptied (nothing to refund, its stock was never spent; unlike death, which
+ * keeps it — round 4 §1: entering is the spec §3 "drops everything" rule), a remedy
+ * in hand is simply lost (sources are infinite), a secret or kufřík is re-hidden via the normal
+ * `dropHand` rules (nearest free furniture, same room first).
+ *
+ * Called by `step`, once per spy that passed a door this tick, AFTER both spies have moved
+ * (see step.ts) — not from `goThrough` itself, so that two spies crossing paths in the same
+ * tick are judged by where they actually end up, not by processing order.
+ */
+export function dropOnEntering(state: GameState, spy: Spy, events: GameEvent[]): void {
+  const thing = spy.hand;
+  spy.selected = null;
+  const furniture = thing !== null && thing.kind !== 'remedy' ? dropHand(state, spy) : null;
+  spy.hand = null;
+  events.push({ type: 'dropped', spy: spy.id, thing, furniture });
 }

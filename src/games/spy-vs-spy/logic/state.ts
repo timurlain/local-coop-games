@@ -2,29 +2,70 @@ import type { RngState } from '../../../shared/rng';
 
 export type PlayerId = 0 | 1;
 export type Dir = 'N' | 'S' | 'E' | 'W';
-export type EmbassySize = 'mala' | 'stredni' | 'velka';
 export type SecretKind = 'klic' | 'penize' | 'pas' | 'plany';
 export type RemedyKind = 'voda' | 'kleste' | 'destnik' | 'nuzky';
 export type FurnitureTrapKind = 'bomba' | 'pruzina';
 export type DoorTrapKind = 'elektrina' | 'pistole';
 export type TrapKind = FurnitureTrapKind | DoorTrapKind | 'casovana';
-export type FurnitureKind = 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak';
+export type FurnitureKind =
+  | 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak'
+  | 'kartoteka' | 'gramofon' | 'globus' | 'kredenc' | 'radio' | 'kvetina' | 'krb' | 'telefon'
+  | 'hasicak' | 'naradi' | 'lekarnicka';
+/** Furniture kinds that are always an infinite source of exactly one remedy (never ordinary theme pool pieces). */
+export type FixtureKind = 'vesak' | 'hasicak' | 'naradi' | 'lekarnicka';
+/** Spec §8: a jab (Akce) or a head bash (Akce while holding up). */
+export type AttackKind = 'jab' | 'bash';
 export type DeathCause = TrapKind | 'fight';
+/** Visual theme of a room: wall colour, floor style and the furniture pool. */
+export type RoomTheme =
+  | 'kancelar' | 'knihovna' | 'salonek' | 'archiv' | 'konferencni' | 'kuchynka' | 'sifrovna' | 'pracovna';
+/** Country whose Prague embassy the match is set in (1930s, interwar); visual only. */
+export type HostCountry = 'cs' | 'pl' | 'de' | 'hu' | 'at';
+export const HOSTS: readonly HostCountry[] = ['cs', 'pl', 'de', 'hu', 'at'];
+/** Range of the in-game year, inclusive. */
+export const YEAR_MIN = 1929;
+export const YEAR_MAX = 1937;
 
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
 export const SECRETS: readonly SecretKind[] = ['klic', 'penize', 'pas', 'plany'];
-export const REMEDIES: readonly RemedyKind[] = ['voda', 'kleste', 'destnik', 'nuzky'];
 export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana'];
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
+  'kartoteka', 'gramofon', 'globus', 'kredenc', 'radio', 'kvetina', 'krb', 'telefon',
+  'hasicak', 'naradi', 'lekarnicka',
+];
+export const FIXTURE_KINDS: readonly FixtureKind[] = ['vesak', 'hasicak', 'naradi', 'lekarnicka'];
+/** Kinds that may stand free on the floor (round 5 §5); tall pieces and fixtures always stay on the wall. */
+export const FREE_STANDING_KINDS: readonly FurnitureKind[] = ['stul', 'pohovka', 'globus', 'kvetina', 'trezor'];
+/** A fixture's kind always means its remedy; set on `Furniture.source` for every fixture and only for fixtures. */
+export const FIXTURE_REMEDY: Readonly<Record<FixtureKind, RemedyKind>> = {
+  vesak: 'destnik',
+  hasicak: 'voda',
+  naradi: 'kleste',
+  lekarnicka: 'nuzky',
+};
+/** Wall decorations: purely visual, never searchable. */
+export type FlagKind = `vlajka_${HostCountry}`;
+export type DecorKind =
+  | 'plakat_psst' | 'plakat_mapa' | 'plakat_tajne' | 'plakat_spion' | 'portret' | 'hodiny' | 'okno' | 'telegram'
+  | FlagKind;
+
+export interface RoomDecor {
+  kind: DecorKind;
+  /** centre x on the back wall, logic units */
+  x: number;
+}
+
+export const ROOM_THEMES: readonly RoomTheme[] = [
+  'kancelar', 'knihovna', 'salonek', 'archiv', 'konferencni', 'kuchynka', 'sifrovna', 'pracovna',
 ];
 export const OPPOSITE: Readonly<Record<Dir, Dir>> = { N: 'S', S: 'N', E: 'W', W: 'E' };
 /** Door-trap key used for the airport exit door. */
 export const EXIT_KEY = 'exit';
 
 export type Thing =
-  | { kind: 'secret'; secret: SecretKind }
-  | { kind: 'kufrik'; contents: SecretKind[] }
+  | { kind: 'secret'; secret: SecretKind; lastHolder: PlayerId | null }
+  | { kind: 'kufrik'; contents: SecretKind[]; lastHolder: PlayerId | null }
   | { kind: 'remedy'; remedy: RemedyKind };
 
 export interface FurnitureTrap {
@@ -36,8 +77,10 @@ export interface Furniture {
   id: number;
   room: number;
   kind: FurnitureKind;
-  /** x position on the back wall, logic units */
+  /** floor position, logic units: x along the room; z = 0 for a piece against the back wall, otherwise the front
+   *  edge of a free-standing piece (round 5 §5) */
   x: number;
+  z: number;
   /** the single hidden-thing slot */
   hidden: Thing | null;
   /** infinite remedy source (does not use the hidden slot) */
@@ -53,11 +96,26 @@ export interface Room {
   /** side of this room that holds the airport exit door, if any */
   exit: Dir | null;
   furniture: number[];
+  /** visual only */
+  theme: RoomTheme;
+  /** visual only: 1-2 pictures in the band above the furniture */
+  decor: RoomDecor[];
+  /** visual only: floor rug in the middle of the room */
+  rug: boolean;
 }
 
 export interface DoorTrap {
   kind: DoorTrapKind;
   owner: PlayerId;
+}
+
+/** Runtime state of one door's Akce-opened cycle (spec §5): absent from `GameState.doorOpen` = closed. */
+export type DoorPhase = 'opening' | 'open';
+
+export interface DoorRuntimeState {
+  phase: DoorPhase;
+  /** seconds left in this phase */
+  timer: number;
 }
 
 export interface TimeBomb {
@@ -66,6 +124,21 @@ export interface TimeBomb {
   z: number;
   fuse: number;
   owner: PlayerId;
+}
+
+/** Where a trap in hand goes (round 4 §1): furniture (bomba/pružina), a door key (elektřina/pistole) or the floor
+ *  at the spy's feet (časovaná). */
+export type PlaceTarget =
+  | { on: 'furniture'; furniture: number }
+  | { on: 'door'; key: string }
+  | { on: 'floor' };
+
+/** A trap being put down (round 4 §1): the spy is immobile until `timer` runs out, then it is placed. */
+export interface Placing {
+  trap: TrapKind;
+  target: PlaceTarget;
+  /** seconds left */
+  timer: number;
 }
 
 export type SpyMode = 'normal' | 'searching' | 'dead' | 'out' | 'escaped';
@@ -90,25 +163,48 @@ export interface Spy {
   /** seconds left */
   clock: number;
   health: number;
+  /** seconds since the last hit taken; drives strength recovery, reset on hit and on respawn */
+  sinceHit: number;
+  /** running total from `scoreDeltas` (spec §7); can go negative */
+  score: number;
   mode: SpyMode;
   /** countdown for 'searching' and 'dead' */
   modeTimer: number;
   searchTarget: number | null;
-  /** furniture id while Akce is being held (hide vs search decision) */
-  holdTarget: number | null;
-  holdTime: number;
   deathCause: DeathCause | null;
-  menuOpen: boolean;
-  menuCursor: number;
-  armed: TrapKind | null;
+  /** the trap in hand (round 4 §1), chosen by tapping the Trapulator; its stock is spent only when placed */
+  selected: TrapKind | null;
+  /** seconds the Trapulator button has been held in the current press; null when up or the press was cancelled
+   *  (a release under `RULES.trapTapMax` is a tap, reaching it opens the map) */
+  trapPress: number | null;
+  /** true while the big map (MAPA) is shown; only while the Trapulator button stays held after `trapTapMax` */
+  mapOpen: boolean;
+  /** a trap being put down (immobile), or null */
+  placing: Placing | null;
+  /** >0 while the refusal head shake shows (round 4 §1); purely visual, never blocks anything */
+  refuseTimer: number;
   stock: Record<TrapKind, number>;
+  /** seconds until another swing may start; set at the strike (spec §8) */
   swingCooldown: number;
-  /** >0 while the club swing animation shows */
+  /** >0 while the club swing animation shows (wind-up + strike) */
   swingAnim: number;
+  /** the swing in progress (spec §8): Akce = jab, Akce + up = head bash; null once the animation ends */
+  attack: AttackKind | null;
+  /** seconds of wind-up left before the strike lands; 0 once it has struck */
+  strikeIn: number;
+  /** holding away from the opponent: stops a jab */
   blocking: boolean;
-  /** >0 while "Zamčeno" is shown */
-  lockedMsg: number;
+  /** holding down in a shared room while not swinging (spec §8): stops a head bash, can't move */
+  ducking: boolean;
+  /** seconds left of the airport guard's kick (spec §9): tumbling back, immobile; 0 = not kicked */
+  kickTimer: number;
+  /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */
+  doorOpening: string | null;
+  /** `GameState.tick` when the spy entered its current room: door pass, match start (same for both) or respawn (spec §2) */
+  enteredAt: number;
   visited: boolean[];
+  /** internal doors passed, most recent last, at most `RULES.trailLength`; kept across death (spec §9) */
+  trail: Dir[];
   prev: SpyInput;
 }
 
@@ -116,11 +212,21 @@ export type GameResult = { kind: 'win'; winner: PlayerId } | { kind: 'draw' };
 
 export interface GameState {
   seed: number;
+  /** visual only: whose embassy this is (from the looks stream) */
+  host: HostCountry;
+  /** visual only: the year shown on the title card, YEAR_MIN..YEAR_MAX */
+  year: number;
+  /** 1-8 (spec §4) */
+  level: number;
   cols: number;
   rows: number;
+  /** „Skrýt letiště": the exit is hidden from a spy until it holds the full kufřík (see `exitVisibleTo`) */
+  hideAirport: boolean;
   rooms: Room[];
   furniture: Furniture[];
   doorTraps: Record<string, DoorTrap>;
+  /** open/opening state of internal doors and the exit, keyed like `doorTraps` (incl. `EXIT_KEY`); spec §5 */
+  doorOpen: Record<string, DoorRuntimeState>;
   timeBombs: TimeBomb[];
   spies: [Spy, Spy];
   rng: RngState;
@@ -131,22 +237,32 @@ export interface GameState {
 
 export type GameEvent =
   | { type: 'searchStart'; spy: PlayerId }
-  | { type: 'found'; spy: PlayerId; thing: Thing | null }
-  | { type: 'hidden'; spy: PlayerId }
+  | { type: 'found'; spy: PlayerId; thing: Thing | null; furniture: number; stolenFrom?: PlayerId }
+  | { type: 'stored'; spy: PlayerId; secret: SecretKind; furniture: number; stolenFrom?: PlayerId }
+  | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing; furniture: number; stolenFrom?: PlayerId }
+  | { type: 'hidden'; spy: PlayerId; thing: Thing; furniture: number }
+  | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
-  | { type: 'trapFailed'; spy: PlayerId }
-  | { type: 'disarmed'; spy: PlayerId; trap: TrapKind }
-  | { type: 'died'; spy: PlayerId; cause: DeathCause }
+  /** round 4 §1: the spy shakes his head — no valid target, target already trapped, or a shared room */
+  | { type: 'refused'; spy: PlayerId }
+  /** a matching remedy defused a trap (round 4 §3: the render shows how, by `remedy`) */
+  | { type: 'disarmed'; spy: PlayerId; trap: FurnitureTrapKind | DoorTrapKind; remedy: RemedyKind }
+  /** `killer` is set only for cause 'fight': the opponent who landed the strike (spec §7). */
+  | { type: 'died'; spy: PlayerId; cause: DeathCause; killer?: PlayerId }
   | { type: 'respawn'; spy: PlayerId }
   | { type: 'swing'; spy: PlayerId }
   | { type: 'hit'; spy: PlayerId }
-  | { type: 'blocked'; spy: PlayerId }
+  | { type: 'blocked'; spy: PlayerId; kind: AttackKind }
   | { type: 'door'; spy: PlayerId }
-  | { type: 'locked'; spy: PlayerId }
+  | { type: 'doorOpened'; spy: PlayerId; key: string }
+  | { type: 'bump'; spy: PlayerId }
+  /** the airport guard kicked this spy back from the exit (spec §9) */
+  | { type: 'bounced'; spy: PlayerId }
   | { type: 'tick'; room: number }
   | { type: 'explode'; room: number }
   | { type: 'escaped'; spy: PlayerId }
   | { type: 'timeout'; spy: PlayerId }
+  | { type: 'mapOpened'; spy: PlayerId }
   | { type: 'draw' };
 
 const DELTA: Readonly<Record<Dir, readonly [number, number]>> = {

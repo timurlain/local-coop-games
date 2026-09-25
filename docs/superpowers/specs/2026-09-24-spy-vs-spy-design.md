@@ -69,7 +69,8 @@ All numbers below are defaults in `rules.ts`.
 
 - Grid of rooms generated from a seed. Size from menu: **Malá 3×3, Střední 4×3 (default), Velká 5×4**.
 - Each room has up to 4 doors: **north** (back wall), **east/west** (side walls), **south** (front floor edge). The grid is fully connected; the generator may remove some internal doors but must keep every room reachable.
-- Each room has **2–4 furniture** pieces from: stůl, knihovna, lampa, pohovka, trezor, obraz, skříň, věšák.
+- Each room has **2–4 furniture** pieces from: stůl, knihovna, lampa, pohovka, trezor, obraz, skříň, věšák, kartotéka, televize, globus, lednice, rádio, květina, krb.
+- Each room has a **theme** (Kancelář, Knihovna, Salonek, Archiv, Konferenční sál, Kuchyňka, Radiostanice, Velvyslancova pracovna) that sets its wall colour, floor style and the pool its furniture is picked from. Themes are dealt from a shuffled deck (all used before any repeats) and grid neighbours never share one. Rooms also get 1–2 wall decorations and sometimes a rug — visual only, never searchable. Looks use a separate RNG stream, so the gameplay layout of a seed does not depend on them.
 - Exactly one room on the grid edge contains the **airport exit door** (plane sign), on an outward-facing wall.
 - Spies start in opposite corners of the grid.
 
@@ -163,7 +164,7 @@ Bindings use `KeyboardEvent.code` (physical keys), so Czech layout works.
 - Layout: top half = Bílý's room view + HUD strip, bottom half = Černý's.
 - Room view: front perspective — back wall, trapezoid floor, side walls with doors, south door at floor edge, furniture along back and side walls. Spies move in 2D on the floor (x, depth); drawn ordered by depth.
 - Both spies are drawn in any view showing the room they share.
-- HUD per player: clock (mm:ss), hand item icon, kufřík contents (4 slots), mini-map of visited rooms with current room marked. Opponent is **not** shown on the mini-map.
+- HUD per player: clock (mm:ss), hand item icon, kufřík contents (4 slots), mini-map of visited rooms with current room marked. The current room's theme name sits left of the mini-map. Opponent is **not** shown on the mini-map.
 - Sprites: pixel strings in TS + shared palette. Frames: idle, walk (4), search, swing, block, 4 deaths, angel. Spies are white and black with pointy noses.
 - Trapulator: a small panel in the player's half with 5 trap icons and stock counts.
 - Screens: Launcher → Menu (size, clock, join, mute) → Game → Pause → **Victory scene** (win only) → Result (winner, time left) → Odveta / Menu.

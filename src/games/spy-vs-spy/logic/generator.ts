@@ -1,49 +1,66 @@
 import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
-import { RULES } from './rules';
+import { RULES, levelRules } from './rules';
+import { THEME_FURNITURE, assignThemes, decorate, pickHost } from './themes';
 import {
-  DIRS, FURNITURE_KINDS, NO_INPUT, OPPOSITE, REMEDIES, SECRETS, neighbor,
-  type Dir, type EmbassySize, type GameState, type PlayerId, type Room, type Spy,
+  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, FREE_STANDING_KINDS, NO_INPUT, OPPOSITE, SECRETS, neighbor,
+  type Dir, type FixtureKind, type Furniture, type FurnitureKind, type GameState, type PlayerId, type Room, type Spy, type TrapKind,
 } from './state';
 
-export function createSpy(id: PlayerId, room: number, x: number, roomCount: number, clock: number): Spy {
+const LOOKS_SALT = 0x5eed7e3a;
+
+export function createSpy(
+  id: PlayerId, room: number, x: number, roomCount: number, clock: number, stock: Readonly<Record<TrapKind, number>>,
+): Spy {
   const visited = Array<boolean>(roomCount).fill(false);
   visited[room] = true;
   return {
-    id, room, x, z: RULES.roomD / 2, facing: id === 0 ? 1 : -1,
-    hand: null, clock, health: RULES.health,
-    mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
-    menuOpen: false, menuCursor: 0, armed: null, stock: { ...RULES.trapStock },
-    swingCooldown: 0, swingAnim: 0, blocking: false, lockedMsg: 0,
-    visited, prev: { ...NO_INPUT },
+    id, room, x, z: RULES.spawnZ, facing: id === 0 ? 1 : -1,
+    hand: null, clock, health: RULES.health, sinceHit: 0, score: 0,
+    mode: 'normal', modeTimer: 0, searchTarget: null, deathCause: null,
+    selected: null, trapPress: null, mapOpen: false, placing: null, refuseTimer: 0, stock: { ...stock },
+    swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, kickTimer: 0, doorOpening: null,
+    enteredAt: 0, visited, trail: [], prev: { ...NO_INPUT },
   };
 }
 
-export function createGame(seed: number, size: EmbassySize, clock: number = RULES.defaultClock): GameState {
-  const { cols, rows } = RULES.sizes[size];
+export interface GameOptions {
+  /** „Skrýt letiště" (spec §4), default off */
+  hideAirport?: boolean;
+}
+
+/** A new match on `level` (1-8, spec §4): grid, clock and trap stock come from `RULES.levels`. */
+export function createGame(seed: number, level: number, opts: GameOptions = {}): GameState {
+  const { cols, rows, clockSeconds, trapStockPerSpy } = levelRules(level);
+  // Looks come from their own stream so the gameplay stream (doors, slots, hidden things) is untouched.
+  const looks = makeRng((seed ^ LOOKS_SALT) >>> 0);
+  const themes = assignThemes({ cols, rows }, looks);
+  const { host, year } = pickHost(looks);
   const rooms: Room[] = [];
   for (let gy = 0; gy < rows; gy++) {
     for (let gx = 0; gx < cols; gx++) {
       rooms.push({
         id: gy * cols + gx, gx, gy,
         doors: { N: false, S: false, E: false, W: false },
-        exit: null, furniture: [],
+        exit: null, furniture: [], theme: themes[gy * cols + gx], decor: [], rug: false,
       });
     }
   }
-  // 4 remedy sources + 4 secrets + kufrik need 9 distinct furniture pieces.
-  if (rooms.length * RULES.furniturePerRoom.min < 9) {
-    throw new Error(`embassy ${size} too small: needs room for 9 hidden things`);
-  }
-  const last = rooms.length - 1;
+  const minPieces = minFurniturePerRoom(rooms.length);
   const state: GameState = {
-    seed, cols, rows, rooms, furniture: [], doorTraps: {}, timeBombs: [],
-    spies: [createSpy(0, 0, 40, rooms.length, clock), createSpy(1, last, 160, rooms.length, clock)],
+    seed, host, year, level, cols, rows, hideAirport: opts.hideAirport ?? false, rooms, furniture: [], doorTraps: {}, doorOpen: {}, timeBombs: [],
+    spies: [
+      createSpy(0, 0, 40, rooms.length, clockSeconds, trapStockPerSpy),
+      createSpy(1, 0, 160, rooms.length, clockSeconds, trapStockPerSpy),
+    ],
     rng: makeRng(seed), time: 0, tick: 0, result: null,
   };
   carveDoors(state);
-  placeFurniture(state);
+  placeFurniture(state, minPieces);
+  placeFixtures(state);
   placeExit(state);
+  placeSpawn(state);
   placeThings(state);
+  for (const room of rooms) decorate(room, room.furniture.map((id) => state.furniture[id]), looks, host);
   return state;
 }
 
@@ -87,36 +104,155 @@ function carveDoors(state: GameState): void {
   }
 }
 
-function placeFurniture(state: GameState): void {
-  const { min, max } = RULES.furniturePerRoom;
+/**
+ * Fewest furniture pieces per room so that fixtures (4 kinds × fixtureCount), 4 secrets and the kufřík always get
+ * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (a 3×2 would need 3; no level is
+ * that small since round 5). Fixtures stay on the wall, and a room with a free-standing piece may have one wall piece
+ * fewer than the minimum, so that is counted too. Throws when even full rooms of `max` pieces are not enough, or
+ * (round 5: at most one secret item per room) when too few rooms could ever keep a non-fixture piece for one.
+ */
+export function minFurniturePerRoom(roomCount: number): number {
+  const fixtures = FIXTURE_KINDS.length * fixtureCount(roomCount);
+  const needed = fixtures + SECRETS.length + 1;
+  const min = Math.max(
+    RULES.furniturePerRoom.min,
+    Math.ceil(needed / roomCount),
+    Math.ceil(fixtures / roomCount) + 1,
+  );
+  if (min > RULES.furniturePerRoom.max) {
+    throw new Error(`embassy of ${roomCount} rooms too small: needs room for ${needed} hidden things`);
+  }
+  checkSecretRoomCapacity(roomCount, fixtures);
+  return min;
+}
+
+/**
+ * Round 5: the 4 secrets and the kufřík must land in 5 *distinct* rooms, each in a non-fixture piece. A
+ * free-standing piece (round 5 §5) is immune to becoming a fixture — only wall pieces are eligible — so a room
+ * can only ever end up with zero non-fixture furniture if it has no free-standing piece (both its wall slots,
+ * `RULES.slotX.length`, are free) *and* two different fixture kinds land on those two wall slots. A room forced
+ * free-standing (`min >= max`) can never be emptied at all. Worst case, adversarial fixture placement pairs
+ * fixtures two per room and empties `floor(fixtures / RULES.slotX.length)` rooms; this throws if that leaves
+ * fewer than `SECRETS.length + 1` rooms with a guaranteed non-fixture piece.
+ */
+function checkSecretRoomCapacity(roomCount: number, fixtures: number): void {
+  const need = SECRETS.length + 1;
+  const worstEmptied = RULES.furniturePerRoom.min >= RULES.furniturePerRoom.max
+    ? 0
+    : Math.min(roomCount, Math.floor(fixtures / RULES.slotX.length));
+  const surviving = roomCount - worstEmptied;
+  if (surviving < need) {
+    throw new Error(
+      `embassy of ${roomCount} rooms too small: only ${surviving} rooms are guaranteed a non-fixture piece, need ${need} distinct rooms for the secrets and kufřík`,
+    );
+  }
+}
+
+/**
+ * 2-3 pieces per room (round 5 §5), on the gameplay RNG. About half the rooms (every room when `min` is 3) get one
+ * free-standing piece in the middle of the floor, of a free-standing kind from the room's theme; the rest stand on
+ * the back wall, at most one on each side of the back door. A room without a free piece has one on each side.
+ */
+function placeFurniture(state: GameState, min: number): void {
+  const { max } = RULES.furniturePerRoom;
   for (const room of state.rooms) {
-    const count = min + randInt(state.rng, max - min + 1);
-    const slots = shuffle(state.rng, RULES.slotX).slice(0, count).sort((a, b) => a - b);
-    for (const x of slots) {
+    const pool = THEME_FURNITURE[room.theme];
+    const free = min >= max || rand(state.rng) < RULES.freeStandingChance;
+    const wallCount = free ? min - 1 + randInt(state.rng, max - min + 1) : RULES.slotX.length;
+    const sides = shuffle(state.rng, RULES.slotX).slice(0, wallCount);
+    const add = (kind: FurnitureKind, x: number, z: number) => {
       const id = state.furniture.length;
-      state.furniture.push({
-        id, room: room.id, kind: pick(state.rng, FURNITURE_KINDS), x,
-        hidden: null, source: null, trap: null,
-      });
+      state.furniture.push({ id, room: room.id, kind, x, z, hidden: null, source: null, trap: null });
       room.furniture.push(id);
+    };
+    for (const x of sides.map((side) => pick(state.rng, side)).sort((a, b) => a - b)) add(pick(state.rng, pool), x, 0);
+    if (free) {
+      const kind = pick(state.rng, pool.filter((k) => FREE_STANDING_KINDS.includes(k)));
+      add(kind, pick(state.rng, RULES.freeSlotX), pick(state.rng, RULES.freeSlotZ));
     }
   }
 }
 
+/** Fixtures per kind: 2 for a small embassy, growing with the room count. */
+function fixtureCount(roomCount: number): number {
+  return Math.max(2, Math.ceil(roomCount / 5));
+}
+
+function isFixture(f: Furniture): boolean {
+  return f.source !== null;
+}
+
+/**
+ * Converts randomly chosen ordinary furniture pieces into fixtures: an infinite source of one
+ * remedy, distinct rooms per kind where possible. Runs on the gameplay RNG, after ordinary
+ * furniture is placed and before secrets/kufrik are hidden (so a fixture never gets one).
+ */
+function placeFixtures(state: GameState): void {
+  const count = fixtureCount(state.rooms.length);
+  for (const kind of FIXTURE_KINDS) placeFixtureKind(state, kind, count);
+}
+
+function placeFixtureKind(state: GameState, kind: FixtureKind, count: number): void {
+  const remedy = FIXTURE_REMEDY[kind];
+  const roomOrder = shuffle(state.rng, state.rooms.map((room) => room.id));
+  const usedRooms = new Set<number>();
+  let placed = 0;
+  for (const allowRepeat of [false, true]) {
+    for (const roomId of roomOrder) {
+      if (placed >= count) return;
+      if (!allowRepeat && usedRooms.has(roomId)) continue;
+      // fixtures always hang on the wall (round 5 §5)
+      const candidates = state.rooms[roomId].furniture.filter((id) => !isFixture(state.furniture[id]) && state.furniture[id].z === 0);
+      if (candidates.length === 0) continue;
+      const f = state.furniture[pick(state.rng, candidates)];
+      f.kind = kind;
+      f.source = remedy;
+      usedRooms.add(roomId);
+      placed++;
+    }
+  }
+  if (placed < count) {
+    throw new Error(`fixture ${kind}: placed ${placed} of ${count} — check RULES`);
+  }
+}
+
 function placeExit(state: GameState): void {
-  const starts = [0, state.rooms.length - 1];
-  const candidates = state.rooms.filter((r) => !starts.includes(r.id) && outwardDirs(state, r.id).length > 0);
+  const candidates = state.rooms.filter((r) => outwardDirs(state, r.id).length > 0);
   const room = pick(state.rng, candidates);
   room.exit = pick(state.rng, outwardDirs(state, room.id));
 }
 
+/**
+ * Both spies start in the same room, chosen after the exit among rooms that are not the exit
+ * room (spec §2). Bílý (0) at x=40, Černý (1) at x=160 — already set by `createSpy` — facing
+ * each other, z=20; the room counts as visited for both, entered at the same tick.
+ */
+function placeSpawn(state: GameState): void {
+  const candidates = state.rooms.filter((r) => r.exit === null).map((r) => r.id);
+  const room = pick(state.rng, candidates);
+  for (const spy of state.spies) {
+    spy.room = room;
+    spy.visited.fill(false);
+    spy.visited[room] = true;
+    spy.enteredAt = state.tick; // same for both: the merged view (spec §2) breaks the tie
+  }
+}
+
+/**
+ * Round 5: at most one secret item per room at the start. The 4 secrets and the kufřík go into 5 *distinct*
+ * rooms — rooms are shuffled, then one non-fixture piece is picked in each of the first 5 that have one.
+ * `checkSecretRoomCapacity` (run up front, in `minFurniturePerRoom`) guarantees at least 5 such rooms exist.
+ */
 function placeThings(state: GameState): void {
-  const ids = shuffle(state.rng, state.furniture.map((f) => f.id));
-  REMEDIES.forEach((remedy, i) => {
-    state.furniture[ids[i]].source = remedy;
-  });
+  const need = SECRETS.length + 1;
+  const roomsWithSpace = state.rooms.filter((r) => r.furniture.some((id) => !isFixture(state.furniture[id])));
+  if (roomsWithSpace.length < need) {
+    throw new Error(`only ${roomsWithSpace.length} rooms have a non-fixture piece; need ${need} distinct rooms`);
+  }
+  const chosenRooms = shuffle(state.rng, roomsWithSpace).slice(0, need);
+  const chosenFurniture = chosenRooms.map((r) => pick(state.rng, r.furniture.filter((id) => !isFixture(state.furniture[id]))));
   SECRETS.forEach((secret, i) => {
-    state.furniture[ids[4 + i]].hidden = { kind: 'secret', secret };
+    state.furniture[chosenFurniture[i]].hidden = { kind: 'secret', secret, lastHolder: null };
   });
-  state.furniture[ids[8]].hidden = { kind: 'kufrik', contents: [] };
+  state.furniture[chosenFurniture[SECRETS.length]].hidden = { kind: 'kufrik', contents: [], lastHolder: null };
 }

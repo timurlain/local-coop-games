@@ -1,39 +1,131 @@
+import { doorKeyFor } from '../logic/places';
 import { RULES } from '../logic/rules';
-import { DIRS, type Dir, type Furniture, type GameState } from '../logic/state';
+import { DIRS, type Dir, type DoorRuntimeState, type GameState, type Room, type RoomTheme } from '../logic/state';
 import { line, poly, r, shade, text } from './draw';
-import { VIEW, project } from './geometry';
+import { VIEW, project, wallX } from './geometry';
+import { drawDecor } from './decor';
+import { drawFloor, drawRug, type ThemeLook } from './floor';
+import { drawFurniture, drawReachMarker, drawSoftMarker, drawTrapMark } from './furniture';
+import { ROOM } from './layout';
 import { drawIcon } from './sprites';
+
+const ARMED_RED = '#ff3030';
 
 type Ctx = CanvasRenderingContext2D;
 
-const WALL_COLORS = ['#6b4f8a', '#4f6b8a', '#8a6b4f', '#4f8a6b', '#8a4f5d', '#5d7a8a'];
+/** Period palettes: burgundy, bottle green, ochre, cream, navy, plum; one wallpaper pattern and floor per theme. */
+const LOOKS: Readonly<Record<RoomTheme, ThemeLook>> = {
+  kancelar: { wall: '#2c3a58', motif: '#3a4a6c', pattern: 'stripes', floor: 'herringbone', base: '#8a5a30', accent: '#4a2e18', light: 'sconces' },
+  knihovna: { wall: '#1f4030', motif: '#2c533e', pattern: 'diamonds', floor: 'carpet', base: '#6a2430', accent: '#b8903e', light: 'chandelier' },
+  salonek: { wall: '#6a1f2e', motif: '#7e2e3c', pattern: 'fans', floor: 'herringbone', base: '#6e4424', accent: '#3a2212', light: 'chandelier' },
+  archiv: { wall: '#8e6e2e', motif: '#9e7e3a', pattern: 'stripes', floor: 'terrazzo', base: '#b4ab98', accent: '#7a7264', light: 'sconces' },
+  konferencni: { wall: '#c6b68a', motif: '#b4a070', pattern: 'fans', floor: 'carpet', base: '#27304e', accent: '#b8903e', light: 'chandelier' },
+  kuchynka: { wall: '#d8cca4', motif: '#b8c49a', pattern: 'diamonds', floor: 'checker', base: '#e6e2d6', accent: '#1e1e24', light: 'sconces' },
+  sifrovna: { wall: '#34422f', motif: '#40503a', pattern: 'stripes', floor: 'terrazzo', base: '#8e8c84', accent: '#55534c', light: 'sconces' },
+  pracovna: { wall: '#48264a', motif: '#5a345a', pattern: 'diamonds', floor: 'carpet', base: '#1f4030', accent: '#b8903e', light: 'chandelier' },
+};
 const BG = '#101018';
-const FLOOR = '#5a4636';
+/** Height of the back-wall (N) door, tall enough for a 36-px spy (round 4 §5); no decoration hangs above it. */
+export const N_DOOR_H = 34;
+/** Heights of a side (W/E) door at its back and front jamb; the front one is nearer, so taller (round 4 §5). */
+export const SIDE_DOOR_H = [33, 38] as const;
+/** Dark-wood wainscoting along the bottom of the back wall, px. */
+const WAINSCOT_H = 11;
+const WOOD = '#3e2616';
+const WOOD_LIGHT = '#5e3e22';
+const WOOD_DARK = '#26160c';
+const CORNICE = '#8a7a5e';
+const GILT = '#c9a040';
+const BRASS = '#d4b050';
+const GLOW = '#fff0b0';
 
-/** Draws one room in logical coordinates of a half-viewport. `highlightId` marks furniture in reach of the viewer. */
-export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId: number | null, now: number): void {
-  const room = state.rooms[roomId];
-  const wall = WALL_COLORS[roomId % WALL_COLORS.length];
+/**
+ * Static room backgrounds (ceiling, walls, wallpaper, wainscoting, sconces, floor, rug): one offscreen canvas per
+ * theme + rug at the current device scale, drawn once and blitted every frame — the patterns are hundreds of shapes.
+ */
+const BACKGROUNDS = new Map<string, HTMLCanvasElement>();
+let cachedScale = 0;
 
-  r(ctx, 0, 0, 320, VIEW.viewH, BG);
-  poly(ctx, [[0, 0], [320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backLeft, VIEW.wallTop]], shade(wall, 0.45));
-  r(ctx, VIEW.backLeft, VIEW.wallTop, VIEW.backRight - VIEW.backLeft, VIEW.backY - VIEW.wallTop, wall);
-  poly(ctx, [[0, 0], [VIEW.backLeft, VIEW.wallTop], [VIEW.backLeft, VIEW.backY], [VIEW.frontLeft, VIEW.frontY], [0, VIEW.viewH]], shade(wall, 0.7));
-  poly(ctx, [[320, 0], [VIEW.backRight, VIEW.wallTop], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [320, VIEW.viewH]], shade(wall, 0.7));
-  poly(ctx, [[VIEW.backLeft, VIEW.backY], [VIEW.backRight, VIEW.backY], [VIEW.frontRight, VIEW.frontY], [VIEW.frontLeft, VIEW.frontY]], FLOOR);
-  for (let i = 1; i < 4; i++) {
-    const a = project(0, (RULES.roomD * i) / 4);
-    const b = project(RULES.roomW, (RULES.roomD * i) / 4);
-    line(ctx, a.sx, a.sy, b.sx, b.sy, '#4a382b');
+function background(ctx: Ctx, theme: RoomTheme, rug: boolean): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const k = ctx.getTransform().a;
+  if (!(k > 0)) return null;
+  if (k !== cachedScale) {
+    BACKGROUNDS.clear();
+    cachedScale = k;
   }
-  r(ctx, 0, VIEW.frontY, 320, VIEW.viewH - VIEW.frontY, BG);
+  const key = `${theme}|${rug ? 1 : 0}`;
+  let bg = BACKGROUNDS.get(key);
+  if (!bg) {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(ROOM.w * k);
+    canvas.height = Math.round(ROOM.h * k);
+    const c = canvas.getContext('2d');
+    if (!c) return null;
+    c.setTransform(k, 0, 0, k, -ROOM.x * k, -ROOM.y * k);
+    c.imageSmoothingEnabled = false;
+    drawBackground(c, LOOKS[theme], rug);
+    bg = canvas;
+    BACKGROUNDS.set(key, bg);
+  }
+  return bg;
+}
 
+/** Door openings to draw in a room; the exit only when `showExit` (hidden airport, spec §4). */
+export function doorsToDraw(room: Room, showExit: boolean): { dir: Dir; isExit: boolean }[] {
+  const out: { dir: Dir; isExit: boolean }[] = [];
   for (const dir of DIRS) {
-    const isExit = room.exit === dir;
-    if (room.doors[dir] || isExit) drawDoor(ctx, dir, isExit);
+    const isExit = showExit && room.exit === dir;
+    if (room.doors[dir] || isExit) out.push({ dir, isExit });
   }
+  return out;
+}
 
-  for (const id of room.furniture) drawFurniture(ctx, state.furniture[id], id === highlightId);
+/** What a room view marks and leaves out (see `drawRoom`). */
+export interface RoomMarks {
+  /** furniture in reach of the viewer (white marker) */
+  near?: number | null;
+  /** where the trap in hand goes right now (red marker), round 4 §1 */
+  armedFurniture?: number | null;
+  armedDoor?: Dir | null;
+  /** the other valid targets for the trap in hand in this room, highlighted softly (round 5 §1) */
+  softFurniture?: readonly number[];
+  softDoors?: readonly Dir[];
+  /** false leaves the airport exit out (hidden from this viewer, spec §4) */
+  showExit?: boolean;
+  /** false leaves free-standing pieces to the caller, which depth-sorts them with the spies (round 5 §5) */
+  freePieces?: boolean;
+}
+
+/**
+ * Draws one room in logical coordinates of a half-viewport: background, decorations, doors, furniture and time
+ * bombs. Free-standing pieces are drawn here too unless `marks.freePieces` is false.
+ *
+ * `tops`, when given, collects each drawn piece's top (screen y) by furniture id — for `drawTrapMarks` to place
+ * the trap-in-hand marker over it later, after the spies (round 5 §1/§3).
+ */
+export function drawRoom(
+  ctx: Ctx, state: GameState, roomId: number, now: number, marks: RoomMarks = {}, tops?: Map<number, number>,
+): void {
+  const room = state.rooms[roomId];
+  const look = LOOKS[room.theme];
+  const bg = background(ctx, room.theme, room.rug);
+  if (bg) ctx.drawImage(bg, ROOM.x, ROOM.y, ROOM.w, ROOM.h);
+  else drawBackground(ctx, look, room.rug);
+
+  for (const d of room.decor) drawDecor(ctx, d, now);
+
+  for (const { dir, isExit } of doorsToDraw(room, marks.showExit ?? true)) {
+    const key = doorKeyFor(state, roomId, dir);
+    drawDoor(ctx, dir, isExit, leafFraction(state.doorOpen[key]), now);
+  }
+  if (look.light === 'chandelier') drawChandelier(ctx, now);
+
+  for (const id of room.furniture) {
+    const f = state.furniture[id];
+    if (f.z > 0 && marks.freePieces === false) continue;
+    drawPiece(ctx, state, f.id, now, marks, tops);
+  }
 
   for (const bomb of state.timeBombs) {
     if (bomb.room !== roomId) continue;
@@ -43,23 +135,261 @@ export function drawRoom(ctx: Ctx, state: GameState, roomId: number, highlightId
   }
 }
 
-function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
-  const fill = isExit ? '#2e7dd1' : '#3b2618';
+/** One piece of `state` with the markers `marks` gives it; records its top into `tops` (see `drawRoom`). */
+export function drawPiece(ctx: Ctx, state: GameState, id: number, now: number, marks: RoomMarks, tops?: Map<number, number>): void {
+  const f = state.furniture[id];
+  const top = drawFurniture(ctx, f, state.rooms[f.room].theme, {
+    near: id === marks.near,
+    armed: id === marks.armedFurniture,
+    soft: marks.softFurniture?.includes(id) ?? false,
+  }, now);
+  tops?.set(id, top);
+}
+
+/**
+ * The trap-in-hand markers of `marks` — furniture (from `tops`, filled by an earlier `drawRoom`/`drawPiece` pass)
+ * and doors — drawn after the spies, so a spy standing at the target never covers the marker with his hat
+ * (round 5 §1/§3). Piece depth order is untouched: only the marker overlay runs late, not the piece itself.
+ */
+export function drawTrapMarks(ctx: Ctx, state: GameState, roomId: number, marks: RoomMarks, tops: Map<number, number>, now: number): void {
+  const room = state.rooms[roomId];
+  if (marks.armedFurniture !== null && marks.armedFurniture !== undefined) {
+    const top = tops.get(marks.armedFurniture);
+    if (top !== undefined) drawTrapMark(ctx, state.furniture[marks.armedFurniture], top, { armed: true }, now);
+  }
+  for (const id of marks.softFurniture ?? []) {
+    const top = tops.get(id);
+    if (top !== undefined) drawTrapMark(ctx, state.furniture[id], top, { soft: true }, now);
+  }
+  for (const { dir } of doorsToDraw(room, marks.showExit ?? true)) {
+    const soft = marks.softDoors?.includes(dir) ?? false;
+    drawDoorMark(ctx, dir, dir === marks.armedDoor, soft, now);
+  }
+}
+
+/** y of the left side wall's floor edge (backLeft, backY)→(frontLeft, frontY), extended to any x. */
+function sideFloorY(x: number): number {
+  const t = (x - VIEW.backLeft) / (VIEW.frontLeft - VIEW.backLeft);
+  return VIEW.backY + (VIEW.frontY - VIEW.backY) * t;
+}
+
+/** y of the left side wall's ceiling edge (left, top)→(backLeft, wallTop). */
+function sideTopY(x: number): number {
+  const t = (x - VIEW.backLeft) / (VIEW.left - VIEW.backLeft);
+  return VIEW.wallTop + (VIEW.top - VIEW.wallTop) * t;
+}
+
+/** Wainscot height on the left side wall at screen x: grows towards the viewer with the perspective. */
+function sideWainscotH(x: number): number {
+  return WAINSCOT_H * (sideFloorY(x) - sideTopY(x)) / (VIEW.backY - VIEW.wallTop);
+}
+
+/** Everything in a room that never changes: ceiling, walls, wallpaper, wainscoting, sconces, floor, rug. */
+function drawBackground(ctx: Ctx, look: ThemeLook, rug: boolean): void {
+  const { left: L, right: R, top: T, bottom: B } = VIEW;
+  const bl = VIEW.backLeft, br = VIEW.backRight;
+  r(ctx, L, T, R - L, B - T, BG);
+  // ceiling with a cream cornice
+  poly(ctx, [[L, T], [R, T], [br, VIEW.wallTop], [bl, VIEW.wallTop]], '#2a2420');
+  poly(ctx, [[L, T], [R, T], [R, T + 1], [L, T + 1]], '#1c1814');
+  poly(ctx, [[bl - 4, VIEW.wallTop - 1], [br + 4, VIEW.wallTop - 1], [br, VIEW.wallTop], [bl, VIEW.wallTop]], CORNICE);
+
+  // back wall: wallpaper, picture rail, wainscoting
+  const wainTop = VIEW.backY - WAINSCOT_H;
+  r(ctx, bl, VIEW.wallTop, br - bl, wainTop - VIEW.wallTop, look.wall);
+  drawWallpaper(ctx, look, bl, VIEW.wallTop + 1, br - bl, wainTop - VIEW.wallTop - 1);
+  r(ctx, bl, VIEW.wallTop, br - bl, 1, '#d8c89a');
+  drawWainscot(ctx, bl, wainTop, br - bl);
+
+  // side walls: shaded wallpaper, a wainscot band that follows the perspective, sconces
+  const side = shade(look.wall, 0.7);
+  const sideMotif = shade(look.motif, 0.7);
+  const sideWood = shade(WOOD, 0.8);
+  for (const mirror of [false, true]) {
+    const mx = (x: number): number => (mirror ? 2 * VIEW.cx - x : x);
+    const pts = (xs: readonly (readonly [number, number])[]) => xs.map(([x, y]) => [mx(x), y] as const);
+    poly(ctx, pts([[L, T], [bl, VIEW.wallTop], [bl, VIEW.backY], [VIEW.frontLeft, VIEW.frontY], [L, B]]), side);
+    // the wallpaper's rhythm as shaded vertical lines
+    for (let x = bl - 4; x > L; x -= 5) {
+      const top = sideTopY(x) + 1;
+      const bottom = sideFloorY(x) - sideWainscotH(x);
+      poly(ctx, pts([[x, top], [x + 1, top], [x + 1, bottom], [x, bottom]]), sideMotif);
+    }
+    const wl = sideFloorY(L) - sideWainscotH(L);
+    poly(ctx, pts([[bl, wainTop], [bl, VIEW.backY], [L, sideFloorY(L)], [L, wl]]), sideWood);
+    poly(ctx, pts([[bl, wainTop], [bl, wainTop + 1.5], [L, wl + 2], [L, wl]]), WOOD_LIGHT);
+    poly(ctx, pts([[L, T], [bl, VIEW.wallTop - 1], [bl, VIEW.wallTop], [L, T + 2]]), CORNICE);
+    if (look.light === 'sconces') drawSconce(ctx, Math.round(mx(24)), 22);
+  }
+  r(ctx, bl, VIEW.wallTop, 1, VIEW.backY - VIEW.wallTop, shade(look.wall, 0.55));
+  r(ctx, br - 1, VIEW.wallTop, 1, VIEW.backY - VIEW.wallTop, shade(look.wall, 0.55));
+
+  drawFloor(ctx, look);
+  if (rug) drawRug(ctx, look.wall);
+  r(ctx, L, VIEW.frontY, R - L, B - VIEW.frontY, BG);
+}
+
+/** Subtle art-deco wallpaper in whole pixels: a lozenge lattice, rows of fans, or pinstriped bands. */
+function drawWallpaper(ctx: Ctx, look: ThemeLook, x0: number, y0: number, w: number, h: number): void {
+  const m = look.motif;
+  const gold = shade(GILT, 0.75);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0, y0, w, h);
+  ctx.clip();
+  switch (look.pattern) {
+    case 'diamonds': {
+      const tw = 10, th = 8;
+      for (let ty = -1; ty * th < h + th; ty++) {
+        for (let tx = -1; tx * tw < w + tw; tx++) {
+          const cx = x0 + tx * tw + (ty % 2 === 0 ? 0 : tw / 2);
+          const cy = y0 + ty * th;
+          for (let i = 0; i < tw / 2; i++) {
+            const dy = Math.round((i * th) / tw);
+            r(ctx, cx + i, cy + dy, 1, 1, m);
+            r(ctx, cx - i, cy + dy, 1, 1, m);
+            r(ctx, cx + i, cy + th - dy, 1, 1, m);
+            r(ctx, cx - i, cy + th - dy, 1, 1, m);
+          }
+          r(ctx, cx, cy + th / 2, 1, 1, gold);
+        }
+      }
+      break;
+    }
+    case 'fans': {
+      const tw = 12, th = 7;
+      for (let ty = 0; ty * th < h + th; ty++) {
+        for (let tx = -1; tx * tw < w + tw; tx++) {
+          const cx = x0 + tx * tw + (ty % 2 === 0 ? 0 : tw / 2);
+          const cy = y0 + ty * th + th - 1;
+          for (let a = 0; a <= 10; a++) {
+            const ang = Math.PI + (a / 10) * Math.PI;
+            r(ctx, Math.round(cx + Math.cos(ang) * 5), Math.round(cy + Math.sin(ang) * 5), 1, 1, m);
+          }
+          for (const ang of [Math.PI * 1.25, Math.PI * 1.5, Math.PI * 1.75]) {
+            for (let d = 1; d <= 3; d++) r(ctx, Math.round(cx + Math.cos(ang) * d), Math.round(cy + Math.sin(ang) * d), 1, 1, m);
+          }
+          r(ctx, cx, cy, 1, 1, gold);
+        }
+      }
+      break;
+    }
+    case 'stripes':
+      for (let i = 0, x = x0 + 1; x < x0 + w; i++, x += 6) {
+        r(ctx, x, y0, 2, h, m);
+        if (i % 3 === 0) r(ctx, x + 4, y0, 1, h, gold);
+      }
+      break;
+  }
+  ctx.restore();
+}
+
+/** Dark-wood panelling: top rail, raised panels, skirting. */
+function drawWainscot(ctx: Ctx, x0: number, y0: number, w: number): void {
+  const h = VIEW.backY - y0;
+  r(ctx, x0, y0, w, h, WOOD);
+  r(ctx, x0, y0, w, 2, WOOD_LIGHT);
+  r(ctx, x0, y0 + 2, w, 1, WOOD_DARK);
+  r(ctx, x0, VIEW.backY - 2, w, 2, WOOD_DARK);
+  const panelW = 13;
+  const count = Math.floor((w - 2) / (panelW + 2));
+  const start = x0 + Math.floor((w - count * (panelW + 2) + 2) / 2);
+  for (let i = 0; i < count; i++) {
+    const x = start + i * (panelW + 2);
+    r(ctx, x, y0 + 4, panelW, h - 7, WOOD_DARK);
+    r(ctx, x + 1, y0 + 5, panelW - 1, h - 8, shade(WOOD, 1.18));
+    r(ctx, x + 1, y0 + 5, panelW - 1, 1, shade(WOOD, 1.4));
+  }
+}
+
+/** Brass wall sconce with a frosted glass tulip, on a side wall. */
+function drawSconce(ctx: Ctx, x: number, y: number): void {
+  ctx.fillStyle = 'rgba(255,226,150,0.08)';
+  ctx.beginPath();
+  ctx.arc(x + 0.5, y - 2, 7, 0, Math.PI * 2);
+  ctx.fill();
+  r(ctx, x, y, 1, 4, BRASS);
+  r(ctx, x - 1, y + 4, 3, 1, shade(BRASS, 0.7));
+  r(ctx, x - 1, y - 3, 3, 3, '#f4ecd0');
+  r(ctx, x - 2, y - 3, 1, 1, '#f4ecd0');
+  r(ctx, x + 2, y - 3, 1, 1, '#f4ecd0');
+  r(ctx, x, y - 4, 1, 1, GLOW);
+}
+
+/**
+ * Brass chandelier hanging just below the ceiling, in front of the back wall; kept above the decoration band so it
+ * never covers a picture or flag. The bulbs twinkle a little.
+ */
+function drawChandelier(ctx: Ctx, now: number): void {
+  const cx = Math.round(VIEW.cx);
+  const y = VIEW.top;
+  ctx.fillStyle = 'rgba(255,226,150,0.08)';
+  ctx.beginPath();
+  ctx.arc(cx + 0.5, y + 4, 9, 0, Math.PI * 2);
+  ctx.fill();
+  r(ctx, cx, y, 1, 2, shade(BRASS, 0.6));
+  r(ctx, cx - 1, y + 2, 3, 2, BRASS);
+  r(ctx, cx - 5, y + 4, 11, 1, BRASS);
+  r(ctx, cx - 1, y + 5, 3, 1, shade(BRASS, 0.7));
+  const twinkle = Math.floor(now * 4) % 4;
+  [-5, -2, 2, 5].forEach((dx, i) => r(ctx, cx + dx, y + 3, 1, 1, i === twinkle ? '#ffffff' : GLOW));
+}
+
+/** Fraction of a door's width still occupied by the closed leaf: 1 = fully closed, `LEAF_OPEN` = fully
+ *  open (swung to a sliver against the frame), interpolated during the 0.3 s opening swing (spec §5). */
+const LEAF_OPEN = 0.15;
+/** The dark opening revealed behind a door that isn't fully closed. */
+const OPENING_DARK = '#0a0a10';
+
+export function leafFraction(door: DoorRuntimeState | undefined): number {
+  if (door === undefined) return 1;
+  if (door.phase === 'open') return LEAF_OPEN;
+  const progress = 1 - door.timer / RULES.doorOpenTime;
+  return 1 - (1 - LEAF_OPEN) * Math.min(1, Math.max(0, progress));
+}
+
+function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean, leaf: number, now: number): void {
+  const fill = isExit ? '#2e7dd1' : '#4a2c18';
+  const panel = isExit ? '#5aa0e8' : '#5e3a20';
   const frame = isExit ? '#f4f4f4' : '#c9a36b';
-  const cx = VIEW.backLeft + RULES.roomW / 2;
+  const closed = leaf >= 0.999;
+  const cx = wallX(RULES.roomW / 2);
+  const half = RULES.doorHalfX;
   switch (dir) {
     case 'N': {
-      r(ctx, cx - RULES.doorHalfX - 1, 17, RULES.doorHalfX * 2 + 2, VIEW.backY - 17, frame);
-      r(ctx, cx - RULES.doorHalfX, 18, RULES.doorHalfX * 2, VIEW.backY - 18, fill);
-      if (isExit) drawIcon(ctx, 'plane', cx, 16);
+      // panelled double door with a fanlight; hinged at the left when swinging open
+      const top = VIEW.backY - N_DOOR_H;
+      r(ctx, cx - half - 1, top, half * 2 + 2, N_DOOR_H, frame);
+      if (!closed) r(ctx, cx - half, top + 1, half * 2, N_DOOR_H - 1, OPENING_DARK);
+      const leafW = Math.max(2, Math.round(half * 2 * leaf));
+      r(ctx, cx - half, top + 1, leafW, N_DOOR_H - 1, fill);
+      if (closed) {
+        // fanlight, transom bar, two raised panels per leaf, the meeting stile and the brass knobs
+        r(ctx, cx - half + 1, top + 2, half * 2 - 2, 5, isExit ? '#9ad0ff' : '#e8d49a');
+        for (const dx of [-half / 2, half / 2]) r(ctx, Math.round(cx + dx), top + 2, 1, 5, frame);
+        r(ctx, cx - half, top + 7, half * 2, 1, frame);
+        for (const sx of [cx - half + 2, cx + 2]) {
+          r(ctx, sx, top + 10, half - 4, 8, panel);
+          r(ctx, sx, top + 21, half - 4, 9, panel);
+        }
+        r(ctx, cx - 0.5, top + 8, 1, N_DOOR_H - 8, shade(fill, 0.6));
+        r(ctx, cx - 2, top + 19, 1, 1, BRASS);
+        r(ctx, cx + 1, top + 19, 1, 1, BRASS);
+        if (isExit) drawIcon(ctx, 'plane', cx, top + 17);
+      } else {
+        r(ctx, cx - half, top + 1, leafW, 1, shade(fill, 1.3));
+      }
       break;
     }
     case 'S': {
       const a = project(RULES.roomW / 2 - RULES.doorHalfX, RULES.roomD);
       const b = project(RULES.roomW / 2 + RULES.doorHalfX, RULES.roomD);
-      r(ctx, a.sx, VIEW.frontY - 2, b.sx - a.sx, 2, frame);
-      r(ctx, a.sx, VIEW.frontY, b.sx - a.sx, VIEW.viewH - VIEW.frontY, fill);
-      if (isExit) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
+      const w = b.sx - a.sx;
+      r(ctx, a.sx, VIEW.frontY - 2, w, 2, frame);
+      if (!closed) r(ctx, a.sx, VIEW.frontY, w, VIEW.bottom - VIEW.frontY, OPENING_DARK);
+      const leafW = Math.max(2, Math.round(w * leaf));
+      r(ctx, a.sx, VIEW.frontY, leafW, VIEW.bottom - VIEW.frontY, fill);
+      if (isExit && closed) drawIcon(ctx, 'plane', (a.sx + b.sx) / 2, VIEW.frontY - 3);
       break;
     }
     case 'W':
@@ -67,88 +397,80 @@ function drawDoor(ctx: Ctx, dir: Dir, isExit: boolean): void {
       const x = dir === 'W' ? 0 : RULES.roomW;
       const p0 = project(x, RULES.roomD / 2 - RULES.doorHalfZ);
       const p1 = project(x, RULES.roomD / 2 + RULES.doorHalfZ);
-      const h0 = 26;
-      const h1 = 30;
-      poly(ctx, [[p0.sx, p0.sy], [p1.sx, p1.sy], [p1.sx, p1.sy - h1], [p0.sx, p0.sy - h0]], fill);
+      const h0 = SIDE_DOOR_H[0];
+      const h1 = SIDE_DOOR_H[1];
+      // hinge at p0: the leaf occupies the [0, leaf] portion of the span (t), the rest is the
+      // revealed dark opening while opening/open (spec §5). lerp(t, h0) is that t's top edge,
+      // lerp(t, 0) its bottom edge (h scales with the door's height at t, per the original panels).
+      const lerp = (t: number, h: number) => {
+        const sx = p0.sx + (p1.sx - p0.sx) * t;
+        const sy = p0.sy + (p1.sy - p0.sy) * t;
+        return [sx, sy - h * (h0 + (h1 - h0) * t) / h0] as const;
+      };
+      if (!closed) poly(ctx, [lerp(leaf, 0), lerp(1, 0), lerp(1, h0), lerp(leaf, h0)], OPENING_DARK);
+      poly(ctx, [lerp(0, 0), lerp(leaf, 0), lerp(leaf, h0), lerp(0, h0)], fill);
+      if (closed) {
+        // two raised panels following the perspective
+        for (const [f0, f1] of [[0.15, 0.48], [0.55, 0.85]] as const) {
+          poly(ctx, [lerp(0.2, f0 * h0), lerp(0.8, f0 * h0), lerp(0.8, f1 * h0), lerp(0.2, f1 * h0)], panel);
+        }
+        const knob = lerp(dir === 'W' ? 0.8 : 0.2, 0.5 * h0);
+        r(ctx, knob[0] - 0.5, knob[1], 1, 1, BRASS);
+        if (isExit) drawIcon(ctx, 'plane', (p0.sx + p1.sx) / 2, p0.sy - h1 - 2);
+      }
       line(ctx, p0.sx, p0.sy - h0, p1.sx, p1.sy - h1, frame);
       line(ctx, p0.sx, p0.sy, p0.sx, p0.sy - h0, frame);
       line(ctx, p1.sx, p1.sy, p1.sx, p1.sy - h1, frame);
-      if (isExit) drawIcon(ctx, 'plane', (p0.sx + p1.sx) / 2, p0.sy - h1 - 2);
       break;
     }
   }
 }
 
-function drawFurniture(ctx: Ctx, f: Furniture, highlight: boolean): void {
-  const x = VIEW.backLeft + f.x;
-  const y = VIEW.backY;
-  let top = y;
-  switch (f.kind) {
-    case 'stul':
-      r(ctx, x - 12, y - 12, 24, 3, '#8b5a2b');
-      r(ctx, x - 8, y - 9, 16, 4, '#7a4e25');
-      r(ctx, x - 11, y - 9, 2, 9, '#6b4220');
-      r(ctx, x + 9, y - 9, 2, 9, '#6b4220');
-      top = y - 12;
-      break;
-    case 'knihovna':
-      r(ctx, x - 10, y - 30, 20, 30, '#6b4220');
-      for (let i = 0; i < 3; i++) {
-        const sy = y - 28 + i * 9;
-        r(ctx, x - 8, sy, 16, 7, '#3b2618');
-        ['#d23c3c', '#3a78d8', '#e8c547', '#3fa34d'].forEach((c, j) => r(ctx, x - 7 + j * 4, sy + 1, 3, 6, c));
-      }
-      top = y - 30;
-      break;
-    case 'lampa':
-      r(ctx, x - 1, y - 22, 2, 22, '#9a9a9a');
-      r(ctx, x - 4, y - 2, 8, 2, '#9a9a9a');
-      r(ctx, x - 6, y - 29, 12, 7, '#e8c547');
-      r(ctx, x - 5, y - 22, 10, 1, '#fff6c0');
-      top = y - 29;
-      break;
-    case 'pohovka':
-      r(ctx, x - 14, y - 16, 28, 7, '#a33b3b');
-      r(ctx, x - 14, y - 10, 28, 8, '#c24848');
-      r(ctx, x - 16, y - 13, 4, 11, '#8a2f2f');
-      r(ctx, x + 12, y - 13, 4, 11, '#8a2f2f');
-      r(ctx, x - 13, y - 2, 2, 2, '#3b2618');
-      r(ctx, x + 11, y - 2, 2, 2, '#3b2618');
-      top = y - 16;
-      break;
-    case 'trezor':
-      r(ctx, x - 8, y - 16, 16, 16, '#707880');
-      r(ctx, x - 7, y - 15, 14, 14, '#8a939c');
-      r(ctx, x - 2, y - 10, 4, 4, '#2a2a2a');
-      r(ctx, x + 4, y - 9, 2, 2, '#e8c547');
-      top = y - 16;
-      break;
-    case 'obraz':
-      r(ctx, x - 9, y - 36, 18, 13, '#c9a36b');
-      r(ctx, x - 7, y - 34, 14, 9, '#6cc6e8');
-      r(ctx, x - 7, y - 28, 14, 3, '#3fa34d');
-      r(ctx, x - 6, y - 12, 12, 12, '#6b4220');
-      r(ctx, x - 5, y - 11, 10, 2, '#8b5a2b');
-      top = y - 36;
-      break;
-    case 'skrin':
-      r(ctx, x - 10, y - 32, 20, 32, '#5a3a1e');
-      r(ctx, x, y - 31, 1, 30, '#3b2618');
-      r(ctx, x - 3, y - 17, 2, 2, '#e8c547');
-      r(ctx, x + 2, y - 17, 2, 2, '#e8c547');
-      top = y - 32;
-      break;
-    case 'vesak':
-      r(ctx, x - 1, y - 30, 2, 30, '#6b4220');
-      r(ctx, x - 5, y - 30, 10, 2, '#6b4220');
-      r(ctx, x - 6, y - 28, 5, 12, '#3a78d8');
-      r(ctx, x - 4, y - 2, 8, 2, '#6b4220');
-      top = y - 30;
-      break;
+/** Where a door's trap marker sits — the top of its frame — purely from geometry (no drawing needed). */
+function doorMarkPoint(dir: Dir): { x: number; top: number } {
+  switch (dir) {
+    case 'N': {
+      const cx = wallX(RULES.roomW / 2);
+      return { x: cx, top: VIEW.backY - N_DOOR_H };
+    }
+    case 'S': {
+      const a = project(RULES.roomW / 2 - RULES.doorHalfX, RULES.roomD);
+      const b = project(RULES.roomW / 2 + RULES.doorHalfX, RULES.roomD);
+      return { x: (a.sx + b.sx) / 2, top: VIEW.frontY - 2 };
+    }
+    case 'W':
+    case 'E': {
+      const x = dir === 'W' ? 0 : RULES.roomW;
+      const p0 = project(x, RULES.roomD / 2 - RULES.doorHalfZ);
+      const p1 = project(x, RULES.roomD / 2 + RULES.doorHalfZ);
+      const [h0, h1] = SIDE_DOOR_H;
+      return { x: (p0.sx + p1.sx) / 2, top: Math.min(p0.sy - h0, p1.sy - h1) };
+    }
   }
-  if (highlight) {
-    r(ctx, x - 2, top - 5, 5, 1, '#ffffff');
-    r(ctx, x - 1, top - 4, 3, 1, '#ffffff');
-    r(ctx, x, top - 3, 1, 1, '#ffffff');
+}
+
+/**
+ * The red "in reach" or soft pulsing marker for a door's trap target (round 5 §1), drawn in a pass after the
+ * spies so a spy standing in the doorway never covers it (round 5 §3 — same fix as `drawTrapMark`).
+ */
+function drawDoorMark(ctx: Ctx, dir: Dir, armed: boolean, soft: boolean, now: number): void {
+  if (!armed && !soft) return;
+  const { x, top } = doorMarkPoint(dir);
+  if (armed) drawReachMarker(ctx, x, top, ARMED_RED);
+  else drawSoftMarker(ctx, x, top, now);
+}
+
+/** Screen point in the middle of a door's opening (where a door trap is put, round 4 §4). */
+export function doorCentre(dir: Dir): { x: number; y: number } {
+  switch (dir) {
+    case 'N':
+      return { x: wallX(RULES.roomW / 2), y: VIEW.backY - N_DOOR_H / 2 };
+    case 'S':
+      return { x: project(RULES.roomW / 2, RULES.roomD).sx, y: VIEW.frontY - 4 };
+    case 'W':
+    case 'E': {
+      const p = project(dir === 'W' ? 0 : RULES.roomW, RULES.roomD / 2);
+      return { x: p.sx, y: p.sy - (SIDE_DOOR_H[0] + SIDE_DOOR_H[1]) / 4 };
+    }
   }
 }

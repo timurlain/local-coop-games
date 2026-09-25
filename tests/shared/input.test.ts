@@ -13,7 +13,7 @@ describe('keyboardActions', () => {
   });
 
   it('maps arrows + Enter + right Shift for the right player', () => {
-    const a = keyboardActions(new Set(['ArrowRight', 'ArrowUp', 'ShiftRight', 'Escape']), KEYBOARD_RIGHT);
+    const a = keyboardActions(new Set(['ArrowRight', 'ArrowUp', 'ControlRight', 'Escape']), KEYBOARD_RIGHT);
     expect(a).toEqual({ moveX: 1, moveY: -1, action: false, trap: true, pause: true });
   });
 

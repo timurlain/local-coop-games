@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { kill, updateDead } from '../../src/games/spy-vs-spy/logic/death';
+import { kill, respawnRoom, updateDead } from '../../src/games/spy-vs-spy/logic/death';
+import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { scoreDeltas } from '../../src/games/spy-vs-spy/logic/score';
+import { makeRng } from '../../src/shared/rng';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
-import { kufrik, openGame, place, remedy, secret } from './fixtures';
+import { OPEN_RULES, kufrik, openGame, place, remedy, secret } from './fixtures';
 
 describe('kill', () => {
   it('marks the spy dead, costs 30 s and emits died', () => {
@@ -11,7 +14,7 @@ describe('kill', () => {
     const ev: GameEvent[] = [];
     kill(s, spy, 'bomba', ev);
     expect(spy.mode).toBe('dead');
-    expect(spy.clock).toBe(RULES.defaultClock - RULES.deathPenalty);
+    expect(spy.clock).toBe(OPEN_RULES.clockSeconds - RULES.deathPenalty);
     expect(spy.deathCause).toBe('bomba');
     expect(spy.modeTimer).toBe(RULES.respawnTime);
     expect(ev).toEqual([{ type: 'died', spy: 0, cause: 'bomba' }]);
@@ -30,19 +33,24 @@ describe('kill', () => {
     kill(s, s.spies[0], 'bomba', ev);
     kill(s, s.spies[0], 'bomba', ev);
     expect(ev).toHaveLength(1);
-    expect(s.spies[0].clock).toBe(RULES.defaultClock - RULES.deathPenalty);
+    expect(s.spies[0].clock).toBe(OPEN_RULES.clockSeconds - RULES.deathPenalty);
   });
 
-  it('clears menu, armed trap and pending hold', () => {
+  it('clears the map, a placement and the Trapulator press, but keeps the trap in hand', () => {
     const s = openGame();
     const spy = s.spies[0];
-    spy.menuOpen = true;
-    spy.armed = 'bomba';
-    spy.holdTarget = 3;
+    spy.mapOpen = true;
+    spy.trapPress = 0.7;
+    spy.selected = 'bomba';
+    spy.placing = { trap: 'bomba', target: { on: 'furniture', furniture: 0 }, timer: 0.2 };
+    spy.refuseTimer = 0.3;
     kill(s, spy, 'pistole', []);
-    expect(spy.menuOpen).toBe(false);
-    expect(spy.armed).toBeNull();
-    expect(spy.holdTarget).toBeNull();
+    expect(spy.mapOpen).toBe(false);
+    expect(spy.trapPress).toBeNull();
+    expect(spy.placing).toBeNull();
+    expect(spy.refuseTimer).toBe(0);
+    expect(spy.selected).toBe('bomba');
+    expect(spy.stock.bomba).toBe(OPEN_RULES.trapStockPerSpy.bomba);
   });
 
   it('re-hides the hand item in a free furniture of the same room', () => {
@@ -86,24 +94,123 @@ describe('kill', () => {
     const holder = s.furniture.find((f) => f.hidden?.kind === 'secret')!;
     expect(holder.room).toBe(0);
   });
+
+  it('emits dropped with the receiving furniture so render shows where the item landed (round 5 §3)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    spy.hand = kufrik('pas', 'klic');
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'bomba', ev);
+    const holder = s.furniture.find((f) => f.hidden !== null)!;
+    expect(ev).toEqual([
+      { type: 'died', spy: 0, cause: 'bomba' },
+      { type: 'dropped', spy: 0, thing: kufrik('pas', 'klic'), furniture: holder.id },
+    ]);
+  });
+
+  it('emits no dropped event when the hand was empty', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'bomba', ev);
+    expect(ev).toEqual([{ type: 'died', spy: 0, cause: 'bomba' }]);
+  });
+
+  it('emits dropped with furniture null when a remedy vanishes', () => {
+    const s = openGame();
+    for (const f of s.furniture) f.hidden = secret('klic');
+    const spy = s.spies[0];
+    spy.hand = remedy('nuzky');
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'bomba', ev);
+    expect(ev).toEqual([
+      { type: 'died', spy: 0, cause: 'bomba' },
+      { type: 'dropped', spy: 0, thing: remedy('nuzky'), furniture: null },
+    ]);
+  });
+
+  it('does not change the score (dropped carries no score delta)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    spy.hand = kufrik('pas', 'klic');
+    const withDrop: GameEvent[] = [];
+    kill(s, spy, 'bomba', withDrop);
+
+    const s2 = openGame();
+    const spy2 = place(s2, 0, 4, 100, 20);
+    const withoutDrop: GameEvent[] = [];
+    kill(s2, spy2, 'bomba', withoutDrop);
+
+    expect(scoreDeltas(s, withDrop)).toEqual(scoreDeltas(s2, withoutDrop));
+  });
 });
 
 describe('updateDead', () => {
-  it('respawns in the room centre with full health after the respawn time', () => {
+  it('respawns with full health after the respawn time, at the centre of another room (round 5 §2)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 10, 5);
     spy.health = 1;
     kill(s, spy, 'fight', []);
     const ev: GameEvent[] = [];
-    updateDead(spy, RULES.respawnTime - 0.5, ev);
+    updateDead(s, spy, RULES.respawnTime - 0.5, ev);
     expect(spy.mode).toBe('dead');
-    updateDead(spy, 0.5, ev);
+    expect(spy.room).toBe(4); // the death animation plays where he died
+    s.tick = 77;
+    updateDead(s, spy, 0.5, ev);
     expect(spy.mode).toBe('normal');
-    expect(spy.room).toBe(4);
+    expect(spy.room).not.toBe(4);
     expect(spy.x).toBe(RULES.roomW / 2);
-    expect(spy.z).toBe(RULES.roomD / 2);
+    expect(spy.z).toBe(RULES.spawnZ);
+    expect(spy.enteredAt).toBe(77);
+    expect(spy.visited[spy.room]).toBe(true);
     expect(spy.health).toBe(RULES.health);
     expect(spy.deathCause).toBeNull();
     expect(ev).toEqual([{ type: 'respawn', spy: 0 }]);
+  });
+});
+
+describe('respawnRoom (round 5 §2)', () => {
+  it("never picks the room of death, the opponent's room or the exit room", () => {
+    const rooms = new Set<number>();
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = openGame();
+      s.rng = makeRng(seed);
+      place(s, 1, 5, 100, 20);
+      const room = respawnRoom(s, s.spies[0], 4);
+      expect([4, 5, 2]).not.toContain(room);
+      rooms.add(room);
+    }
+    // spread over all the others: 0, 1, 3, 6, 7, 8
+    expect([...rooms].sort()).toEqual([0, 1, 3, 6, 7, 8]);
+  });
+
+  it('never picks a room with a ticking time bomb', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = openGame();
+      s.rng = makeRng(seed);
+      place(s, 1, 5, 100, 20);
+      s.timeBombs = [{ room: 3, x: 100, z: 20, fuse: 1, owner: 1 }];
+      expect([4, 5, 2, 3]).not.toContain(respawnRoom(s, s.spies[0], 4));
+    }
+  });
+
+  it('is decided by the gameplay RNG, deterministically', () => {
+    const a = openGame();
+    const b = openGame();
+    expect(respawnRoom(a, a.spies[0], 4)).toBe(respawnRoom(b, b.spies[0], 4));
+    expect(a.rng).toEqual(b.rng);
+  });
+
+  it("falls back to any room but the opponent's when nothing else is left", () => {
+    const s = createGame(1, 1);
+    // a hypothetical 1×3 corridor: death room 0, opponent in 1, exit in 2
+    s.rooms = s.rooms.slice(0, 3);
+    s.rooms[2].exit = 'E';
+    for (const r of s.rooms) if (r.id !== 2) r.exit = null;
+    place(s, 1, 1, 100, 20);
+    for (let seed = 1; seed <= 20; seed++) {
+      s.rng = makeRng(seed);
+      expect([0, 2]).toContain(respawnRoom(s, s.spies[0], 0));
+    }
   });
 });

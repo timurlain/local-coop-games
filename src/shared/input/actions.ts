@@ -27,7 +27,7 @@ export const KEYBOARD_LEFT: KeyBinding = {
 
 export const KEYBOARD_RIGHT: KeyBinding = {
   up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
-  action: ['Enter', 'NumpadEnter'], trap: ['ShiftRight'], pause: ['Escape'],
+  action: ['Enter', 'NumpadEnter'], trap: ['ControlRight'], pause: ['Escape'],
 };
 
 export const DEADZONE = 0.4;
