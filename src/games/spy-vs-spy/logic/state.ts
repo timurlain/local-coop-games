@@ -49,7 +49,9 @@ export const FIXTURE_REMEDY: Readonly<Record<FixtureKind, RemedyKind>> = {
 /**
  * Whether a piece can hold a hidden thing for the generator and for death drops (round 6 §4): not a fixture (its
  * remedy source; the generator never hides anything there and drops skip it) and not the armoury (nothing can ever be
- * hidden in it). The one rule for "can hold an item" — use it instead of checking `source` directly.
+ * hidden in it). Governs generator placement and death drops only — use it instead of checking `source` directly
+ * for those; it does not govern every way an item can end up held, since `hand.ts` still swaps a held item into
+ * a remedy fixture's hidden slot at runtime.
  */
 export function canHold(f: Pick<Furniture, 'kind' | 'source'>): boolean {
   return f.source === null && f.kind !== ARMOURY_KIND;

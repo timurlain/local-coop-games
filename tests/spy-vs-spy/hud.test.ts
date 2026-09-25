@@ -3,7 +3,7 @@ import type { Dir } from '../../src/games/spy-vs-spy/logic/state';
 import { cs } from '../../src/shared/i18n/cs';
 import { itemRooms, knownDoors } from '../../src/games/spy-vs-spy/render/map';
 import { TOAST_TIME, currentToast, pushToast, toastFor, type ToastQueue } from '../../src/games/spy-vs-spy/render/toast';
-import { defusedBy, formatLed } from '../../src/games/spy-vs-spy/render/trapulator';
+import { defusedBy, formatLed, secretSlots } from '../../src/games/spy-vs-spy/render/trapulator';
 import { firstFurniture, kufrik, openGame, remedy, secret } from './fixtures';
 
 const key = (d: { room: number; dir: Dir }) => `${d.room}${d.dir}`;
@@ -26,6 +26,53 @@ describe('defusedBy', () => {
     expect(defusedBy('kleste')).toBe('pruzina');
     expect(defusedBy('destnik')).toBe('elektrina');
     expect(defusedBy('nuzky')).toBe('pistole');
+  });
+});
+
+describe('secretSlots (round 6 §2)', () => {
+  it('has nothing at the start of a match', () => {
+    const s = openGame();
+    expect(secretSlots(s, 0)).toEqual([
+      { kind: 'klic', have: false },
+      { kind: 'penize', have: false },
+      { kind: 'pas', have: false },
+      { kind: 'plany', have: false },
+      { kind: 'kufrik', have: false },
+    ]);
+  });
+
+  it('has only the secret just picked up loose', () => {
+    const s = openGame();
+    s.spies[0].hand = secret('pas');
+    expect(secretSlots(s, 0).find((sl) => sl.kind === 'pas')).toEqual({ kind: 'pas', have: true });
+    expect(secretSlots(s, 0).filter((sl) => sl.have)).toEqual([{ kind: 'pas', have: true }]);
+  });
+
+  it('has every secret packed inside the kufřík, and the kufřík slot too (he holds the case itself)', () => {
+    const s = openGame();
+    s.spies[0].hand = kufrik('klic', 'penize');
+    const slots = secretSlots(s, 0);
+    expect(slots.filter((sl) => sl.have).map((sl) => sl.kind)).toEqual(['klic', 'penize', 'kufrik']);
+  });
+
+  it('has the kufřík slot once the spy holds the case itself', () => {
+    const s = openGame();
+    s.spies[0].hand = kufrik();
+    expect(secretSlots(s, 0).find((sl) => sl.kind === 'kufrik')).toEqual({ kind: 'kufrik', have: true });
+  });
+
+  it('goes back to nothing once the item is lost', () => {
+    const s = openGame();
+    s.spies[0].hand = secret('plany');
+    expect(secretSlots(s, 0).some((sl) => sl.have)).toBe(true);
+    s.spies[0].hand = null;
+    expect(secretSlots(s, 0).every((sl) => !sl.have)).toBe(true);
+  });
+
+  it('never depends on the opponent', () => {
+    const s = openGame();
+    s.spies[1].hand = kufrik('klic', 'penize', 'pas', 'plany');
+    expect(secretSlots(s, 0).every((sl) => !sl.have)).toBe(true);
   });
 });
 
