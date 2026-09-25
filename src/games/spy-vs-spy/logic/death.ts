@@ -12,9 +12,11 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   spy.modeTimer = RULES.respawnTime;
   spy.deathCause = cause;
   spy.clock = Math.max(0, spy.clock - RULES.deathPenalty);
-  spy.menuOpen = false;
+  // The trap in hand stays (its stock was never spent, round 4 §1); a placement or the map in progress is dropped.
+  spy.trapPress = null;
   spy.mapOpen = false;
-  spy.armed = null;
+  spy.placing = null;
+  spy.refuseTimer = 0;
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;

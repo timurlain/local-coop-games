@@ -17,7 +17,7 @@ export function createSpy(
     id, room, x, z: RULES.roomD / 2, facing: id === 0 ? 1 : -1,
     hand: null, clock, health: RULES.health, sinceHit: 0, score: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, holdTarget: null, holdTime: 0, deathCause: null,
-    menuOpen: false, menuCursor: 0, mapOpen: false, armed: null, stock: { ...stock },
+    selected: null, trapPress: null, mapOpen: false, placing: null, refuseTimer: 0, stock: { ...stock },
     swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, kickTimer: 0, doorOpening: null,
     enteredAt: 0, visited, trail: [], prev: { ...NO_INPUT },
   };

@@ -105,7 +105,8 @@ function kickBack(spy: Spy, dir: Dir): void {
 
 /**
  * Entering a room where the opponent is active (spec §3): the entering spy drops everything —
- * an armed-but-unplaced trap is cleared (nothing to refund, its stock was never spent), a remedy
+ * the trap in hand is emptied (nothing to refund, its stock was never spent; unlike death, which
+ * keeps it — round 4 §1: entering is the spec §3 "drops everything" rule), a remedy
  * in hand is simply lost (sources are infinite), a secret or kufřík is re-hidden via the normal
  * `dropHand` rules (nearest free furniture, same room first).
  *
@@ -115,7 +116,7 @@ function kickBack(spy: Spy, dir: Dir): void {
  */
 export function dropOnEntering(state: GameState, spy: Spy, events: GameEvent[]): void {
   const thing = spy.hand;
-  spy.armed = null;
+  spy.selected = null;
   const furniture = thing !== null && thing.kind !== 'remedy' ? dropHand(state, spy) : null;
   spy.hand = null;
   events.push({ type: 'dropped', spy: spy.id, thing, furniture });

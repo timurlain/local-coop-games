@@ -36,6 +36,13 @@ export const RULES = {
   timeBombFuse: 15,
   /** clock cost to the placer of any successfully-placed trap (incl. the time bomb) */
   trapSetCost: 3,
+  /** Trapulator button (round 4 §1): a press released sooner is a tap (cycles the trap in hand); held this long
+   *  it opens the map instead */
+  trapTapMax: 0.5,
+  /** Akce with a trap in hand: the spy stands still this long, then the trap is placed */
+  placeTime: 0.4,
+  /** the refusal head shake; visual only */
+  refuseTime: 0.5,
   /** clock cost to open the big map (MAPA), charged once per opening */
   mapCost: 5,
   deathPenalty: 30,

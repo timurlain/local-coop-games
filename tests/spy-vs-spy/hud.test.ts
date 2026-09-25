@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Dir } from '../../src/games/spy-vs-spy/logic/state';
-import { armedTrapHint, trapMenuLabel } from '../../src/games/spy-vs-spy/render/hud';
+import { cs } from '../../src/shared/i18n/cs';
 import { itemRooms, knownDoors } from '../../src/games/spy-vs-spy/render/map';
 import { TOAST_TIME, currentToast, pushToast, toastFor, type ToastQueue } from '../../src/games/spy-vs-spy/render/toast';
 import { defusedBy, formatLed } from '../../src/games/spy-vs-spy/render/trapulator';
@@ -109,26 +109,12 @@ describe('itemRooms', () => {
   });
 });
 
-describe('trapMenuLabel', () => {
-  it('combines the selected trap name with how to arm it', () => {
-    expect(trapMenuLabel(0)).toBe('Bomba · F nastražit');
-    expect(trapMenuLabel(2)).toBe('Elektrický kbelík · F nastražit');
-  });
-
-  it('shows how to open the map when the cursor is on MAPA', () => {
-    expect(trapMenuLabel(5)).toBe('Mapa · F otevřít mapu');
-  });
-});
-
-describe('armedTrapHint', () => {
-  it('points at furniture for bomba and pruzina', () => {
-    expect(armedTrapHint('bomba')).toBe('Bomba připravena – F u nábytku');
-    expect(armedTrapHint('pruzina')).toBe('Pružina připravena – F u nábytku');
-  });
-
-  it('points at a door for elektrina and pistole', () => {
-    expect(armedTrapHint('elektrina')).toBe('Elektrický kbelík připravena – F u dveří');
-    expect(armedTrapHint('pistole')).toBe('Pistole na provázku připravena – F u dveří');
+describe('no trap text hints (round 4 §1)', () => {
+  it('the strip has no Trapulator/armed/refusal guidance left — the head shake replaces it', () => {
+    const keys = Object.keys(cs.spy);
+    for (const gone of ['trapBlocked', 'trapPlaceFailed', 'trapSelectHint', 'mapSelectHint', 'trapArmedFurniture', 'trapArmedDoor']) {
+      expect(keys).not.toContain(gone);
+    }
   });
 });
 

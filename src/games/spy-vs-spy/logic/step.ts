@@ -3,7 +3,7 @@ import { sharesRoom, updateBlocking, updateDucking, updateHealthRegen, updateSwi
 import { updateAction, updateDoorOpening, updateSearching } from './interact';
 import { dropOnEntering, updateMovement } from './movement';
 import { scoreDeltas } from './score';
-import { updateTimeBombs, updateTrapMenu } from './traps';
+import { cancelTrapButton, updatePlacing, updateTimeBombs, updateTrapButton } from './traps';
 import { isActive, type GameEvent, type GameState, type PlayerId, type Spy, type SpyInput } from './state';
 
 /**
@@ -40,6 +40,7 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     const spy = state.spies[id];
     const input = inputs[spy.id];
     spy.swingCooldown = Math.max(0, spy.swingCooldown - dt);
+    spy.refuseTimer = Math.max(0, spy.refuseTimer - dt);
     // A strike lands in this spy's turn of the alternating order (fairness above), judged against
     // the opponent's stance as last set; ducking is re-decided below only if the spy is free to.
     updateSwing(state, spy, dt, events);
@@ -59,6 +60,8 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
       case 'escaped':
         break;
     }
+    // The Trapulator only listens to a free spy: dead, searching or out, any press in progress is forgotten.
+    if (spy.mode !== 'normal') cancelTrapButton(spy);
     spy.prev = { ...input };
   }
 
@@ -97,9 +100,10 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   spy.clock = 0;
   dropHand(state, spy);
   spy.mode = 'out';
-  spy.menuOpen = false;
-  spy.mapOpen = false;
-  spy.armed = null;
+  // The trap in hand stays (nothing was spent), but a placement or the map in progress is dropped (round 4 §1).
+  cancelTrapButton(spy);
+  spy.placing = null;
+  spy.refuseTimer = 0;
   spy.holdTarget = null;
   spy.searchTarget = null;
   spy.blocking = false;
@@ -112,41 +116,40 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
 /** Returns true when the spy passed through an internal door into a new room this tick. */
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
   // Kicked back by the airport guard (spec §9): tumbling, fully immobile — no movement, Akce or Trapulator.
-  // An already-armed trap (spy.armed) intentionally stays armed through the kick: stock isn't spent
-  // until the trap is placed, so there's nothing here to cancel.
+  // The trap in hand (spy.selected) intentionally stays through the kick: stock isn't spent until
+  // the trap is placed, so there's nothing here to cancel.
   if (spy.kickTimer > 0) {
     spy.kickTimer = Math.max(0, spy.kickTimer - dt);
-    spy.menuOpen = false;
-    spy.mapOpen = false;
+    cancelTrapButton(spy);
     spy.holdTarget = null;
     return false;
   }
-  // Opening a door (spec §5): the spy is fully immobile for the 0.3 s swing — no movement, no
-  // Trapulator, no fighting — same idea as a search or a hide-hold taking over the tick.
+  // Opening a door (spec §5) or putting a trap down (round 4 §1): the spy is fully immobile — no
+  // movement, no Trapulator, no fighting — same idea as a search or a hide-hold taking over the tick.
   if (spy.doorOpening !== null) {
+    cancelTrapButton(spy);
     updateDoorOpening(state, spy, dt, events);
     return false;
   }
-  // Shared room (spec §3): the Trapulator cannot be opened, input for it is ignored. Tell the
-  // player why (edge-triggered: once per fresh press, not every tick the button stays held).
-  if (input.trap && sharesRoom(state, spy) && !spy.prev.trap) events.push({ type: 'trapBlocked', spy: spy.id });
-  if (input.trap && !sharesRoom(state, spy)) {
-    spy.holdTarget = null;
-    spy.blocking = false;
-    updateTrapMenu(state, spy, input, events);
+  if (spy.placing !== null) {
+    cancelTrapButton(spy);
+    updatePlacing(state, spy, dt, events);
     return false;
   }
-  spy.menuOpen = false;
-  spy.mapOpen = false;
+  // Round 4 §1: a tap on the Trapulator cycles the trap in hand while the spy keeps walking; a
+  // hold opens the map, and only the open map holds him still (no Akce, no blocking either).
+  updateTrapButton(state, spy, input, dt, events);
+  if (spy.mapOpen) {
+    spy.holdTarget = null;
+    spy.blocking = false;
+    return false;
+  }
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
   // Duck (spec §8): shared room + holding down + not swinging; a ducking spy doesn't move.
   updateDucking(state, spy, input);
   if (spy.ducking) return false;
-  if (spy.mode !== 'normal' || spy.holdTarget !== null) return false;
-  // v1: holding the Trapulator button never moves the spy, even when the shared room
-  // above ignores it for menu/map purposes (spec §3).
-  if (input.trap) return false;
+  if (spy.mode !== 'normal' || spy.holdTarget !== null || spy.placing !== null) return false;
   return updateMovement(state, spy, input, dt, events);
 }
 

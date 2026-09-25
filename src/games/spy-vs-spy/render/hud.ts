@@ -1,7 +1,7 @@
 import { cs } from '../../../shared/i18n/cs';
 import { RULES } from '../logic/rules';
 import { backArrows, showsBreadcrumbs } from '../logic/trail';
-import { MENU_MAP, TRAPS, type Dir, type DoorTrapKind, type FurnitureTrapKind, type GameState, type Spy } from '../logic/state';
+import type { Dir, GameState, Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { r, roundRect, text } from './draw';
 import { VIEW } from './geometry';
@@ -40,18 +40,6 @@ export function drawFrame(ctx: Ctx): void {
   r(ctx, f.x + 7, f.y + f.h - 2, f.w - 14, 1, BRICK_DARK);
 }
 
-/** While the Trapulator menu is held: the selected entry's name plus how to use it (spec §5). */
-export function trapMenuLabel(cursor: number): string {
-  if (cursor === MENU_MAP) return T.mapSelectHint;
-  return T.trapSelectHint(T.traps[TRAPS[cursor]]);
-}
-
-/** While a trap is armed (Trapulator closed): where to press Akce to place it (spec §5). */
-export function armedTrapHint(trap: FurnitureTrapKind | DoorTrapKind): string {
-  const label = T.traps[trap];
-  return trap === 'bomba' || trap === 'pruzina' ? T.trapArmedFurniture(label) : T.trapArmedDoor(label);
-}
-
 /** 5×5 pixel arrows for the breadcrumb strip ('#' = lit). */
 export const ARROW_PIXELS: Readonly<Record<Dir, readonly string[]>> = {
   N: ['..#..', '.###.', '#.#.#', '..#..', '..#..'],
@@ -75,25 +63,16 @@ function drawArrow(ctx: Ctx, dir: Dir, x: number, y: number, color: string): voi
   });
 }
 
-/** Strip under the frame: player name, room name (or Trapulator/armed-trap guidance), breadcrumbs or a toast, health pips. */
+/** Strip under the frame: player name, room name, breadcrumbs or a toast, health pips. No trap hints (round 4 §1). */
 export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | null): void {
   r(ctx, UNDER.x, UNDER.y, UNDER.w, UNDER.h, '#0c0c12');
   const p = UNDER_PARTS;
   const name = (spy.id === 0 ? T.white : T.black).toUpperCase();
   text(ctx, name, p.name.x, p.name.y + 8, spy.id === 0 ? '#f4f4f4' : '#9a9aae', 7);
 
-  // The Trapulator/armed-trap guidance is longer than the room slot and runs on over the breadcrumbs.
-  let guidance = true;
-  if (spy.menuOpen) {
-    text(ctx, trapMenuLabel(spy.menuCursor), p.room.x, p.room.y + 8, '#ffe27a', 6);
-  } else if (spy.armed !== null && spy.armed !== 'casovana') {
-    text(ctx, armedTrapHint(spy.armed), p.room.x, p.room.y + 8, '#ffe27a', 6);
-  } else {
-    text(ctx, T.rooms[state.rooms[spy.room].theme], p.room.x, p.room.y + 8, '#9a9ab0', 6);
-    guidance = false;
-  }
+  text(ctx, T.rooms[state.rooms[spy.room].theme], p.room.x, p.room.y + 8, '#9a9ab0', 6);
 
-  if (!toast && !guidance) {
+  if (!toast) {
     const arrows = breadcrumbArrows(state, spy);
     const y = p.trail.y + Math.floor((p.trail.h - ARROW_PIXELS.N.length) / 2);
     arrows.forEach((d, i) => drawArrow(ctx, d, p.trail.x + 2 + i * TRAIL_STEP, y, TRAIL_COLORS[Math.min(i, TRAIL_COLORS.length - 1)]));

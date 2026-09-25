@@ -70,11 +70,14 @@ describe('the airport guard (spec §9)', () => {
     const x = spy.x;
     run(s, [input({ moveX: -1, action: true, trap: true }), IDLE], RULES.guardKickTime - TICK * 3);
     expect(spy.x).toBe(x);
-    expect(spy.menuOpen).toBe(false);
+    expect(spy.mapOpen).toBe(false);
+    expect(spy.trapPress).toBeNull();
     expect(spy.kickTimer).toBeGreaterThan(0);
     run(s, [input({ moveX: -1 }), IDLE], TICK * 10);
     expect(spy.kickTimer).toBe(0);
     expect(spy.x).toBeLessThan(x);
+    expect(spy.selected).toBeNull(); // releasing a press held through the kick is no tap
+    expect(s.furniture.some((f) => f.trap !== null)).toBe(false);
   });
 
   it('does not block or duck while tumbling', () => {

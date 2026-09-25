@@ -29,8 +29,6 @@ export const YEAR_MAX = 1937;
 export const DIRS: readonly Dir[] = ['N', 'S', 'E', 'W'];
 export const SECRETS: readonly SecretKind[] = ['klic', 'penize', 'pas', 'plany'];
 export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana'];
-/** Trapulator menu cursor: 0..TRAPS.length-1 select a trap, MENU_MAP (the 6th entry) selects the map. */
-export const MENU_MAP = TRAPS.length;
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
   'kartoteka', 'gramofon', 'globus', 'kredenc', 'radio', 'kvetina', 'krb', 'telefon',
@@ -124,6 +122,21 @@ export interface TimeBomb {
   owner: PlayerId;
 }
 
+/** Where a trap in hand goes (round 4 §1): furniture (bomba/pružina), a door key (elektřina/pistole) or the floor
+ *  at the spy's feet (časovaná). */
+export type PlaceTarget =
+  | { on: 'furniture'; furniture: number }
+  | { on: 'door'; key: string }
+  | { on: 'floor' };
+
+/** A trap being put down (round 4 §1): the spy is immobile until `timer` runs out, then it is placed. */
+export interface Placing {
+  trap: TrapKind;
+  target: PlaceTarget;
+  /** seconds left */
+  timer: number;
+}
+
 export type SpyMode = 'normal' | 'searching' | 'dead' | 'out' | 'escaped';
 
 /** Held state of one player's controls for this tick. Edges are derived from `Spy.prev`. */
@@ -158,11 +171,17 @@ export interface Spy {
   holdTarget: number | null;
   holdTime: number;
   deathCause: DeathCause | null;
-  menuOpen: boolean;
-  menuCursor: number;
-  /** true while the big map (MAPA) is shown; only while the Trapulator button is held */
+  /** the trap in hand (round 4 §1), chosen by tapping the Trapulator; its stock is spent only when placed */
+  selected: TrapKind | null;
+  /** seconds the Trapulator button has been held in the current press; null when up or the press was cancelled
+   *  (a release under `RULES.trapTapMax` is a tap, reaching it opens the map) */
+  trapPress: number | null;
+  /** true while the big map (MAPA) is shown; only while the Trapulator button stays held after `trapTapMax` */
   mapOpen: boolean;
-  armed: TrapKind | null;
+  /** a trap being put down (immobile), or null */
+  placing: Placing | null;
+  /** >0 while the refusal head shake shows (round 4 §1); purely visual, never blocks anything */
+  refuseTimer: number;
   stock: Record<TrapKind, number>;
   /** seconds until another swing may start; set at the strike (spec §8) */
   swingCooldown: number;
@@ -223,8 +242,8 @@ export type GameEvent =
   | { type: 'hidden'; spy: PlayerId; thing: Thing; furniture: number }
   | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
-  | { type: 'trapFailed'; spy: PlayerId }
-  | { type: 'trapBlocked'; spy: PlayerId }
+  /** round 4 §1: the spy shakes his head — no valid target, target already trapped, or a shared room */
+  | { type: 'refused'; spy: PlayerId }
   | { type: 'disarmed'; spy: PlayerId; trap: TrapKind }
   /** `killer` is set only for cause 'fight': the opponent who landed the strike (spec §7). */
   | { type: 'died'; spy: PlayerId; cause: DeathCause; killer?: PlayerId }

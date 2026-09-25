@@ -108,13 +108,25 @@ describe('hidden exit in logic', () => {
     expect(ev).toEqual([{ type: 'escaped', spy: 0 }]);
   });
 
-  it('cannot take a door trap while hidden', () => {
+  it('cannot take a door trap while hidden: the spy shakes his head', () => {
     const s = hiddenGame();
     const spy = place(s, 0, 2, 200, 20);
-    spy.armed = 'elektrina';
+    spy.selected = 'elektrina';
     const ev = run(s, [input({ action: true }), input()], TICK);
+    ev.push(...run(s, [input(), input()], RULES.placeTime + 0.05));
     expect(s.doorTraps[EXIT_KEY]).toBeUndefined();
-    expect(ev).toContainEqual({ type: 'trapFailed', spy: 0 });
+    expect(ev).toContainEqual({ type: 'refused', spy: 0 });
+    expect(spy.selected).toBe('elektrina');
+  });
+
+  it('takes a door trap on the exit once it is visible', () => {
+    const s = hiddenGame();
+    const spy = place(s, 0, 2, 200, 20);
+    spy.hand = FULL();
+    spy.selected = 'pistole';
+    run(s, [input({ action: true }), input()], TICK);
+    run(s, [input(), input()], RULES.placeTime + 0.05);
+    expect(s.doorTraps[EXIT_KEY]).toEqual({ kind: 'pistole', owner: 0 });
   });
 
   it('works as before when the option is off', () => {

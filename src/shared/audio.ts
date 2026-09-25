@@ -5,7 +5,8 @@ export type SfxName =
   | 'swing' | 'hit' | 'block' | 'door' | 'bump' | 'boot' | 'tick' | 'win' | 'draw'
   | 'step'
   | 'laugh' | 'mob'
-  | 'lowtime';
+  | 'lowtime'
+  | 'grumble';
 
 interface ToneOpts {
   freq: number;
@@ -69,6 +70,11 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   }),
   trapSet: (c) => { tone(c, { freq: 300, dur: 0.05 }); tone(c, { freq: 300, dur: 0.05, delay: 0.1 }); },
   fail: (c) => tone(c, { freq: 150, dur: 0.15, type: 'sawtooth' }),
+  /** the head shake (round 4 §1): a short low „hm-hm", two falling grunts */
+  grumble: (c) => {
+    tone(c, { freq: 180, to: 140, dur: 0.12, type: 'triangle', vol: 0.2 });
+    tone(c, { freq: 160, to: 110, dur: 0.16, delay: 0.16, type: 'triangle', vol: 0.2 });
+  },
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },
   zap: (c) => {
     for (let i = 0; i < 6; i++) tone(c, { freq: 800 + (i % 2) * 400, dur: 0.04, delay: i * 0.04, type: 'sawtooth', vol: 0.1 });

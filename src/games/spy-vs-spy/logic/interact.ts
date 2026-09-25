@@ -2,7 +2,7 @@ import { sharesRoom, trySwing } from './fight';
 import { canHide, hide, resolveSearch } from './hand';
 import { doorAt, doorKeyFor, furnitureAt } from './places';
 import { RULES } from './rules';
-import { placeDoorTrap, placeFurnitureTrap, triggerDoorTrap, triggerFurnitureTrap } from './traps';
+import { startPlacing, triggerDoorTrap, triggerFurnitureTrap } from './traps';
 import type { Dir, Furniture, GameEvent, GameState, Spy, SpyInput } from './state';
 
 /**
@@ -41,22 +41,21 @@ export function updateAction(state: GameState, spy: Spy, input: SpyInput, dt: nu
   // Spec §8: Akce while holding up is the head bash, otherwise a jab.
   if (trySwing(state, spy, input.moveY === -1 ? 'bash' : 'jab', events)) return;
 
-  // A door in reach (spec §5): Akce opens it — doors still work in a shared room, out of fight
-  // range — unless a door trap is armed, which places the trap as before (blocked while shared,
-  // like every other trap/hide/search action).
+  // A trap in hand (round 4 §1): Akce puts it down on a valid target, or the spy shakes his head
+  // (no target, target already trapped, shared room). It never opens a door, searches or hides.
+  if (spy.selected !== null) {
+    startPlacing(state, spy, events);
+    return;
+  }
+
+  // A door in reach (spec §5): Akce opens it — doors still work in a shared room, out of fight range.
   const d = doorAt(state, spy);
   if (d !== null) {
-    const doorTrapArmed = !shared && (spy.armed === 'elektrina' || spy.armed === 'pistole');
-    if (doorTrapArmed) placeArmed(state, spy, events);
-    else tryOpenDoor(state, spy, d, events);
+    tryOpenDoor(state, spy, d, events);
     return;
   }
 
   if (shared) return;
-  if (spy.armed !== null) {
-    placeArmed(state, spy, events);
-    return;
-  }
   const f = furnitureAt(state, spy);
   if (f !== null) {
     spy.holdTarget = f.id;
@@ -93,24 +92,6 @@ export function updateDoorOpening(state: GameState, spy: Spy, dt: number, events
   // Door traps trigger on opening, never on passing (spec §5); remedy logic unchanged. The door
   // leaf has already swung, whatever happens to the opener next.
   triggerDoorTrap(state, spy, key, events);
-}
-
-function placeArmed(state: GameState, spy: Spy, events: GameEvent[]): void {
-  const kind = spy.armed;
-  if (kind === 'bomba' || kind === 'pruzina') {
-    const f = furnitureAt(state, spy);
-    if (f !== null) {
-      placeFurnitureTrap(spy, f, kind, events);
-      return;
-    }
-  } else if (kind === 'elektrina' || kind === 'pistole') {
-    const d = doorAt(state, spy);
-    if (d !== null) {
-      placeDoorTrap(state, spy, doorKeyFor(state, spy.room, d), kind, events);
-      return;
-    }
-  }
-  events.push({ type: 'trapFailed', spy: spy.id });
 }
 
 export function startSearch(state: GameState, spy: Spy, f: Furniture, events: GameEvent[]): void {

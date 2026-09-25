@@ -162,33 +162,37 @@ describe('search outcome events (spec §7)', () => {
   });
 });
 
-describe('armed traps', () => {
-  it('places an armed bomba on the furniture in reach', () => {
+describe('a trap in hand (round 4 §1)', () => {
+  it('Akce with bomba in hand starts placing it on the furniture in reach (no hide/search hold)', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     const spy = atFurniture(s, 0, f);
-    spy.armed = 'bomba';
+    spy.selected = 'bomba';
     act(s, spy, input({ action: true }), 1 / 60, []);
-    expect(f.trap).toEqual({ kind: 'bomba', owner: 0 });
+    expect(spy.placing).toEqual({ trap: 'bomba', target: { on: 'furniture', furniture: f.id }, timer: RULES.placeTime });
+    expect(f.trap).toBeNull(); // only after the placing time
     expect(spy.holdTarget).toBeNull();
   });
 
-  it('fails when there is no valid target and keeps the trap armed', () => {
+  it('refuses when there is no valid target and keeps the trap in hand', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
-    spy.armed = 'bomba';
+    spy.selected = 'bomba';
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
-    expect(ev).toEqual([{ type: 'trapFailed', spy: 0 }]);
-    expect(spy.armed).toBe('bomba');
+    expect(ev).toEqual([{ type: 'refused', spy: 0 }]);
+    expect(spy.selected).toBe('bomba');
+    expect(spy.placing).toBeNull();
+    expect(spy.refuseTimer).toBe(RULES.refuseTime);
   });
 
-  it('places an armed door trap on the door in reach', () => {
+  it('Akce with a door trap in hand starts placing it on the door in reach, without opening it', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 0);
-    spy.armed = 'elektrina';
+    spy.selected = 'elektrina';
     act(s, spy, input({ action: true }), 1 / 60, []);
-    expect(s.doorTraps[doorKey(4, 1)]).toEqual({ kind: 'elektrina', owner: 0 });
+    expect(spy.placing?.target).toEqual({ on: 'door', key: doorKey(4, 1) });
+    expect(spy.doorOpening).toBeNull();
   });
 });
 

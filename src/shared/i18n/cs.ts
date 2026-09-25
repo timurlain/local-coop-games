@@ -108,13 +108,5 @@ export const cs = {
       pistole: 'Pistole na provázku',
       casovana: 'Časovaná bomba',
     },
-    /** Under-frame strip: guidance for arming and placing traps (spec §5, §3). */
-    trapBlocked: 'Pasti nejdou – soupeř je v místnosti',
-    trapPlaceFailed: 'Tady ji nastražit nejde',
-    /** Combined with the selected trap's (or MAPA's) own name while the Trapulator menu is held. */
-    trapSelectHint: (label: string) => `${label} · F nastražit`,
-    mapSelectHint: 'Mapa · F otevřít mapu',
-    trapArmedFurniture: (label: string) => `${label} připravena – F u nábytku`,
-    trapArmedDoor: (label: string) => `${label} připravena – F u dveří`,
   },
 };

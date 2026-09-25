@@ -3,8 +3,8 @@ import { doorKeyFor } from '../../src/games/spy-vs-spy/logic/places';
 import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
 import {
-  DIRS, NO_INPUT, neighbor,
-  type Dir, type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing,
+  DIRS, NO_INPUT, TRAPS, neighbor,
+  type Dir, type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing, type TrapKind,
 } from '../../src/games/spy-vs-spy/logic/state';
 
 /** Level of `openGame`: the one with the 3×3 grid. */
@@ -85,3 +85,35 @@ export function run(s: GameState, inputs: [SpyInput, SpyInput], seconds: number,
   for (let i = 0; i < n; i++) out.push(...step(s, inputs, dt));
   return out;
 }
+
+// ---------- round 4: the trap hand (spec §1) ----------
+
+/** One 60 Hz frame, seconds. */
+export const TICK = 1 / 60;
+
+/** Inputs with `inp` for spy `id` and nothing for the other. */
+export function only(id: PlayerId, inp: SpyInput): [SpyInput, SpyInput] {
+  return id === 0 ? [inp, input()] : [input(), inp];
+}
+
+/** A quick Trapulator tap (pressed one tick, released the next) while holding `with` (e.g. a walk). */
+export function tap(s: GameState, id: PlayerId = 0, with_: Partial<SpyInput> = {}): GameEvent[] {
+  return [
+    ...step(s, only(id, input({ ...with_, trap: true })), TICK),
+    ...step(s, only(id, input(with_)), TICK),
+  ];
+}
+
+/** Taps until spy `id` holds `kind` (throws when it can't, e.g. stock 0). */
+export function select(s: GameState, kind: TrapKind, id: PlayerId = 0): void {
+  for (let i = 0; i <= TRAPS.length && s.spies[id].selected !== kind; i++) tap(s, id);
+  if (s.spies[id].selected !== kind) throw new Error(`could not select ${kind}`);
+}
+
+/** One fresh Akce press (released on the next tick), then waits out the placing time. */
+export function akceAndWait(s: GameState, id: PlayerId = 0): GameEvent[] {
+  const ev = step(s, only(id, input({ action: true })), TICK);
+  ev.push(...run(s, only(id, input()), RULES.placeTime + 0.05));
+  return ev;
+}
+

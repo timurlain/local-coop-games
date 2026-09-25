@@ -40,13 +40,6 @@ function framed(ctx: Ctx, b: Rect, frame: string, fill: string): void {
   r(ctx, b.x + 1, b.y + 1, b.w - 2, b.h - 2, fill);
 }
 
-function outline(ctx: Ctx, b: Rect, color: string): void {
-  r(ctx, b.x - 1, b.y - 1, b.w + 2, 1, color);
-  r(ctx, b.x - 1, b.y + b.h, b.w + 2, 1, color);
-  r(ctx, b.x - 1, b.y, 1, b.h, color);
-  r(ctx, b.x + b.w, b.y, 1, b.h, color);
-}
-
 /** Icon centred in a slot (icons are 8×8, drawn by bottom-centre). */
 function iconIn(ctx: Ctx, name: Parameters<typeof drawIcon>[1], b: Rect): void {
   drawIcon(ctx, name, b.x + b.w / 2, b.y + Math.floor((b.h - 8) / 2) + 8);
@@ -80,7 +73,7 @@ export function drawDevice(ctx: Ctx, state: GameState, spy: Spy, now: number): v
   r(ctx, DEVICE.x + 1, DEVICE.y + 4, 1, DEVICE.h - 8, BODY_LIGHT);
 
   drawLed(ctx, spy, now);
-  drawButtons(ctx, spy, now);
+  drawButtons(ctx, spy);
   drawRemedy(ctx, spy);
   drawSecrets(ctx, spy, now);
 
@@ -106,12 +99,13 @@ function drawLed(ctx: Ctx, spy: Spy, now: number): void {
   if (low) r(ctx, cx - 1, cy - 2, 1, 1, '#ffd0c0');
 }
 
-function drawButtons(ctx: Ctx, spy: Spy, now: number): void {
+/** The trap buttons with their stock; the trap in hand and MAPA (while held open) light up (round 4 §7). */
+function drawButtons(ctx: Ctx, spy: Spy): void {
   text(ctx, D.traps, DEV.traps[0].x, DEV.buttonLabelY, LABEL, 5);
   text(ctx, D.map, DEV.map.x + DEV.map.w / 2, DEV.buttonLabelY, LABEL, 5, 'center');
   TRAPS.forEach((trap, i) => {
     const b = DEV.traps[i];
-    const lit = spy.armed === trap;
+    const lit = spy.selected === trap;
     framed(ctx, b, HAND_COLORS.trap, lit ? '#ffe27a' : KEY);
     drawIcon(ctx, trap, b.x + b.w / 2, b.y + 9);
     const stock = spy.stock[trap];
@@ -125,11 +119,6 @@ function drawButtons(ctx: Ctx, spy: Spy, now: number): void {
     for (let gx = 0; gx < 3; gx++) r(ctx, m.x + 2 + gx * 3, m.y + 4 + gy * 3, 2, 2, gx === 2 && gy === 0 ? '#2e7dd1' : '#5a5c62');
   }
   r(ctx, m.x + 2, m.y + 11, 9, 1, '#9a9aa0');
-
-  if (spy.menuOpen) {
-    const target = spy.menuCursor < TRAPS.length ? DEV.traps[spy.menuCursor] : m;
-    outline(ctx, target, Math.floor(now * 4) % 2 === 0 ? '#ffffff' : '#ffe27a');
-  }
 }
 
 function drawRemedy(ctx: Ctx, spy: Spy): void {

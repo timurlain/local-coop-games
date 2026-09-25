@@ -1,5 +1,7 @@
 import { HALVES, withViewport } from '../../../shared/splitscreen';
+import { sharesRoom } from '../logic/fight';
 import { doorAt, exitVisibleTo, furnitureAt } from '../logic/places';
+import { placeTargetFor } from '../logic/traps';
 import { cs } from '../../../shared/i18n/cs';
 import { isActive, type GameState, type PlayerId } from '../logic/state';
 import { drawDebug } from './debug';
@@ -78,11 +80,12 @@ export function renderGame(
         drawBigMap(ctx, state, viewer, now);
       } else {
         const near = viewer.mode === 'normal' ? furnitureAt(state, viewer) : null;
-        // Where an armed trap can be placed right now (spec §5), shown as a red marker in the viewer's own half.
-        const armedFurnitureId =
-          viewer.armed === 'bomba' || viewer.armed === 'pruzina' ? (near?.id ?? null) : null;
-        const armedDoor =
-          viewer.armed === 'elektrina' || viewer.armed === 'pistole' ? doorAt(state, viewer) : null;
+        // Where the trap in hand would go right now (round 4 §1), a red marker in the viewer's own half;
+        // none when nothing valid is in reach (or in a shared room, where it would be refused).
+        const target = viewer.mode === 'normal' && viewer.selected !== null && !sharesRoom(state, viewer)
+          ? placeTargetFor(state, viewer, viewer.selected) : null;
+        const armedFurnitureId = target?.on === 'furniture' ? target.furniture : null;
+        const armedDoor = target?.on === 'door' ? doorAt(state, viewer) : null;
         drawRoom(ctx, state, viewer.room, near?.id ?? null, now, armedFurnitureId, armedDoor, exitShownIn(state, viewer.id));
         const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
         for (const s of here) drawSpy(ctx, state, s, now, effectPose(effects, s.id, now));

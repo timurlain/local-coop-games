@@ -53,8 +53,9 @@ describe('score (spec §7): step applies scoreDeltas after events', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     const spy = atFurniture(s, 0, f);
-    spy.armed = 'bomba';
+    spy.selected = 'bomba';
     const ev = step(s, [input({ action: true }), IDLE], 1 / 60);
+    ev.push(...run(s, [IDLE, IDLE], RULES.placeTime + 0.05));
     expect(ev).toContainEqual({ type: 'trapSet', spy: 0, trap: 'bomba' });
     expect(s.spies[0].score).toBe(30);
     expect(s.spies[1].score).toBe(0);
@@ -103,21 +104,22 @@ describe('orchestration', () => {
     expect(s.spies[0].hand).toEqual(taken(secret('plany'), 0));
   });
 
-  it('the spy cannot walk while the Trapulator is open', () => {
+  it('the spy walks while the Trapulator is pressed, until the map opens (round 4 §1)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
-    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.5);
-    expect(spy.x).toBe(100);
-    expect(spy.menuOpen).toBe(true);
-    step(s, [IDLE, IDLE], 1 / 60);
-    expect(spy.menuOpen).toBe(false);
+    run(s, [input({ trap: true, moveX: 1 }), IDLE], RULES.trapTapMax - 2 / 60);
+    expect(spy.x).toBeGreaterThan(100);
+    run(s, [input({ trap: true, moveX: 1 }), IDLE], 3 / 60);
+    expect(spy.mapOpen).toBe(true);
+    const x = spy.x;
+    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.3);
+    expect(spy.x).toBe(x);
   });
 
   it('releasing the Trapulator button closes the map', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
-    spy.menuCursor = 5; // MENU_MAP
-    step(s, [input({ trap: true, action: true }), IDLE], 1 / 60);
+    run(s, [input({ trap: true }), IDLE], RULES.trapTapMax + 1 / 60);
     expect(spy.mapOpen).toBe(true);
     step(s, [IDLE, IDLE], 1 / 60); // release the Trapulator button
     expect(spy.mapOpen).toBe(false);
@@ -193,45 +195,41 @@ describe('orchestration', () => {
 });
 
 describe('meeting: shared room (spec §3)', () => {
-  it('ignores Trapulator input and keeps the menu closed while sharing a room', () => {
+  it('a Trapulator tap still cycles the hand while sharing a room (round 4 §1)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
     place(s, 1, 4, 130, 20);
-    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.5);
-    expect(spy.menuOpen).toBe(false);
-    expect(spy.armed).toBeNull();
+    step(s, [input({ trap: true }), IDLE], 1 / 60);
+    step(s, [IDLE, IDLE], 1 / 60);
+    expect(spy.selected).toBe('bomba');
   });
 
-  it('holding the Trapulator never walks, even next to the opponent', () => {
+  it('holding the Trapulator walks on in a shared room — no map to hold him still', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
-    place(s, 1, 4, 130, 20);
-    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.5);
-    expect(spy.x).toBe(100);
-    expect(spy.menuOpen).toBe(false);
+    place(s, 1, 4, 160, 20);
+    run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.3);
+    expect(spy.x).toBeGreaterThan(100);
+    expect(spy.mapOpen).toBe(false);
   });
 
-  it('pressing the Trapulator in a shared room emits trapBlocked once per press', () => {
+  it('holding for the map in a shared room is refused once per press (round 4 §1)', () => {
     const s = openGame();
     place(s, 0, 4, 100, 20);
-    place(s, 1, 4, 130, 20);
-    const ev1 = step(s, [input({ trap: true }), IDLE], 1 / 60);
-    expect(ev1.filter((e) => e.type === 'trapBlocked')).toHaveLength(1);
-    // still held: no repeat
-    const ev2 = step(s, [input({ trap: true }), IDLE], 1 / 60);
-    expect(ev2.filter((e) => e.type === 'trapBlocked')).toHaveLength(0);
-    // release and press again: fires once more
+    place(s, 1, 4, 160, 20);
+    const ev1 = run(s, [input({ trap: true }), IDLE], 1.5);
+    expect(ev1.filter((e) => e.type === 'refused')).toHaveLength(1);
+    // release and hold again: refused once more
     step(s, [IDLE, IDLE], 1 / 60);
-    const ev3 = step(s, [input({ trap: true }), IDLE], 1 / 60);
-    expect(ev3.filter((e) => e.type === 'trapBlocked')).toHaveLength(1);
+    const ev2 = run(s, [input({ trap: true }), IDLE], 1);
+    expect(ev2.filter((e) => e.type === 'refused')).toHaveLength(1);
   });
 
   it('the map cannot be opened while sharing a room (spec §3, §5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
     place(s, 1, 4, 130, 20);
-    spy.menuCursor = 5; // MENU_MAP
-    run(s, [input({ trap: true, action: true }), IDLE], 0.5);
+    run(s, [input({ trap: true }), IDLE], 1);
     expect(spy.mapOpen).toBe(false);
   });
 
@@ -459,16 +457,16 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     expect(ev).toContainEqual(expect.objectContaining({ type: 'dropped', spy: 0 }));
   });
 
-  it('clears an armed trap and re-hides a held secret in the same drop when entering', () => {
+  it('empties the trap in hand and re-hides a held secret in the same drop when entering', () => {
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
     openDoor(s, 0, 'N');
     spy.hand = secret('pas');
-    spy.armed = 'bomba';
+    spy.selected = 'bomba';
     const stockBefore = spy.stock.bomba;
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
-    expect(spy.armed).toBeNull();
+    expect(spy.selected).toBeNull();
     expect(spy.stock.bomba).toBe(stockBefore);
     expect(spy.hand).toBeNull();
     const dropped = ev.filter((e) => e.type === 'dropped');
