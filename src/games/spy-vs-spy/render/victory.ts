@@ -57,19 +57,37 @@ export interface MobMember {
 
 /**
  * Screen x of each mob member `t` seconds into the scene; half enter from the left, half from the right, and stop in a
- * ring around the loser, inside the screen span `lo`..`hi`.
+ * ring around the loser, inside the screen span `lo`..`hi`, each at least `MOB_CLEARANCE` from `loserX`. When the loser
+ * stands close to an edge, a member whose own side has no room left at `MOB_CLEARANCE` (even after clamping to the
+ * screen) joins the other side instead, continuing its rank stack rather than overlapping the members already there.
  */
 export function mobPositions(t: number, loserX: number, lo = 0, hi: number = LOGICAL_W): MobMember[] {
   const walked = Math.max(0, t - MOB_AT) * MOB_SPEED;
+  // Whether the next member ranked `rank` on that side clears MOB_CLEARANCE from the loser without
+  // needing to clamp to the screen edge.
+  const fitsLeft = (rank: number) => loserX - MOB_CLEARANCE - rank * MOB_GAP >= lo + 6;
+  const fitsRight = (rank: number) => loserX + MOB_CLEARANCE + rank * MOB_GAP <= hi - 6;
+  let leftN = 0;
+  let rightN = 0;
   const mob: MobMember[] = [];
   for (let i = 0; i < MOB_SIZE; i++) {
-    const fromLeft = i % 2 === 0;
-    const rank = Math.floor(i / 2);
+    const preferLeft = i % 2 === 0;
+    let fromLeft: boolean;
+    if (preferLeft) {
+      if (fitsLeft(leftN)) fromLeft = true;
+      else if (fitsRight(rightN)) fromLeft = false;
+      else fromLeft = true; // neither side has room: best effort, stay put
+    } else {
+      if (fitsRight(rightN)) fromLeft = false;
+      else if (fitsLeft(leftN)) fromLeft = true;
+      else fromLeft = false; // neither side has room: best effort, stay put
+    }
+    const rank = fromLeft ? leftN++ : rightN++;
     const start = fromLeft ? lo - 12 - rank * MOB_GAP : hi + 12 + rank * MOB_GAP;
     const rawStop = fromLeft ? loserX - MOB_CLEARANCE - rank * MOB_GAP : loserX + MOB_CLEARANCE + rank * MOB_GAP;
     const stop = Math.min(hi - 6, Math.max(lo + 6, rawStop));
     const x = fromLeft ? Math.min(stop, start + walked) : Math.max(stop, start - walked);
-    mob.push({ x, facing: fromLeft ? 1 : -1, color: MOB_COLORS[i % MOB_COLORS.length], torch: i % 3 === 0 });
+    mob.push({ x, facing: stop < loserX ? 1 : -1, color: MOB_COLORS[i % MOB_COLORS.length], torch: i % 3 === 0 });
   }
   return mob;
 }

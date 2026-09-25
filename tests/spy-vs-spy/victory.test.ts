@@ -43,6 +43,34 @@ describe('mobPositions', () => {
       expect(m.x).toBeLessThan(320);
     }
   });
+
+  it('keeps MOB_CLEARANCE from the loser even at the left screen edge, by sending overflow to the other side', () => {
+    const loserX = 20;
+    const mob = mobPositions(20, loserX);
+    expect(mob).toHaveLength(8);
+    const xs = mob.map((m) => m.x);
+    for (const m of mob) {
+      expect(Math.abs(m.x - loserX)).toBeGreaterThanOrEqual(MOB_CLEARANCE);
+      expect(m.x).toBeGreaterThan(0);
+      expect(m.x).toBeLessThan(320);
+      expect(m.facing).toBe(m.x < loserX ? 1 : -1);
+    }
+    expect(new Set(xs).size).toBe(xs.length); // no two members at the same x
+  });
+
+  it('keeps MOB_CLEARANCE from the loser even at the right screen edge, by sending overflow to the other side', () => {
+    const loserX = 300;
+    const mob = mobPositions(20, loserX);
+    expect(mob).toHaveLength(8);
+    const xs = mob.map((m) => m.x);
+    for (const m of mob) {
+      expect(Math.abs(m.x - loserX)).toBeGreaterThanOrEqual(MOB_CLEARANCE);
+      expect(m.x).toBeGreaterThan(0);
+      expect(m.x).toBeLessThan(320);
+      expect(m.facing).toBe(m.x < loserX ? 1 : -1);
+    }
+    expect(new Set(xs).size).toBe(xs.length); // no two members at the same x
+  });
 });
 
 describe('airfield take-off', () => {
