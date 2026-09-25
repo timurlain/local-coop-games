@@ -89,7 +89,7 @@ describe('closed doors (spec §5)', () => {
     const ev = run(s, [input({ action: true }), IDLE], OPENED);
     expect(spy.mode).toBe('normal');
     expect(spy.hand).toBeNull();
-    expect(ev).toContainEqual({ type: 'disarmed', spy: 0, trap: 'pistole' });
+    expect(ev).toContainEqual({ type: 'disarmed', spy: 0, trap: 'pistole', remedy: 'nuzky' });
     expect(ev).toContainEqual({ type: 'doorOpened', spy: 0, key });
     expect(s.doorOpen[key]?.phase).toBe('open');
   });

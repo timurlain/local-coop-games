@@ -44,7 +44,7 @@ describe('furniture traps', () => {
     expect(spy.hand).toBeNull();
     expect(spy.mode).toBe('normal');
     expect(f.trap).toBeNull();
-    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap: 'bomba' }]);
+    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap: 'bomba', remedy: 'voda' }]);
   });
 
   it('pruzina with the wrong remedy kills', () => {
@@ -96,7 +96,7 @@ describe('remedies disarm every trap (spec §8)', () => {
     expect(spy.mode).toBe('normal');
     expect(spy.hand).toBeNull();
     expect(f.trap).toBeNull();
-    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap }]);
+    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap, remedy: cure }]);
   });
 
   it.each([
@@ -113,7 +113,7 @@ describe('remedies disarm every trap (spec §8)', () => {
     expect(spy.mode).toBe('normal');
     expect(spy.hand).toBeNull();
     expect(s.doorTraps[key]).toBeUndefined();
-    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap }]);
+    expect(ev).toEqual([{ type: 'disarmed', spy: 0, trap, remedy: cure }]);
   });
 });
 

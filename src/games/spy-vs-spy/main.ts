@@ -10,7 +10,7 @@ import { loadJson, saveJson } from '../../shared/storage';
 import { createGame } from './logic/generator';
 import { LEVELS, levelRules } from './logic/rules';
 import { rankFor } from './logic/score';
-import type { GameEvent, GameState, PlayerId, Spy, SpyInput } from './logic/state';
+import type { GameEvent, GameState, PlayerId, RemedyKind, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
 import { laugher, spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
@@ -364,6 +364,9 @@ function lowTimeBeep(spy: Spy): void {
   sfx.play('lowtime');
 }
 
+/** The sound of each remedy defusing its trap (round 4 §3). */
+const DISARM_SOUND: Readonly<Record<RemedyKind, SfxName>> = { destnik: 'umbrella', voda: 'hiss', kleste: 'snip', nuzky: 'snip' };
+
 function soundFor(e: GameEvent): SfxName | null {
   switch (e.type) {
     case 'searchStart': return 'search';
@@ -374,7 +377,7 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'dropped': return e.thing ? 'clatter' : null;
     case 'trapSet': return 'trapSet';
     case 'refused': return 'grumble';
-    case 'disarmed': return 'found';
+    case 'disarmed': return DISARM_SOUND[e.remedy];
     case 'died':
       switch (e.cause) {
         case 'bomba': return 'bomb';

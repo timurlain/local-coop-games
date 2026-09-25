@@ -244,7 +244,8 @@ export type GameEvent =
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
   /** round 4 §1: the spy shakes his head — no valid target, target already trapped, or a shared room */
   | { type: 'refused'; spy: PlayerId }
-  | { type: 'disarmed'; spy: PlayerId; trap: TrapKind }
+  /** a matching remedy defused a trap (round 4 §3: the render shows how, by `remedy`) */
+  | { type: 'disarmed'; spy: PlayerId; trap: FurnitureTrapKind | DoorTrapKind; remedy: RemedyKind }
   /** `killer` is set only for cause 'fight': the opponent who landed the strike (spec §7). */
   | { type: 'died'; spy: PlayerId; cause: DeathCause; killer?: PlayerId }
   | { type: 'respawn'; spy: PlayerId }

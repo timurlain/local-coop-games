@@ -1,10 +1,15 @@
+import { doorAt, furnitureAt } from '../logic/places';
 import { RULES } from '../logic/rules';
-import { isActive, type GameEvent, type GameState, type PlayerId, type Thing } from '../logic/state';
-import { r, text } from './draw';
+import {
+  isActive,
+  type Dir, type DoorTrapKind, type FurnitureTrapKind, type GameEvent, type GameState, type PlayerId, type RemedyKind, type Thing,
+} from '../logic/state';
+import { line, r, text } from './draw';
 import { VIEW, project, wallX } from './geometry';
 import { drawGuard } from './guard';
+import { doorCentre } from './room';
 import { SPY_H, type SpyFrame } from './sprite-data';
-import { drawIcon, handPoint, thingIcon } from './sprites';
+import { drawIcon, drawIconScaled, drawInHand, handPoint, thingIcon } from './sprites';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -14,6 +19,8 @@ export const EFFECT_TIME = 0.6;
 export const LAUGH_TIME = 1.2;
 /** Laugh frames alternate at this rate, frames per second. */
 const LAUGH_FPS = 6;
+/** How long a remedy's disarm animation shows, seconds (round 4 §3). */
+export const DISARM_TIME = 0.8;
 
 /**
  * Render-side feedback for a logic event (spec §7):
@@ -21,12 +28,14 @@ const LAUGH_FPS = 6;
  * - `hidden`, `swapped`, `stored`: hand ↔ furniture exchanges;
  * - `dropped`: the hand item flies into the furniture that received it; `poof`: it was lost (remedy);
  * - `guard`: the airport guard in the exit doorway kicking a spy back (spec §9), for `RULES.guardKickTime`;
- * - `laugh`: the other spy laughing at a trap death (spec §3), for `LAUGH_TIME` — a pose only, nothing drawn.
+ * - `laugh`: the other spy laughing at a trap death (spec §3), for `LAUGH_TIME` — a pose only, nothing drawn;
+ * - `disarm`: a remedy defusing a trap (round 4 §3), for `DISARM_TIME` — umbrella under the electric bucket, water on
+ *   the bomb's fuse, pliers snipping the spring, scissors cutting the pistol's string.
  */
-export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh';
+export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh' | 'disarm';
 
 /** Pose the spy sprite shows while an effect runs (overrides search/fight/walk, not swing/block). */
-export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut' | 'laugh1' | 'laugh2'>;
+export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut' | 'laugh1' | 'laugh2' | 'placeTrap'>;
 
 /** The spy who laughs at this event (spec §3): on a trap death (`died`, cause ≠ fight), the other spy if it is active. */
 export function laugher(state: GameState, e: GameEvent): PlayerId | null {
@@ -49,6 +58,10 @@ export interface Effect {
   /** the item taken out on a swap */
   took: Thing | null;
   furniture: number | null;
+  /** disarm: the defused trap and the remedy that did it, and the door it was on (door traps) */
+  trap: FurnitureTrapKind | DoorTrapKind | null;
+  remedy: RemedyKind | null;
+  door: Dir | null;
   /** true when the anchor is in `room` (a drop can land in a neighbouring room's furniture) */
   fromSpy: boolean;
   start: number;
@@ -64,7 +77,7 @@ export function spawnEffects(queue: EffectQueue, state: GameState, events: reado
     if (fx === null) continue;
     const spy = state.spies[fx.spy];
     queue.push({
-      thing: null, took: null, furniture: null, room: spy.room, fromSpy: true,
+      thing: null, took: null, furniture: null, trap: null, remedy: null, door: null, room: spy.room, fromSpy: true,
       x: spy.x, z: spy.z, facing: spy.facing, start: now, duration: EFFECT_TIME,
       ...fx,
     });
@@ -99,6 +112,15 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
     case 'died': {
       const spy = laugher(state, e);
       return spy === null ? null : { kind: 'laugh', spy, duration: LAUGH_TIME };
+    }
+    case 'disarmed': {
+      const spy = state.spies[e.spy];
+      const onFurniture = e.trap === 'bomba' || e.trap === 'pruzina';
+      return {
+        kind: 'disarm', spy: e.spy, duration: DISARM_TIME, trap: e.trap, remedy: e.remedy,
+        furniture: onFurniture ? spy.searchTarget ?? furnitureAt(state, spy)?.id ?? null : null,
+        door: onFurniture ? null : doorAt(state, spy),
+      };
     }
     default:
       return null;
@@ -136,6 +158,8 @@ function poseOf(e: Effect, now: number): EffectPose | null {
       return progress(e, now) < 0.5 ? 'hidePut' : 'liftFind';
     case 'laugh':
       return Math.floor((now - e.start) * LAUGH_FPS) % 2 === 0 ? 'laugh1' : 'laugh2';
+    case 'disarm':
+      return disarmPose(e);
     case 'dropped':
     case 'poof':
     case 'guard':
@@ -262,6 +286,9 @@ function drawEffect(ctx: Ctx, state: GameState, e: Effect, t: number): void {
     }
     case 'laugh':
       break; // the pose is the whole effect
+    case 'disarm':
+      drawDisarm(ctx, state, e, t);
+      break;
 
   }
 }
@@ -285,4 +312,174 @@ function dust(ctx: Ctx, x: number, y: number, t: number, n: number): void {
       r(ctx, Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d * 0.6 - t * 3), 1, 1, DUST[i % 2]);
     }
   });
+}
+
+// ---------- disarming (round 4 §3) ----------
+
+/** Crouched at the furniture for the bucket and the pliers; standing, hand raised, for the umbrella and the scissors. */
+function disarmPose(e: Effect): EffectPose {
+  return e.remedy === 'voda' || e.remedy === 'kleste' ? 'placeTrap' : 'liftFind';
+}
+
+const WATER = ['#6cc6e8', '#3a78d8'];
+const SPARK = '#ffeb3b';
+const STEAM = ['#e8e8ec', '#b8b8c0'];
+const STEEL = '#cfcfcf';
+const STRING = '#f4f4f4';
+
+type Pt = { x: number; y: number };
+
+function drawDisarm(ctx: Ctx, state: GameState, e: Effect, t: number): void {
+  const frame = disarmPose(e);
+  const { sx, sy } = project(e.x, e.z);
+  const flip = e.facing < 0;
+  const h = hand(e, frame);
+  // The spy may walk off through the door he just opened: then only the part in the room stays behind.
+  const spy = state.spies[e.spy];
+  const withSpy = spy.room === e.room && spy.mode !== 'dead';
+  switch (e.remedy) {
+    case 'destnik':
+      if (withSpy) umbrella(ctx, frame, sx, sy, flip, h, t);
+      break;
+    case 'voda':
+      water(ctx, frame, sx, sy, flip, h, e.facing, t, withSpy);
+      break;
+    case 'kleste':
+      snipSpring(ctx, h, e.facing, t, withSpy);
+      break;
+    case 'nuzky':
+      cutString(ctx, e, h, t, withSpy);
+      break;
+    case null:
+      break;
+  }
+}
+
+/** The umbrella opens over his head; blue drops pour onto it and run off its rim, a yellow spark at the top. */
+function umbrella(ctx: Ctx, frame: SpyFrame, sx: number, sy: number, flip: boolean, h: Pt, t: number): void {
+  drawInHand(ctx, 'destnik_open', frame, sx, sy, flip);
+  const top = h.y - 5; // the canopy's crown (its handle row 5 sits on the hand)
+  if (t > 0.9) return;
+  // drops falling onto the canopy
+  for (let i = 0; i < 5; i++) {
+    const fall = (t * 40 + i * 5) % 9;
+    r(ctx, h.x - 4 + i * 2, Math.max(VIEW.top, Math.round(top - 9 + fall)), 1, 2, WATER[i % 2]);
+  }
+  // running off the rim on both sides
+  for (const side of [-1, 1]) {
+    const drip = (t * 30 + (side > 0 ? 3 : 0)) % 7;
+    r(ctx, h.x + side * 6, Math.round(top + 3 + drip), 1, 1, WATER[0]);
+  }
+  // the spark on top, flickering
+  if (t < 0.7 && Math.floor(t * 20) % 2 === 0) {
+    r(ctx, h.x, top - 2, 1, 1, SPARK);
+    r(ctx, h.x - 1, top - 3, 1, 1, SPARK);
+    r(ctx, h.x + 1, top - 1, 1, 1, SPARK);
+    r(ctx, h.x + 1, top - 4, 1, 1, '#ffffff');
+  }
+}
+
+/** The bucket in hand pours an arc of water onto the bomb's lit fuse; a steam puff rises and the bomb is out. */
+function water(
+  ctx: Ctx, frame: SpyFrame, sx: number, sy: number, flip: boolean, h: Pt, facing: -1 | 1, t: number, withSpy: boolean,
+): void {
+  const bx = h.x + facing * 11;
+  const by = VIEW.backY - 1;
+  if (withSpy) drawInHand(ctx, 'voda', frame, sx, sy, flip);
+  if (t < 0.75) drawIcon(ctx, 'bomba', bx, by);
+  const fuse = { x: bx + 2, y: by - 7 };
+  if (t < 0.4 && Math.floor(t * 24) % 2 === 0) r(ctx, fuse.x + 1, fuse.y - 1, 1, 1, '#ff9a3c');
+  if (withSpy && t < 0.5) {
+    // water arcing from the bucket's rim over to the fuse
+    const from = { x: h.x + facing * 3, y: h.y + 1 };
+    const n = 7;
+    const shown = Math.ceil(n * Math.min(1, t / 0.25));
+    for (let i = 0; i < shown; i++) {
+      const k = i / (n - 1);
+      const x = from.x + (fuse.x - from.x) * k;
+      const y = from.y + (fuse.y - from.y) * k - Math.sin(k * Math.PI) * 6;
+      r(ctx, Math.round(x), Math.round(y), 1, 1, WATER[(i + Math.floor(t * 20)) % 2]);
+    }
+  }
+  if (t >= 0.35) steam(ctx, fuse.x, fuse.y, (t - 0.35) / 0.65);
+}
+
+/** A grey-white puff swelling and rising from (x, y), fading out. */
+function steam(ctx: Ctx, x: number, y: number, k: number): void {
+  fading(ctx, 1 - k * k, () => {
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + k * 2;
+      const d = 1 + k * 4;
+      const size = 2 + Math.round(k * 2);
+      r(ctx, Math.round(x + Math.cos(a) * d) - 1, Math.round(y - 2 - k * 9 + Math.sin(a) * d * 0.6) - 1, size, size, STEAM[i % 2]);
+    }
+  });
+}
+
+/** A coiled spring pops up out of the furniture, the pliers snap it, and the two halves drop. */
+function snipSpring(ctx: Ctx, h: Pt, facing: -1 | 1, t: number, withSpy: boolean): void {
+  const x = h.x + facing * 10;
+  const base = VIEW.backY - 1;
+  const coil = (y0: number, y1: number, dx = 0): void => {
+    for (let y = y0, i = 0; y > y1; y -= 2, i++) line(ctx, x - 2 + dx, y, x + 2 + dx, y - 1, i % 2 === 0 ? STEEL : '#8a8a8a');
+  };
+  const pop = Math.min(1, t / 0.2);
+  const height = Math.round(14 * (1 - (1 - pop) * (1 - pop)));
+  const cutAt = 0.45;
+  const mid = base - 7;
+  if (t < cutAt) {
+    coil(base, base - height);
+    r(ctx, x - 2, base - height - 1, 5, 1, '#111111'); // the top plate
+  } else {
+    const k = (t - cutAt) / (1 - cutAt);
+    // the lower half sags back down, the upper half falls off sideways
+    coil(base, mid + Math.round(k * 5));
+    fading(ctx, 1.3 - k, () => {
+      const drop = Math.round(k * k * 12);
+      const dx = facing * Math.round(k * 5);
+      coil(mid + drop, mid - 7 + drop, dx);
+      r(ctx, x - 2 + dx, mid - 8 + drop, 5, 1, '#111111');
+    });
+    if (k < 0.25) { // the snap
+      r(ctx, x - 3, mid, 1, 1, '#ffffff');
+      r(ctx, x + 3, mid - 1, 1, 1, '#ffffff');
+    }
+  }
+  if (!withSpy) return;
+  // the pliers reach from the hand to the coil's middle and close on it
+  const reach = ease(Math.min(1, t / cutAt));
+  const px = h.x + (x - h.x) * reach;
+  const py = h.y + (mid - 1 - h.y) * reach;
+  drawIconScaled(ctx, 'kleste', Math.round(px), Math.round(py), t < cutAt ? 1 : 0.85);
+}
+
+/** A string runs from the door to the hand; the scissors cut it and the pistol drops off the door, harmless. */
+function cutString(ctx: Ctx, e: Effect, h: Pt, t: number, withSpy: boolean): void {
+  if (e.door === null) return;
+  const d = doorCentre(e.door);
+  const cutAt = 0.35;
+  const floor = e.door === 'S' ? VIEW.frontY - 1 : Math.max(d.y + 6, project(e.x, e.z).sy - 1);
+  if (t < cutAt) {
+    line(ctx, d.x, d.y, h.x, h.y, STRING);
+    drawIcon(ctx, 'pistole', Math.round(d.x), Math.round(d.y) + 4);
+  } else {
+    const k = (t - cutAt) / (1 - cutAt);
+    // the two loose ends droop and fade
+    const mx = (d.x + h.x) / 2;
+    const my = (d.y + h.y) / 2;
+    fading(ctx, 1 - k, () => {
+      line(ctx, d.x, d.y, mx - 1, my + 2 + k * 6, STRING);
+      if (withSpy) line(ctx, h.x, h.y, mx + 1, my + 2 + k * 6, STRING);
+    });
+    // the pistol falls to the floor with a little bounce
+    const fall = Math.min(1, k / 0.6);
+    const y = d.y + 4 + (floor - d.y - 4) * fall * fall;
+    const bounce = k > 0.6 ? Math.round(Math.sin(((k - 0.6) / 0.4) * Math.PI) * 2) : 0;
+    drawIcon(ctx, 'pistole', Math.round(d.x), Math.round(y) - bounce);
+  }
+  if (!withSpy) return;
+  // the scissors at the hand, snapping shut at the cut
+  const shut = Math.abs(t - cutAt) < 0.08;
+  drawIconScaled(ctx, 'nuzky', h.x, h.y - 3, shut ? 0.8 : 1);
+  if (shut) r(ctx, h.x + 3, h.y - 6, 1, 1, '#ffffff');
 }

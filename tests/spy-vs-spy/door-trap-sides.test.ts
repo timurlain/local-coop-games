@@ -59,7 +59,7 @@ describe.each(DOORS)('door trap from the other side (round 4 §6): $name', ({ a,
     expect(s.spies[1].mode).toBe('normal');
     expect(s.spies[1].hand).toBeNull();
     expect(s.doorTraps[key]).toBeUndefined();
-    expect(ev).toContainEqual({ type: 'disarmed', spy: 1, trap: 'elektrina' });
+    expect(ev).toContainEqual({ type: 'disarmed', spy: 1, trap: 'elektrina', remedy: 'destnik' });
   });
 });
 

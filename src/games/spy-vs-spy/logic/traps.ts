@@ -18,8 +18,8 @@ export const REMEDY_FOR: Readonly<Record<FurnitureTrapKind | DoorTrapKind, Remed
 /** Returns true when the spy survives (matching remedy in hand, which is consumed). */
 function spring(state: GameState, spy: Spy, trap: FurnitureTrapKind | DoorTrapKind, events: GameEvent[]): boolean {
   if (spy.hand?.kind === 'remedy' && spy.hand.remedy === REMEDY_FOR[trap]) {
+    events.push({ type: 'disarmed', spy: spy.id, trap, remedy: spy.hand.remedy });
     spy.hand = null;
-    events.push({ type: 'disarmed', spy: spy.id, trap });
     return true;
   }
   kill(state, spy, trap, events);

@@ -6,7 +6,8 @@ export type SfxName =
   | 'step'
   | 'laugh' | 'mob'
   | 'lowtime'
-  | 'grumble';
+  | 'grumble'
+  | 'umbrella' | 'hiss' | 'snip';
 
 interface ToneOpts {
   freq: number;
@@ -74,6 +75,25 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   grumble: (c) => {
     tone(c, { freq: 180, to: 140, dur: 0.12, type: 'triangle', vol: 0.2 });
     tone(c, { freq: 160, to: 110, dur: 0.16, delay: 0.16, type: 'triangle', vol: 0.2 });
+  },
+  /** the umbrella snapping open (a whoosh), then the patter of water drops on it (round 4 §3) */
+  umbrella: (c) => {
+    noise(c, { dur: 0.18, vol: 0.2, lowpass: 2500 });
+    tone(c, { freq: 250, to: 700, dur: 0.15, type: 'sine', vol: 0.08 });
+    [0.2, 0.27, 0.31, 0.38, 0.44, 0.49, 0.56, 0.63].forEach((delay, i) =>
+      tone(c, { freq: 1800 + (i % 3) * 400, to: 900, dur: 0.03, delay, type: 'sine', vol: 0.07 }));
+  },
+  /** water on a lit fuse: a splash, then a long falling steam hiss */
+  hiss: (c) => {
+    noise(c, { dur: 0.12, vol: 0.18, lowpass: 1500 });
+    noise(c, { dur: 0.7, vol: 0.14, delay: 0.1, lowpass: 9000 });
+  },
+  /** a metallic snip: two quick bright clicks with a ring */
+  snip: (c) => {
+    tone(c, { freq: 2400, dur: 0.03, type: 'square', vol: 0.1 });
+    noise(c, { dur: 0.03, vol: 0.15, lowpass: 8000 });
+    tone(c, { freq: 3100, to: 2600, dur: 0.12, delay: 0.06, type: 'triangle', vol: 0.1 });
+    noise(c, { dur: 0.03, vol: 0.15, delay: 0.06, lowpass: 8000 });
   },
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },
   zap: (c) => {

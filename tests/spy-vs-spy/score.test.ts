@@ -35,7 +35,7 @@ describe('scoreDeltas (spec §7 table)', () => {
 
   it('disarming with a remedy: +40 to the disarmer', () => {
     const s = openGame();
-    expect(scoreDeltas(s, [{ type: 'disarmed', spy: 0, trap: 'elektrina' }])).toEqual([40, 0]);
+    expect(scoreDeltas(s, [{ type: 'disarmed', spy: 0, trap: 'elektrina', remedy: 'destnik' }])).toEqual([40, 0]);
   });
 
   it('escaping: +1000 + 5 x whole seconds left on the escaper\'s clock', () => {
