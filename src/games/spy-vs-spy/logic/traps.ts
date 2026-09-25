@@ -160,10 +160,18 @@ export function updatePlacing(state: GameState, spy: Spy, dt: number, events: Ga
     refuse(spy, events);
     return;
   }
+  if (p.target.on === 'door') slamShut(state, p.target.key);
   spy.stock[p.trap]--;
   spy.selected = null;
   chargeTrapSetCost(spy);
   events.push({ type: 'trapSet', spy: spy.id, trap: p.trap });
+}
+
+/** A door trap set on an open or opening door slams it shut (round 4): whoever wants through must open it again,
+ *  and that opening is what fires the trap. A spy caught mid-opening is freed (the door is simply closed again). */
+function slamShut(state: GameState, key: string): void {
+  delete state.doorOpen[key];
+  for (const s of state.spies) if (s.doorOpening === key) s.doorOpening = null;
 }
 
 /** Puts the trap on its target; false when the target has been trapped in the meantime. */
