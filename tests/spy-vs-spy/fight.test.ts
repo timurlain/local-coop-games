@@ -119,10 +119,10 @@ describe('updateSwing: the strike (spec §8)', () => {
     expect(a.attack).toBeNull();
   });
 
-  it('a jab is blocked by holding away at the strike, even if the block started after the press', () => {
+  it('a jab is blocked by holding the Trapulator at the strike, even if the block started after the press', () => {
     const { s, a, b } = duel();
     trySwing(s, a, 'jab', []);
-    updateBlocking(s, b, input({ moveX: 1 })); // a is to the left, away = right
+    updateBlocking(s, b, input({ trap: true })); // play test 5: block is the Trapulator button, not a direction
     expect(b.blocking).toBe(true);
     const ev: GameEvent[] = [];
     updateSwing(s, a, RULES.swingWindup, ev);
@@ -134,7 +134,7 @@ describe('updateSwing: the strike (spec §8)', () => {
   it('a blocked jab visibly stops: the attacker is shoved back, away from the defender (round 4 §2)', () => {
     const { s, a, b } = duel(); // a at 100, b at 110 (b is to a's right)
     trySwing(s, a, 'jab', []);
-    updateBlocking(s, b, input({ moveX: 1 })); // b holds away from a
+    updateBlocking(s, b, input({ trap: true })); // b holds the Trapulator to block
     updateSwing(s, a, RULES.swingWindup, []);
     expect(RULES.blockPushback).toBe(8);
     expect(a.x).toBe(100 - RULES.blockPushback); // pushed away from b, back towards the west wall
@@ -146,7 +146,7 @@ describe('updateSwing: the strike (spec §8)', () => {
     const a = place(s, 0, 4, RULES.blockPushback - 1, 20);
     const b = place(s, 1, 4, a.x + 10, 20);
     trySwing(s, a, 'jab', []);
-    updateBlocking(s, b, input({ moveX: 1 }));
+    updateBlocking(s, b, input({ trap: true }));
     updateSwing(s, a, RULES.swingWindup, []);
     expect(a.x).toBe(0);
   });
@@ -179,14 +179,14 @@ describe('updateSwing: the strike (spec §8)', () => {
     expect(b.blocking).toBe(false);
   });
 
-  it('blocks again once the opponent is back within fight range', () => {
+  it('blocks at any distance in a shared room, but not once the opponent leaves it (play test 5)', () => {
     const { s, a, b } = duel();
-    b.x = a.x + RULES.fightRangeX + 1;
-    updateBlocking(s, b, input({ moveX: 1 }));
-    expect(b.blocking).toBe(false);
-    b.x = a.x + RULES.fightRangeX;
-    updateBlocking(s, b, input({ moveX: 1 }));
+    b.x = a.x + RULES.fightRangeX + 50; // far apart, but still sharing the room
+    updateBlocking(s, b, input({ trap: true }));
     expect(b.blocking).toBe(true);
+    a.room = 5; // opponent leaves
+    updateBlocking(s, b, input({ trap: true }));
+    expect(b.blocking).toBe(false);
   });
 
   it('a head bash is not stopped by holding away', () => {

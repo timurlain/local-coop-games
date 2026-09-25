@@ -18,10 +18,12 @@ export const cs = {
       pad: (n: number) => `gamepad ${n}`,
     },
     controls:
-      'Bílý: WASD, F akce, G pasti · Černý: šipky, Enter akce, pravý Shift pasti · ' +
+      'Bílý: WASD, F akce, G pasti · Černý: šipky, Enter akce, pravý Ctrl pasti · ' +
       'Gamepad: A akce, X pasti, Start pauza · Akce u nábytku: hledat, s věcí v ruce ji tam schováš · Esc pauza · F1 ladění' +
       ' · Stejná past znovu = odzbrojit' +
-      ' · Pasti: drž G/pravý Shift/X, šipkami vyber, F nastraž, pak F u nábytku či dveří. Ne před soupeřem.',
+      ' · Pasti: ťukni G/pravý Ctrl/X = další past do ruky, podrž = mapa, akce u nábytku či dveří = nastražit.' +
+      ' Ne před soupeřem.' +
+      ' · Souboj: akce = úder (s nahoru rána do hlavy), drž G/pravý Ctrl/X = kryt deštníkem, dolů = přikrčit se',
     back: '← Zpět na hry',
     paused: 'Pauza',
     padLost: 'Ovladač odpojen',

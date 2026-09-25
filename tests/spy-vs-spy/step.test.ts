@@ -194,34 +194,38 @@ describe('orchestration', () => {
 });
 
 describe('meeting: shared room (spec §3)', () => {
-  it('a Trapulator tap still cycles the hand while sharing a room (round 4 §1)', () => {
+  it('a Trapulator tap does not cycle the hand while sharing a room (play test 5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
     place(s, 1, 4, 130, 20);
     step(s, [input({ trap: true }), IDLE], 1 / 60);
     step(s, [IDLE, IDLE], 1 / 60);
-    expect(spy.selected).toBe('bomba');
+    expect(spy.selected).toBeNull();
   });
 
-  it('holding the Trapulator walks on in a shared room — no map to hold him still', () => {
+  it('holding the Trapulator blocks and stands still in a shared room (play test 5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
     place(s, 1, 4, 160, 20);
     run(s, [input({ trap: true, moveX: 1 }), IDLE], 0.3);
-    expect(spy.x).toBeGreaterThan(100);
+    expect(spy.blocking).toBe(true);
+    expect(spy.x).toBe(100);
     expect(spy.mapOpen).toBe(false);
   });
 
-  it('holding for the map in a shared room is refused once per press (round 4 §1)', () => {
+  it('holding the Trapulator in a shared room never opens the map, and costs no clock (play test 5)', () => {
     const s = openGame();
-    place(s, 0, 4, 100, 20);
+    const spy = place(s, 0, 4, 100, 20);
     place(s, 1, 4, 160, 20);
+    const clock = spy.clock;
     const ev1 = run(s, [input({ trap: true }), IDLE], 1.5);
-    expect(ev1.filter((e) => e.type === 'refused')).toHaveLength(1);
-    // release and hold again: refused once more
+    expect(ev1.filter((e) => e.type === 'mapOpened' || e.type === 'refused')).toEqual([]);
+    // release and hold again: still nothing
     step(s, [IDLE, IDLE], 1 / 60);
     const ev2 = run(s, [input({ trap: true }), IDLE], 1);
-    expect(ev2.filter((e) => e.type === 'refused')).toHaveLength(1);
+    expect(ev2.filter((e) => e.type === 'mapOpened' || e.type === 'refused')).toEqual([]);
+    expect(spy.mapOpen).toBe(false);
+    expect(spy.clock).toBeCloseTo(clock - 2.5 - 1 / 60, 6);
   });
 
   it('the map cannot be opened while sharing a room (spec §3, §5)', () => {
@@ -297,16 +301,13 @@ describe('two attacks and ducking (spec §8)', () => {
 
   it('Akce while holding up is a head bash: 2 damage after 0.3 s, through a block', () => {
     const { s, a, b } = duel();
-    // pinned against the east wall so holding away can't walk it out of range
-    place(s, 0, 4, RULES.roomW - 15, 20);
-    place(s, 1, 4, RULES.roomW - 5, 20);
-    const away = input({ moveX: 1 });
-    step(s, [input({ action: true, moveY: -1 }), away], 1 / 60);
+    const block = input({ trap: true });
+    step(s, [input({ action: true, moveY: -1 }), block], 1 / 60);
     expect(a.attack).toBe('bash');
-    run(s, [IDLE, away], RULES.swingWindup + 0.02);
+    run(s, [IDLE, block], RULES.swingWindup + 0.02);
     expect(b.health).toBe(RULES.health);
     expect(b.blocking).toBe(true);
-    run(s, [IDLE, away], RULES.bashWindup - RULES.swingWindup);
+    run(s, [IDLE, block], RULES.bashWindup - RULES.swingWindup);
     expect(b.health).toBe(RULES.health - 2);
   });
 
@@ -383,13 +384,21 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(ev).not.toContainEqual({ type: 'hit', spy: 1 });
   });
 
-  it('guard stance (round 4 §2): holding away from an opponent in range stands his ground, no movement', () => {
-    const { s, b } = duel(); // a at 100, b at 110, within fight range
-    const away = input({ moveX: 1 }); // b holds away from a (a is to b's left)
-    const ev = run(s, [IDLE, away], 0.3);
+  it('block (play test 5): holding the Trapulator in a shared room stands his ground, no movement', () => {
+    const { s, b } = duel(); // a at 100, b at 110, sharing the room
+    const block = input({ trap: true, moveX: 1 }); // still pushing a direction, but blocking wins
+    const ev = run(s, [IDLE, block], 0.3);
     expect(b.blocking).toBe(true);
     expect(b.x).toBe(110); // stands his ground, doesn't walk off
     expect(ev.filter((e) => e.type === 'bump')).toHaveLength(0);
+  });
+
+  it('holding away from the opponent is now plain walking, not a block (play test 5)', () => {
+    const { s, b } = duel(); // a at 100, b at 110, within fight range
+    const away = input({ moveX: 1 }); // b holds away from a, without the Trapulator
+    run(s, [IDLE, away], 0.3);
+    expect(b.blocking).toBe(false);
+    expect(b.x).toBeGreaterThan(110);
   });
 
   it('holding away from an opponent out of fight range just walks (round 4 §2)', () => {

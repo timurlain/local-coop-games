@@ -184,12 +184,12 @@ describe('trap hand: tap the Trapulator to cycle (round 4 §1)', () => {
     expect(spy.mapOpen).toBe(false);
   });
 
-  it('cycling is still allowed in a shared room', () => {
+  it('cycling is not done in a shared room (play test 5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 40, 20);
     place(s, 1, 4, 160, 20);
     const ev = tap(s);
-    expect(spy.selected).toBe('bomba');
+    expect(spy.selected).toBeNull();
     expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
   });
 });
@@ -241,17 +241,17 @@ describe('map: hold the Trapulator (round 4 §1)', () => {
     expect(s.spies[0].clock).toBe(0);
   });
 
-  it('is refused in a shared room: a head shake, no map, no cost', () => {
+  it('does nothing in a shared room: no map, no refusal, no cost (play test 5)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 40, 20);
     place(s, 1, 4, 160, 20);
     const clock = spy.clock;
     const ev = run(s, [input({ trap: true }), IDLE], 1);
     expect(spy.mapOpen).toBe(false);
-    expect(ev.filter((e) => e.type === 'refused')).toEqual([{ type: 'refused', spy: 0 }]);
+    expect(ev.filter((e) => e.type === 'refused')).toEqual([]);
     expect(ev.filter((e) => e.type === 'mapOpened')).toEqual([]);
     expect(spy.clock).toBeCloseTo(clock - 1, 6);
-    step(s, [IDLE, IDLE], TICK); // the release of a refused hold is no tap
+    step(s, [IDLE, IDLE], TICK); // the release of a shared-room press is no tap either
     expect(spy.selected).toBeNull();
   });
 
@@ -263,6 +263,19 @@ describe('map: hold the Trapulator (round 4 §1)', () => {
     place(s, 1, 4, 160, 20);
     step(s, [input({ trap: true }), IDLE], TICK);
     expect(spy.mapOpen).toBe(false);
+  });
+
+  it('a press started in a shared room stays ignored until released, even after the opponent leaves (play test 5)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 40, 20);
+    const other = place(s, 1, 4, 160, 20);
+    run(s, [input({ trap: true }), IDLE], 1); // held throughout the shared room
+    other.room = 7; // opponent leaves while the button is still held
+    const ev = run(s, [input({ trap: true }), IDLE], RULES.trapTapMax + TICK);
+    expect(spy.mapOpen).toBe(false);
+    expect(ev.filter((e) => e.type === 'mapOpened')).toEqual([]);
+    step(s, [IDLE, IDLE], TICK); // release
+    expect(spy.selected).toBeNull(); // no cycle on release either
   });
 });
 
@@ -397,8 +410,8 @@ describe('refused: the head shake (round 4 §1)', () => {
   it('round 4 fix: shared room, opponent out of fight range — swings instead of refusing, even with casovana selected', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 40, 20);
+    select(s, 'casovana'); // selected before the opponent walks in (the button no longer cycles in a shared room)
     place(s, 1, 4, 160, 20);
-    select(s, 'casovana');
     const stock = spy.stock.casovana;
     const ev = step(s, [input({ action: true }), IDLE], TICK);
     expect(ev).toContainEqual({ type: 'swing', spy: 0 });
@@ -411,8 +424,8 @@ describe('refused: the head shake (round 4 §1)', () => {
   it('shared room in fight range swings instead of refusing', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 100, 20);
+    select(s, 'bomba'); // selected before the opponent walks in
     place(s, 1, 4, 110, 20);
-    select(s, 'bomba');
     const ev = step(s, [input({ action: true }), IDLE], TICK);
     expect(ev).toContainEqual({ type: 'swing', spy: 0 });
     expect(ev.filter((e) => e.type === 'refused')).toEqual([]);

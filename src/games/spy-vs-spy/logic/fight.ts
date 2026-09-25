@@ -17,14 +17,12 @@ export function inFightRange(a: Spy, b: Spy): boolean {
 }
 
 /**
- * Holding the direction away from the opponent = block (guard stance, round 4 §2), but only while
- * the opponent is within fight range: standing your ground only makes sense against someone close
- * enough to swing at you. Out of range, holding away is just walking towards the back of the room.
+ * Holding the Trapulator button while an opponent shares the room = block (guard stance with the open umbrella,
+ * round 4 §2; play test 5: its own key, so walking away from the opponent is plain walking). The spy stands still
+ * while blocking. In a shared room the button does nothing else (see `updateTrapButton`).
  */
 export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): void {
-  const o = sameRoomOpponent(state, spy);
-  spy.blocking = o !== null && spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveX !== 0
-    && input.moveX === -Math.sign(o.x - spy.x) && inFightRange(spy, o);
+  spy.blocking = input.trap && spy.mode === 'normal' && spy.kickTimer <= 0 && sameRoomOpponent(state, spy) !== null;
 }
 
 /**
