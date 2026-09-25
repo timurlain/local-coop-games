@@ -33,8 +33,8 @@ export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): voi
  * Round 6 §1: the Trapulator button held together with down, while not swinging, is a duck — stops a head
  * bash, and the spy doesn't move that tick — but only when the opponent is actually within fight range (L3
  * review, carried over from the old "down alone" duck). An opponent merely sharing the room but out of reach
- * can't be ducked at, so holding trap+down there still just stands in place with the head bash still landing
- * (no duck), and down alone always just walks, like the other directions.
+ * can't be ducked at, so trap+down there is neither a duck nor a block — he simply walks down — and down alone
+ * always just walks, like the other directions.
  */
 export function updateDucking(state: GameState, spy: Spy, input: SpyInput): void {
   const o = sameRoomOpponent(state, spy);

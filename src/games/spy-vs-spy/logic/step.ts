@@ -154,8 +154,8 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   // Down alone always walks; trap alone (without down) is the block above instead.
   updateDucking(state, spy, input);
   if (spy.ducking) return false;
-  // Guard stance (round 4 §2): holding away from an opponent within fight range stands his ground
-  // instead of walking — the block frame, immobile, same idea as ducking above.
+  // Block (round 4 §2, play test 5): the Trapulator held in a shared room stands his ground instead of
+  // walking — the open-umbrella frame, immobile, same idea as ducking above.
   if (guarding) return false;
   if (spy.mode !== 'normal' || spy.placing !== null) return false;
   return updateMovement(state, spy, input, dt, events);
