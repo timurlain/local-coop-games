@@ -84,6 +84,15 @@ describe('createGame', () => {
     });
   });
 
+  it('never puts more than one secret item in the same room (round 5)', () => {
+    forAll((s) => {
+      const hidden = s.furniture.filter((f) => f.hidden !== null);
+      expect(hidden).toHaveLength(5);
+      const rooms = hidden.map((f) => f.room);
+      expect(new Set(rooms).size).toBe(5);
+    });
+  });
+
   it('starts both spies together in the same room, facing each other, with full stock', () => {
     forAll((s, level) => {
       const [white, black] = s.spies;
@@ -214,14 +223,21 @@ describe('level table (spec §4)', () => {
   });
 
   it('gives tiny embassies enough furniture for every fixture, secret and the kufrik', () => {
-    // a 3×2 embassy (level 1 before round 5): 2 fixtures × 4 kinds + 4 secrets + kufrik = 13 pieces > 6 × 2
-    expect(minFurniturePerRoom(6)).toBe(3);
     // round 5 §4: level 1 is 3×3 now, so every level keeps the minimum of 2
     for (const l of LEVELS) {
       const { cols, rows } = levelRules(l);
       expect(minFurniturePerRoom(cols * rows), `level ${l}`).toBe(RULES.furniturePerRoom.min);
     }
     expect(() => minFurniturePerRoom(2)).toThrow();
+  });
+
+  it('fails loudly when too few rooms could ever keep a non-fixture piece (round 5: one secret per room)', () => {
+    // a 3×2 embassy (level 1 before round 5): fit within furniturePerRoom.max, but worst-case fixture placement
+    // (2 fixtures paired up per room) could empty 4 of its 6 rooms, leaving only 2 — short of the 5 needed.
+    expect(() => minFurniturePerRoom(6)).toThrow();
+    // level 1's actual size (9 rooms, 3×3) sits exactly on the boundary: 8 fixtures could empty at most 4 rooms,
+    // leaving exactly 5 — still enough for the 4 secrets and the kufřík.
+    expect(minFurniturePerRoom(9)).toBe(RULES.furniturePerRoom.min);
   });
 
   it('defaults to a valid level', () => {
