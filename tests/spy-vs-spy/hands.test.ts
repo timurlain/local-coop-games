@@ -12,37 +12,42 @@ const placing = { trap: 'bomba' as const, target: { on: 'floor' as const }, time
 
 describe('handItems (round 4 §2): what goes in which hand', () => {
   it('empty hands: nothing drawn', () => {
-    expect(handItems(spy(), 'stand')).toEqual({ front: null, back: null });
+    expect(handItems(spy(), 'stand', false)).toEqual({ front: null, back: null });
   });
 
   it('carrying only: the carried thing in the front hand (kufřík, satchel, remedy)', () => {
-    expect(handItems(spy({ hand: kufrik }), 'stand')).toEqual({ front: 'kufrik', back: null });
-    expect(handItems(spy({ hand: pas }), 'walk1')).toEqual({ front: 'satchel', back: null });
-    expect(handItems(spy({ hand: voda }), 'stand')).toEqual({ front: 'voda', back: null });
+    expect(handItems(spy({ hand: kufrik }), 'stand', false)).toEqual({ front: 'kufrik', back: null });
+    expect(handItems(spy({ hand: pas }), 'walk1', false)).toEqual({ front: 'satchel', back: null });
+    expect(handItems(spy({ hand: voda }), 'stand', false)).toEqual({ front: 'voda', back: null });
   });
 
   it('a trap selected, nothing carried: the trap icon in the front hand', () => {
-    expect(handItems(spy({ selected: 'pistole' }), 'stand')).toEqual({ front: 'pistole', back: null });
-    expect(handItems(spy({ selected: 'casovana' }), 'refuse1')).toEqual({ front: 'casovana', back: null });
+    expect(handItems(spy({ selected: 'pistole' }), 'stand', false)).toEqual({ front: 'pistole', back: null });
+    expect(handItems(spy({ selected: 'casovana' }), 'refuse1', false)).toEqual({ front: 'casovana', back: null });
   });
 
   it('a trap selected and something carried: trap in front, the carried thing moves to the back hand', () => {
-    expect(handItems(spy({ selected: 'bomba', hand: kufrik }), 'walk2')).toEqual({ front: 'bomba', back: 'kufrik' });
-    expect(handItems(spy({ selected: 'elektrina', hand: voda }), 'stand')).toEqual({ front: 'elektrina', back: 'voda' });
+    expect(handItems(spy({ selected: 'bomba', hand: kufrik }), 'walk2', false)).toEqual({ front: 'bomba', back: 'kufrik' });
+    expect(handItems(spy({ selected: 'elektrina', hand: voda }), 'stand', false)).toEqual({ front: 'elektrina', back: 'voda' });
   });
 
-  it('fight frames: the umbrella is in front, so no trap is drawn; the carried thing hangs at the back hand', () => {
+  it('while fighting (round 6 play test): nothing is drawn in either hand, whatever is carried or selected', () => {
     for (const frame of UMBRELLA_FRAMES) {
-      expect(handItems(spy({ selected: 'bomba', hand: kufrik }), frame)).toEqual({ front: null, back: 'kufrik' });
-      expect(handItems(spy({ selected: 'bomba' }), frame)).toEqual({ front: null, back: null });
+      expect(handItems(spy({ selected: 'bomba', hand: kufrik }), frame, true)).toEqual({ front: null, back: null });
+      expect(handItems(spy({ selected: 'bomba' }), frame, true)).toEqual({ front: null, back: null });
+      expect(handItems(spy({ hand: voda }), frame, true)).toEqual({ front: null, back: null });
     }
     expect(UMBRELLA_FRAMES).toContain('fightStand');
     expect(UMBRELLA_FRAMES).toContain('swingStrike');
     expect(UMBRELLA_FRAMES).toContain('duck');
   });
 
+  it('once the fight ends, the normal icons are drawn again', () => {
+    expect(handItems(spy({ selected: 'bomba', hand: kufrik }), 'stand', false)).toEqual({ front: 'bomba', back: 'kufrik' });
+  });
+
   it('while placing, the trap is drawn flying into its target, not in the hand', () => {
-    expect(handItems(spy({ selected: 'bomba', placing, hand: pas }), 'placeTrap')).toEqual({ front: null, back: 'satchel' });
+    expect(handItems(spy({ selected: 'bomba', placing, hand: pas }), 'placeTrap', false)).toEqual({ front: null, back: 'satchel' });
   });
 });
 

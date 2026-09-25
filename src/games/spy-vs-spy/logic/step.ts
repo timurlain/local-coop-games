@@ -1,11 +1,11 @@
 import { updateArmouryTimers } from './armoury';
 import { cancelDoorOpening, cancelSwing, dropHand, updateDead } from './death';
-import { sharesRoom, updateBlocking, updateDucking, updateHealthRegen, updateSwing } from './fight';
+import { updateBlocking, updateDucking, updateHealthRegen, updateSwing } from './fight';
 import { updateAction, updateDoorOpening, updateSearching } from './interact';
-import { dropOnEntering, updateMovement } from './movement';
+import { updateMovement } from './movement';
 import { scoreDeltas } from './score';
 import { cancelTrapButton, updatePlacing, updateTimeBombs, updateTrapButton } from './traps';
-import { isActive, type GameEvent, type GameState, type PlayerId, type Spy, type SpyInput } from './state';
+import { type GameEvent, type GameState, type PlayerId, type Spy, type SpyInput } from './state';
 
 /**
  * Advances the game by `dt` seconds. Mutates `state`; returns what happened
@@ -33,12 +33,6 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
 
   // Alternate who is processed first each tick, so a simultaneous kill doesn't always favour spy 0.
   const order: readonly PlayerId[] = state.tick % 2 === 0 ? [0, 1] : [1, 0];
-  // Spies that passed an internal door this tick (spec §3). Judged only after BOTH spies have
-  // moved, below — evaluating a `dropOnEntering` immediately inside the per-spy loop would let
-  // processing order decide it: if both spies pass doors into each other's current room in the
-  // same tick, whoever is processed first would drop while the other (who by then has already
-  // left) would not, even though neither ends up sharing a room with an active opponent.
-  const entered = new Set<PlayerId>();
   for (const id of order) {
     const spy = state.spies[id];
     const input = inputs[spy.id];
@@ -58,7 +52,7 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
         updateSearching(state, spy, dt, events);
         break;
       case 'normal':
-        if (updateNormal(state, spy, input, dt, events)) entered.add(id);
+        updateNormal(state, spy, input, dt, events);
         break;
       case 'out':
       case 'escaped':
@@ -67,14 +61,6 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     // The Trapulator only listens to a free spy: dead, searching or out, any press in progress is forgotten.
     if (spy.mode !== 'normal') cancelTrapButton(spy);
     spy.prev = { ...input };
-  }
-
-  // Judge entering-drops now that both spies have finished moving this tick, before the time
-  // bombs tick (order chosen arbitrarily between the two end-of-tick passes; documented here
-  // since nothing in the spec depends on it — bombs don't interact with entering).
-  for (const id of entered) {
-    const spy = state.spies[id];
-    if (isActive(spy) && sharesRoom(state, spy)) dropOnEntering(state, spy, events);
   }
 
   updateTimeBombs(state, dt, events);
@@ -116,8 +102,7 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
   events.push({ type: 'timeout', spy: spy.id });
 }
 
-/** Returns true when the spy passed through an internal door into a new room this tick. */
-function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
+function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
   // This tick's guard stance (round 4 §2), as judged by the pre-pass before either spy moved —
   // not the `updateBlocking` re-run below, which exists only to keep the render-facing flag current
   // and can otherwise see a room the opponent only reached by crossing paths with this spy through
@@ -129,38 +114,38 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   if (spy.kickTimer > 0) {
     spy.kickTimer = Math.max(0, spy.kickTimer - dt);
     cancelTrapButton(spy);
-    return false;
+    return;
   }
   // Opening a door (spec §5) or putting a trap down (round 4 §1): the spy is fully immobile — no
   // movement, no Trapulator, no fighting — same idea as a search taking over the tick.
   if (spy.doorOpening !== null) {
     cancelTrapButton(spy);
     updateDoorOpening(state, spy, dt, events);
-    return false;
+    return;
   }
   if (spy.placing !== null) {
     cancelTrapButton(spy);
     updatePlacing(state, spy, dt, events);
-    return false;
+    return;
   }
   // Round 4 §1: a tap on the Trapulator cycles the trap in hand while the spy keeps walking; a
   // hold opens the map, and only the open map holds him still (no Akce, no blocking either).
   updateTrapButton(state, spy, input, dt, events);
   if (spy.mapOpen) {
     spy.blocking = false;
-    return false;
+    return;
   }
   updateBlocking(state, spy, input);
   updateAction(state, spy, input, dt, events);
   // Duck (round 6 §1): shared room + Trapulator held + down + not swinging; a ducking spy doesn't move.
   // Down alone always walks; trap alone (without down) is the block above instead.
   updateDucking(state, spy, input);
-  if (spy.ducking) return false;
+  if (spy.ducking) return;
   // Block (round 4 §2, play test 5): the Trapulator held in a shared room stands his ground instead of
   // walking — the open-umbrella frame, immobile, same idea as ducking above.
-  if (guarding) return false;
-  if (spy.mode !== 'normal' || spy.placing !== null) return false;
-  return updateMovement(state, spy, input, dt, events);
+  if (guarding) return;
+  if (spy.mode !== 'normal' || spy.placing !== null) return;
+  updateMovement(state, spy, input, dt, events);
 }
 
 function updateResult(state: GameState, events: GameEvent[]): void {

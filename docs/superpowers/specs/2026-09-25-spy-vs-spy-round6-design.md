@@ -48,3 +48,24 @@ All death animations keep their length and the angel afterwards.
 - Logic: duck/block mapping and down-walks; one-of-a-kind take rule (search, death drop, kufřík merge); generator counts, one-per-room and capacity for every level; salvage +1 (not časovaná); cabinet placement rules, resupply choice, per-spy 60 s timer, no hiding, traps on it; determinism.
 - Render helpers: slot state, escape timeline phases and skip, death effect phase helpers.
 - Controller checks sheets and in-game views in the browser.
+
+## 8. Play-test change: items stay through a fight
+- Old rule (spec §3, 1984 original): a spy entering a room where the opponent was active dropped
+  everything on the spot — the selected trap was emptied (no stock refund, none was spent) and any
+  secret, kufřík or remedy in hand was lost or re-hidden in furniture (`dropOnEntering`, emitting a
+  `dropped` event), the same way death does.
+- Play test verdict: this punished simply walking into the wrong room as hard as losing a fight,
+  and cost a spy his progress even when no fight happened at all. **Carried things now stay with
+  the spy through a fight.** Entering the opponent's room drops nothing: the hand (secret, kufřík,
+  remedy) and the selected trap are kept, and `dropOnEntering` is gone — `step` no longer judges
+  entering at all.
+- While the two spies share a room (a fight), the carried thing and the selected trap are **not
+  drawn** — only render, nothing logical changes. `handItems` (`render/spy.ts`) takes a `fighting`
+  flag and returns `{ front: null, back: null }` for the whole fight, in both hands; once the
+  shared room ends, the normal icons are drawn again immediately.
+- Death is now the **only** way a `dropped` event fires: `kill` → `dropHand` (`logic/death.ts`) is
+  unchanged, still re-hiding the carried thing in the nearest free furniture (or losing a remedy)
+  and emitting `dropped`. The clock running out (`step.ts` `updateClock` → `dropHand`) is likewise
+  unchanged.
+- The HUD/Trapulator TAJNÉ slots are unaffected: they read game state directly, not the render-only
+  hand icons, so they keep showing what the spy actually has, fight or not.

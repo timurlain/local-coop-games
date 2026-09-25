@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { kill } from '../../src/games/spy-vs-spy/logic/death';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
+import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import { OPEN_RULES, atFurniture, firstFurniture, input, kufrik, openDoor, openGame, place, remedy, run, secret, taken } from './fixtures';
 
 const IDLE = input();
@@ -464,8 +466,8 @@ describe('two attacks and ducking (spec §8)', () => {
   });
 });
 
-describe('meeting: entering is judged at the end of the tick (spec §3, fairness)', () => {
-  it('does not drop either spy when they pass each other through the same door in one tick', () => {
+describe('meeting: carried things stay with the spy through a fight (round 6 play test)', () => {
+  it('keeps hand and trap selection when passing the opponent through the same door in one tick', () => {
     const s = openGame();
     const a = place(s, 0, 4, RULES.roomW, RULES.roomD / 2);
     const b = place(s, 1, 5, 0, RULES.roomD / 2);
@@ -480,7 +482,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
 
-  it('drops both spies when they enter the same empty room from different doors in one tick', () => {
+  it('keeps both hands when both spies enter the same empty room from different doors in one tick', () => {
     const s = openGame();
     const a = place(s, 0, 1, RULES.roomW / 2, RULES.roomD);
     const b = place(s, 1, 3, RULES.roomW, RULES.roomD / 2);
@@ -491,24 +493,12 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     const ev = step(s, [input({ moveY: 1 }), input({ moveX: 1 })], 1 / 60);
     expect(a.room).toBe(4);
     expect(b.room).toBe(4);
-    expect(a.hand).toBeNull();
-    expect(b.hand).toBeNull();
-    expect(ev.filter((e) => e.type === 'dropped')).toHaveLength(2);
+    expect(a.hand).toEqual(secret('klic'));
+    expect(b.hand).toEqual(secret('pas'));
+    expect(ev.filter((e) => e.type === 'dropped')).toHaveLength(0);
   });
 
-  it('still drops a spy that enters a room where the opponent already stands', () => {
-    const s = openGame();
-    place(s, 1, 1, 100, 20);
-    const spy = place(s, 0, 4, RULES.roomW / 2, 0);
-    openDoor(s, 0, 'N');
-    spy.hand = secret('pas');
-    const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
-    expect(spy.room).toBe(1);
-    expect(spy.hand).toBeNull();
-    expect(ev).toContainEqual(expect.objectContaining({ type: 'dropped', spy: 0 }));
-  });
-
-  it('empties the trap in hand and re-hides a held secret in the same drop when entering', () => {
+  it('keeps the hand and selected trap when entering a room where the opponent already stands', () => {
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
@@ -517,15 +507,14 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     spy.selected = 'bomba';
     const stockBefore = spy.stock.bomba;
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
-    expect(spy.selected).toBeNull();
+    expect(spy.room).toBe(1);
+    expect(spy.hand).toEqual(secret('pas'));
+    expect(spy.selected).toBe('bomba');
     expect(spy.stock.bomba).toBe(stockBefore);
-    expect(spy.hand).toBeNull();
-    const dropped = ev.filter((e) => e.type === 'dropped');
-    expect(dropped).toHaveLength(1);
-    expect(dropped[0]).toEqual({ type: 'dropped', spy: 0, thing: secret('pas'), furniture: expect.any(Number) });
+    expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
 
-  it('loses a held remedy with nothing to refund and furniture null', () => {
+  it('keeps a carried remedy through the meeting', () => {
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
@@ -533,27 +522,36 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     spy.hand = remedy('voda');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
-    expect(spy.hand).toBeNull();
-    expect(ev).toContainEqual({ type: 'dropped', spy: 0, thing: remedy('voda'), furniture: null });
+    expect(spy.hand).toEqual(remedy('voda'));
+    expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
 
-  it('emits dropped with a null thing when entering empty-handed', () => {
+  it('keeps a carried kufřík, still findable in hand, not re-hidden in furniture', () => {
     const s = openGame();
     place(s, 1, 1, 100, 20);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
     openDoor(s, 0, 'N');
+    spy.hand = kufrik('pas', 'klic');
     const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
-    expect(ev).toContainEqual({ type: 'dropped', spy: 0, thing: null, furniture: null });
+    expect(spy.hand).toEqual(kufrik('pas', 'klic'));
+    expect(s.furniture.every((f) => f.hidden === null)).toBe(true);
+    expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
 
-  it('does not drop when entering an empty room', () => {
+  it('the hand is still there once the opponent has left the shared room', () => {
     const s = openGame();
+    const other = place(s, 1, 1, RULES.roomW, RULES.roomD / 2);
     const spy = place(s, 0, 4, RULES.roomW / 2, 0);
     openDoor(s, 0, 'N');
     spy.hand = secret('pas');
-    const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
+    step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
     expect(spy.room).toBe(1);
+    expect(spy.hand).toEqual(secret('pas'));
+    // the opponent walks away to another room, ending the meeting
+    openDoor(s, 1, 'E');
+    const ev = step(s, [IDLE, input({ moveX: 1 })], 1 / 60);
+    expect(other.room).not.toBe(1);
     expect(spy.hand).toEqual(secret('pas'));
     expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
@@ -585,22 +583,6 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
 
-  it('re-hides a kufrik into a free furniture in the destination room, with the matching furniture id in the event', () => {
-    const s = openGame();
-    place(s, 1, 1, 100, 20);
-    const spy = place(s, 0, 4, RULES.roomW / 2, 0);
-    openDoor(s, 0, 'N');
-    spy.hand = kufrik('pas', 'klic');
-    const ev = step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
-    expect(spy.room).toBe(1);
-    expect(spy.hand).toBeNull();
-    const holders = s.furniture.filter((f) => f.hidden !== null);
-    expect(holders).toHaveLength(1);
-    expect(holders[0].room).toBe(1);
-    expect(holders[0].hidden).toEqual(kufrik('pas', 'klic'));
-    expect(ev).toContainEqual({ type: 'dropped', spy: 0, thing: kufrik('pas', 'klic'), furniture: holders[0].id });
-  });
-
   it('does not drop a respawning spy: the opponent sitting in the room of death sends it elsewhere', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
@@ -619,6 +601,26 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     expect(spy.room).not.toBe(0);
     expect(ev).toContainEqual({ type: 'respawn', spy: 0 });
     expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
+  });
+
+  it('death in a fight still re-hides the carried secret in furniture with a dropped event', () => {
+    const s = openGame();
+    place(s, 1, 1, 100, 20);
+    const spy = place(s, 0, 4, RULES.roomW / 2, 0);
+    openDoor(s, 0, 'N');
+    spy.hand = secret('pas');
+    step(s, [input({ moveY: -1 }), IDLE], 1 / 60);
+    expect(spy.room).toBe(1);
+    expect(spy.hand).toEqual(secret('pas'));
+    // still sharing the room (a fight), the opponent lands the killing strike
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'fight', ev, 1);
+    expect(spy.mode).toBe('dead');
+    expect(spy.hand).toBeNull();
+    const holders = s.furniture.filter((f) => f.hidden !== null);
+    expect(holders).toHaveLength(1);
+    expect(holders[0].hidden).toEqual(secret('pas'));
+    expect(ev).toContainEqual({ type: 'dropped', spy: 0, thing: secret('pas'), furniture: holders[0].id });
   });
 });
 
