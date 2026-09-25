@@ -40,19 +40,22 @@ function gameplayFingerprint(s: GameState): string {
 }
 
 /**
- * Re-recorded on purpose for round 5 review fixes: free-standing pieces moved off the back door (x 62-70 / 130-138).
+ * Re-recorded on purpose for round 6 §3 (two money and two passports): `placeThings` hides 6 secret items plus the
+ * kufřík (7 distinct rooms instead of 5), and fixtures now skip a room's last non-fixture piece, so the RNG draws of
+ * both change and every seed's fixtures and hidden things move.
+ * Before that, re-recorded for round 5 review fixes: free-standing pieces moved off the back door (x 62-70 / 130-138).
  * Before that, re-recorded for round 5 (at most one secret item per room): `placeThings` now shuffles rooms with a
  * non-fixture piece and picks 5 distinct ones, instead of shuffling the flat furniture pool, so the RNG draws
  * change and every seed's hidden-thing rooms move. Previously re-recorded for round 5 §5 (2-3 pieces per room,
  * one side of the back door each, and free-standing pieces on the floor).
  */
 const RECORDED: Record<string, string> = {
-  'mala:1': '80173b6b', 'mala:7': '8ac9ce7d', 'mala:42': 'b87dc9e4', 'mala:1234': 'aef4a76a',
-  'mala:99999': 'a4b47e96', 'mala:3735928559': 'a8049ff1',
-  'stredni:1': '4bb93e4c', 'stredni:7': 'd813e088', 'stredni:42': 'f067f3a1', 'stredni:1234': 'aa0ecaf6',
-  'stredni:99999': '784cc7f7', 'stredni:3735928559': '28ac696d',
-  'velka:1': '63c13978', 'velka:7': 'c7c4f47b', 'velka:42': '5d82b72e', 'velka:1234': '2ba1c3d9',
-  'velka:99999': '64a37b0b', 'velka:3735928559': 'b474d6b8',
+  'mala:1': '8fe55cbc', 'mala:7': '71b5474f', 'mala:42': '78e4ac40', 'mala:1234': '416ff80c',
+  'mala:99999': 'f738e92e', 'mala:3735928559': 'fe5ef789',
+  'stredni:1': '7d096a6a', 'stredni:7': 'a1d8a594', 'stredni:42': '917a1c46', 'stredni:1234': '74835ff3',
+  'stredni:99999': '38049066', 'stredni:3735928559': '1f0781cb',
+  'velka:1': '4d6c4bdd', 'velka:7': 'c51e5f0f', 'velka:42': '6d049499', 'velka:1234': '8888796d',
+  'velka:99999': 'b467f6a7', 'velka:3735928559': '788f558a',
 };
 
 describe('host embassy and year', () => {

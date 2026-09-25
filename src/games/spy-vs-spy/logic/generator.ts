@@ -3,7 +3,7 @@ import { RULES, levelRules } from './rules';
 import { THEME_FURNITURE, assignThemes, decorate, pickHost } from './themes';
 import {
   DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, FREE_STANDING_KINDS, NO_INPUT, OPPOSITE, SECRETS, neighbor,
-  type Dir, type FixtureKind, type Furniture, type FurnitureKind, type GameState, type PlayerId, type Room, type Spy, type TrapKind,
+  type Dir, type FixtureKind, type Furniture, type FurnitureKind, type GameState, type PlayerId, type Room, type SecretKind, type Spy, type TrapKind,
 } from './state';
 
 const LOOKS_SALT = 0x5eed7e3a;
@@ -104,16 +104,21 @@ function carveDoors(state: GameState): void {
   }
 }
 
+/** Round 6 §3: every secret item the generator hides, in placement order (`RULES.secretCopies` of each kind). */
+export function secretItems(): SecretKind[] {
+  return SECRETS.flatMap((kind) => Array<SecretKind>(RULES.secretCopies[kind]).fill(kind));
+}
+
 /**
- * Fewest furniture pieces per room so that fixtures (4 kinds × fixtureCount), 4 secrets and the kufřík always get
- * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (a 3×2 would need 3; no level is
+ * Fewest furniture pieces per room so that fixtures (4 kinds × fixtureCount), the secret items and the kufřík always
+ * get distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (a 3×2 would need 3; no level is
  * that small since round 5). Fixtures stay on the wall, and a room with a free-standing piece may have one wall piece
  * fewer than the minimum, so that is counted too. Throws when even full rooms of `max` pieces are not enough, or
- * (round 5: at most one secret item per room) when too few rooms could ever keep a non-fixture piece for one.
+ * (round 5: at most one secret item per room) when the secret items and kufřík cannot get distinct rooms.
  */
 export function minFurniturePerRoom(roomCount: number): number {
   const fixtures = FIXTURE_KINDS.length * fixtureCount(roomCount);
-  const needed = fixtures + SECRETS.length + 1;
+  const needed = fixtures + secretItems().length + 1;
   const min = Math.max(
     RULES.furniturePerRoom.min,
     Math.ceil(needed / roomCount),
@@ -127,24 +132,22 @@ export function minFurniturePerRoom(roomCount: number): number {
 }
 
 /**
- * Round 5: the 4 secrets and the kufřík must land in 5 *distinct* rooms, each in a non-fixture piece. A
- * free-standing piece (round 5 §5) is immune to becoming a fixture — only wall pieces are eligible — so a room
- * can only ever end up with zero non-fixture furniture if it has no free-standing piece (both its wall slots,
- * `RULES.slotX.length`, are free) *and* two different fixture kinds land on those two wall slots. A room forced
- * free-standing (`min >= max`) can never be emptied at all. Worst case, adversarial fixture placement pairs
- * fixtures two per room and empties `floor(fixtures / RULES.slotX.length)` rooms; this throws if that leaves
- * fewer than `SECRETS.length + 1` rooms with a guaranteed non-fixture piece.
+ * Round 5, tightened in round 6 §3 (6 secret items + the kufřík = 7 distinct rooms, level 1 has 9): fixtures never
+ * take a room's last non-fixture piece (`placeFixtureKind`), so every room keeps one for a secret item. That holds
+ * as long as the fixtures fit: every room can take at least one fixture without losing its last non-fixture piece
+ * (a room without a free-standing piece has two wall pieces; one with it keeps the free piece, which is never a
+ * fixture), so `fixtures <= roomCount` is always enough. Throws if the fixtures could not fit that way, or if there
+ * are fewer rooms than secret items plus the kufřík.
  */
 function checkSecretRoomCapacity(roomCount: number, fixtures: number): void {
-  const need = SECRETS.length + 1;
-  const worstEmptied = RULES.furniturePerRoom.min >= RULES.furniturePerRoom.max
-    ? 0
-    : Math.min(roomCount, Math.floor(fixtures / RULES.slotX.length));
-  const surviving = roomCount - worstEmptied;
-  if (surviving < need) {
+  const need = secretItems().length + 1;
+  if (fixtures > roomCount) {
     throw new Error(
-      `embassy of ${roomCount} rooms too small: only ${surviving} rooms are guaranteed a non-fixture piece, need ${need} distinct rooms for the secrets and kufřík`,
+      `embassy of ${roomCount} rooms too small: ${fixtures} fixtures could leave a room without a non-fixture piece`,
     );
+  }
+  if (roomCount < need) {
+    throw new Error(`embassy of ${roomCount} rooms too small: need ${need} distinct rooms for the secrets and kufřík`);
   }
 }
 
@@ -201,8 +204,11 @@ function placeFixtureKind(state: GameState, kind: FixtureKind, count: number): v
     for (const roomId of roomOrder) {
       if (placed >= count) return;
       if (!allowRepeat && usedRooms.has(roomId)) continue;
-      // fixtures always hang on the wall (round 5 §5)
-      const candidates = state.rooms[roomId].furniture.filter((id) => !isFixture(state.furniture[id]) && state.furniture[id].z === 0);
+      // fixtures always hang on the wall (round 5 §5), and never take a room's last non-fixture piece (round 6 §3:
+      // every room stays able to hide a secret item)
+      const ordinary = state.rooms[roomId].furniture.filter((id) => !isFixture(state.furniture[id]));
+      if (ordinary.length < 2) continue;
+      const candidates = ordinary.filter((id) => state.furniture[id].z === 0);
       if (candidates.length === 0) continue;
       const f = state.furniture[pick(state.rng, candidates)];
       f.kind = kind;
@@ -239,20 +245,22 @@ function placeSpawn(state: GameState): void {
 }
 
 /**
- * Round 5: at most one secret item per room at the start. The 4 secrets and the kufřík go into 5 *distinct*
- * rooms — rooms are shuffled, then one non-fixture piece is picked in each of the first 5 that have one.
- * `checkSecretRoomCapacity` (run up front, in `minFurniturePerRoom`) guarantees at least 5 such rooms exist.
+ * Round 5: at most one secret item per room at the start. The secret items (round 6 §3: `secretItems()`, 6 of them)
+ * and the kufřík go into *distinct* rooms — rooms are shuffled, then one non-fixture piece is picked in each of the
+ * first ones that have one. `checkSecretRoomCapacity` (run up front, in `minFurniturePerRoom`) and the fixture rule
+ * in `placeFixtureKind` guarantee every room keeps such a piece.
  */
 function placeThings(state: GameState): void {
-  const need = SECRETS.length + 1;
+  const items = secretItems();
+  const need = items.length + 1;
   const roomsWithSpace = state.rooms.filter((r) => r.furniture.some((id) => !isFixture(state.furniture[id])));
   if (roomsWithSpace.length < need) {
     throw new Error(`only ${roomsWithSpace.length} rooms have a non-fixture piece; need ${need} distinct rooms`);
   }
   const chosenRooms = shuffle(state.rng, roomsWithSpace).slice(0, need);
   const chosenFurniture = chosenRooms.map((r) => pick(state.rng, r.furniture.filter((id) => !isFixture(state.furniture[id]))));
-  SECRETS.forEach((secret, i) => {
+  items.forEach((secret, i) => {
     state.furniture[chosenFurniture[i]].hidden = { kind: 'secret', secret, lastHolder: null };
   });
-  state.furniture[chosenFurniture[SECRETS.length]].hidden = { kind: 'kufrik', contents: [], lastHolder: null };
+  state.furniture[chosenFurniture[items.length]].hidden = { kind: 'kufrik', contents: [], lastHolder: null };
 }

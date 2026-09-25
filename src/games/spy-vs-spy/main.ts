@@ -371,6 +371,7 @@ function soundFor(e: GameEvent): SfxName | null {
   switch (e.type) {
     case 'searchStart': return 'search';
     case 'found': return e.thing ? 'found' : 'nothing';
+    case 'alreadyHave': return 'nothing';
     case 'stored': return 'found';
     case 'swapped': return 'swap';
     case 'hidden': return 'thud';

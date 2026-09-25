@@ -241,6 +241,8 @@ export type GameEvent =
   | { type: 'stored'; spy: PlayerId; secret: SecretKind; furniture: number; stolenFrom?: PlayerId }
   | { type: 'swapped'; spy: PlayerId; gave: Thing; took: Thing; furniture: number; stolenFrom?: PlayerId }
   | { type: 'hidden'; spy: PlayerId; thing: Thing; furniture: number }
+  /** round 6 §3: the piece holds a secret kind the spy already has (one of a kind); it stays hidden, the spy shrugs */
+  | { type: 'alreadyHave'; spy: PlayerId; furniture: number }
   | { type: 'dropped'; spy: PlayerId; thing: Thing | null; furniture: number | null }
   | { type: 'trapSet'; spy: PlayerId; trap: TrapKind }
   /** round 4 §1: the spy shakes his head — no valid target, target already trapped, or a shared room */

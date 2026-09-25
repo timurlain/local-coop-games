@@ -104,6 +104,9 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
       return e.thing
         ? { kind: 'found', spy: e.spy, thing: e.thing, furniture: e.furniture }
         : { kind: 'nothing', spy: e.spy, furniture: e.furniture };
+    case 'alreadyHave':
+      // round 6 §3: one of a kind — the same shrug as finding nothing
+      return { kind: 'nothing', spy: e.spy, furniture: e.furniture };
     case 'hidden':
       return { kind: 'hidden', spy: e.spy, thing: e.thing, furniture: e.furniture };
     case 'swapped':

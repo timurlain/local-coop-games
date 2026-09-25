@@ -118,5 +118,8 @@ export function updateSearching(state: GameState, spy: Spy, dt: number, events: 
       // Round 4 §2: empty furniture on a search with something in hand — it goes in.
       events.push({ type: 'hidden', spy: spy.id, thing: gave!, furniture: f.id });
       break;
+    case 'alreadyHave':
+      events.push({ type: 'alreadyHave', spy: spy.id, furniture: f.id });
+      break;
   }
 }

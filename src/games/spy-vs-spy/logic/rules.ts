@@ -1,4 +1,4 @@
-import type { TrapKind } from './state';
+import type { SecretKind, TrapKind } from './state';
 
 /** One difficulty level (spec §4): embassy grid, clock per spy and each spy's starting trap stock. */
 export interface LevelRules {
@@ -43,6 +43,9 @@ export const RULES = {
   furnitureReachX: 22,
   furnitureReachZ: 12,
   furniturePerRoom: { min: 2, max: 3 },
+  /** Round 6 §3: how many of each secret kind the generator hides. A spy still carries at most one of a kind, and
+   *  escape still needs one of each in the kufřík. */
+  secretCopies: { klic: 1, penize: 2, pas: 2, plany: 1 } as Readonly<Record<SecretKind, number>>,
   extraDoorChance: 0.5,
   searchTime: 0.5,
   timeBombFuse: 15,
