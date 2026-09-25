@@ -78,7 +78,7 @@ export const RULES = {
   breadcrumbsMaxLevel: 6,
   /** Levels 1-8, index = level - 1 (spec §4). Stock order: bomba/pružina/elektřina/pistole/časovaná. */
   levels: [
-    level(3, 2, 5, [1, 1, 1, 1, 1]),
+    level(3, 3, 5, [1, 1, 1, 1, 1]),
     level(3, 3, 6, [2, 2, 1, 1, 1]),
     level(4, 3, 8, [2, 2, 2, 2, 1]),
     level(4, 4, 10, [3, 3, 2, 2, 2]),

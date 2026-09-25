@@ -197,7 +197,7 @@ describe('level table (spec §4)', () => {
       return `${l} ${r.cols}x${r.rows} ${r.clockSeconds / 60}min ${st.bomba}/${st.pruzina}/${st.elektrina}/${st.pistole}/${st.casovana}`;
     });
     expect(rows).toEqual([
-      '1 3x2 5min 1/1/1/1/1',
+      '1 3x3 5min 1/1/1/1/1',
       '2 3x3 6min 2/2/1/1/1',
       '3 4x3 8min 2/2/2/2/1',
       '4 4x4 10min 3/3/2/2/2',
@@ -215,14 +215,10 @@ describe('level table (spec §4)', () => {
   });
 
   it('gives tiny embassies enough furniture for every fixture, secret and the kufrik', () => {
-    // level 1: 6 rooms, 2 fixtures × 4 kinds + 4 secrets + kufrik = 13 pieces > 6 × 2
+    // a 3×2 embassy (level 1 before round 5): 2 fixtures × 4 kinds + 4 secrets + kufrik = 13 pieces > 6 × 2
     expect(minFurniturePerRoom(6)).toBe(3);
-    for (const seed of SEEDS) {
-      const s = createGame(seed, 1);
-      for (const r of s.rooms) expect(r.furniture.length).toBeGreaterThanOrEqual(3);
-    }
-    // every other level keeps the round-2 minimum of 2
-    for (const l of LEVELS.slice(1)) {
+    // round 5 §4: level 1 is 3×3 now, so every level keeps the minimum of 2
+    for (const l of LEVELS) {
       const { cols, rows } = levelRules(l);
       expect(minFurniturePerRoom(cols * rows), `level ${l}`).toBe(RULES.furniturePerRoom.min);
     }

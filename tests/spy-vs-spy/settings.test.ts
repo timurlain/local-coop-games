@@ -5,7 +5,7 @@ import { levelReadout, levelStats, migrateSettings } from '../../src/games/spy-v
 describe('level readout (spec §4)', () => {
   it('counts rooms, traps of both spies and minutes per level', () => {
     expect(LEVELS.map((l) => levelStats(l))).toEqual([
-      { rooms: 6, traps: 10, minutes: 5 },
+      { rooms: 9, traps: 10, minutes: 5 },
       { rooms: 9, traps: 14, minutes: 6 },
       { rooms: 12, traps: 18, minutes: 8 },
       { rooms: 16, traps: 24, minutes: 10 },
@@ -18,7 +18,7 @@ describe('level readout (spec §4)', () => {
 
   it('formats the menu readout', () => {
     expect(levelReadout(8)).toBe('36 místností · 70 pastí · 24 min');
-    expect(levelReadout(1)).toBe('6 místností · 10 pastí · 5 min');
+    expect(levelReadout(1)).toBe('9 místností · 10 pastí · 5 min');
   });
 });
 

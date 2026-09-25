@@ -106,7 +106,7 @@ function carveDoors(state: GameState): void {
 
 /**
  * Fewest furniture pieces per room so that fixtures (4 kinds × fixtureCount), 4 secrets and the kufřík always get
- * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (level 1's 3×2 needs 3). Throws when
+ * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (a 3×2 would need 3; no level is that small since round 5). Throws when
  * even a full room of `max` pieces is not enough.
  */
 export function minFurniturePerRoom(roomCount: number): number {
