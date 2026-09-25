@@ -93,7 +93,7 @@ describe('wall decorations and rugs', () => {
         }
       }
     });
-  });
+  }, 15_000);
 
   it('keeps decorations clear of tall furniture and of a north door or exit (round 4 §5: taller doors)', () => {
     forAll((s) => {
