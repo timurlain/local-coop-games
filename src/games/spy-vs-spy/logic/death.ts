@@ -22,8 +22,12 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   spy.kickTimer = 0;
   cancelSwing(spy);
   cancelDoorOpening(state, spy);
-  dropHand(state, spy);
+  const thing = spy.hand;
+  const furniture = dropHand(state, spy);
   events.push({ type: 'died', spy: spy.id, cause, killer });
+  // Round 5: show where the hand item landed (spec §7 scoring is untouched — `dropped` carries no
+  // score delta — and the sound stays a plain 'clatter', same as entering the opponent's room).
+  if (thing !== null) events.push({ type: 'dropped', spy: spy.id, thing, furniture });
 }
 
 /** Drops a swing in progress, so a spy that is out of the fight never strikes (spec §8). */

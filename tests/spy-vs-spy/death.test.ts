@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { kill, respawnRoom, updateDead } from '../../src/games/spy-vs-spy/logic/death';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { scoreDeltas } from '../../src/games/spy-vs-spy/logic/score';
 import { makeRng } from '../../src/shared/rng';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
@@ -92,6 +93,55 @@ describe('kill', () => {
     kill(s, spy, 'bomba', []);
     const holder = s.furniture.find((f) => f.hidden?.kind === 'secret')!;
     expect(holder.room).toBe(0);
+  });
+
+  it('emits dropped with the receiving furniture so render shows where the item landed (round 5 §3)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    spy.hand = kufrik('pas', 'klic');
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'bomba', ev);
+    const holder = s.furniture.find((f) => f.hidden !== null)!;
+    expect(ev).toEqual([
+      { type: 'died', spy: 0, cause: 'bomba' },
+      { type: 'dropped', spy: 0, thing: kufrik('pas', 'klic'), furniture: holder.id },
+    ]);
+  });
+
+  it('emits no dropped event when the hand was empty', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'bomba', ev);
+    expect(ev).toEqual([{ type: 'died', spy: 0, cause: 'bomba' }]);
+  });
+
+  it('emits dropped with furniture null when a remedy vanishes', () => {
+    const s = openGame();
+    for (const f of s.furniture) f.hidden = secret('klic');
+    const spy = s.spies[0];
+    spy.hand = remedy('nuzky');
+    const ev: GameEvent[] = [];
+    kill(s, spy, 'bomba', ev);
+    expect(ev).toEqual([
+      { type: 'died', spy: 0, cause: 'bomba' },
+      { type: 'dropped', spy: 0, thing: remedy('nuzky'), furniture: null },
+    ]);
+  });
+
+  it('does not change the score (dropped carries no score delta)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 100, 20);
+    spy.hand = kufrik('pas', 'klic');
+    const withDrop: GameEvent[] = [];
+    kill(s, spy, 'bomba', withDrop);
+
+    const s2 = openGame();
+    const spy2 = place(s2, 0, 4, 100, 20);
+    const withoutDrop: GameEvent[] = [];
+    kill(s2, spy2, 'bomba', withoutDrop);
+
+    expect(scoreDeltas(s, withDrop)).toEqual(scoreDeltas(s2, withoutDrop));
   });
 });
 
