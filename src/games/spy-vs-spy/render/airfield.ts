@@ -108,3 +108,62 @@ export function drawAirliner(
     line(ctx, sx + 3 - steps * 2, oy, sx + 3, sy, '#4a4a4a');
   }
 }
+
+/**
+ * The airfield's ticket office (pokladna, round 6 §5): a 1930s wooden booth with a hipped roof and a sign board, a
+ * glazed window over a counter sill, and a clerk behind it (green eyeshade, round glasses, waistcoat). (x, y) = the
+ * booth's bottom-left corner on the ground; `nod` lowers the clerk's head a pixel, `hand` shows his hand on the sill.
+ */
+export function drawTicketBooth(ctx: Ctx, x: number, y: number, nod: boolean, hand: boolean): void {
+  const wood = '#7a4a24', plank = '#5e3718', light = '#a06a38', dark = '#2a1a10';
+  const w = 32;
+  // lower panelled body
+  r(ctx, x, y - 24, w, 24, wood);
+  for (let i = 4; i < w; i += 5) r(ctx, x + i, y - 22, 1, 22, plank);
+  r(ctx, x, y - 1, w, 1, dark);
+  // corner posts and the window opening
+  r(ctx, x, y - 44, 3, 20, wood);
+  r(ctx, x + w - 3, y - 44, 3, 20, wood);
+  r(ctx, x + 3, y - 42, w - 6, 18, '#2c2420');
+  // the clerk: shirt and waistcoat, head, eyeshade, glasses
+  const cx = x + w / 2, hy = y - 39 + (nod ? 1 : 0);
+  r(ctx, cx - 6, y - 30, 12, 6, '#f0ece0');
+  r(ctx, cx - 6, y - 30, 3, 6, '#3a3a44');
+  r(ctx, cx + 3, y - 30, 3, 6, '#3a3a44');
+  r(ctx, cx - 1, y - 30, 2, 2, '#8a1a1a');
+  r(ctx, cx - 3, hy, 7, 8, '#e6b089');
+  r(ctx, cx - 4, hy - 1, 9, 2, '#3a2a1a');
+  r(ctx, cx - 5, hy + 1, 11, 2, '#2f8a4a');
+  r(ctx, cx - 2, hy + 4, 2, 2, '#9ab0c0');
+  r(ctx, cx + 1, hy + 4, 2, 2, '#9ab0c0');
+  r(ctx, cx - 1, hy + 6, 3, 1, '#a0604a');
+  r(ctx, cx - 4, hy + 3, 1, 2, '#e6b089');
+  // glass glint in the upper corner, sill in front
+  r(ctx, x + 4, y - 41, 4, 1, '#c8d8e0');
+  r(ctx, x + 4, y - 40, 1, 3, '#c8d8e0');
+  r(ctx, x - 1, y - 25, w + 2, 2, light);
+  if (hand) r(ctx, cx - 5, y - 27, 4, 2, '#e6b089');
+  // hipped roof and the sign board
+  poly(ctx, [[x - 4, y - 44], [x + w + 4, y - 44], [x + w - 2, y - 50], [x + 2, y - 50]], '#8a2a1e');
+  r(ctx, x - 4, y - 44, w + 8, 1, '#5a1a12');
+  r(ctx, x + 1, y - 58, w - 2, 8, '#efe4c4');
+  r(ctx, x + 1, y - 58, w - 2, 1, dark);
+  r(ctx, x + 1, y - 51, w - 2, 1, dark);
+  ctx.save();
+  ctx.fillStyle = '#6a1a12';
+  ctx.font = 'bold 6px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('POKLADNA', x + w / 2, y - 52, w - 4);
+  ctx.restore();
+}
+
+/** Passport control's desk: a waist-high wooden lectern with an ink pad on top. (x, y) = bottom-left on the ground. */
+export function drawControlDesk(ctx: Ctx, x: number, y: number): void {
+  const w = 14;
+  r(ctx, x, y - 16, w, 16, '#6b3e1e');
+  r(ctx, x + 2, y - 13, w - 4, 10, '#7c4a26');
+  r(ctx, x - 1, y - 17, w + 2, 2, '#a06a38');
+  r(ctx, x + w - 5, y - 19, 4, 2, '#2a2a44');
+  r(ctx, x, y - 1, w, 1, '#2a1a10');
+}
