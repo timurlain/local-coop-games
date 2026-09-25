@@ -20,6 +20,7 @@ export function createSpy(
     selected: null, trapPress: null, mapOpen: false, placing: null, refuseTimer: 0, stock: { ...stock },
     armouryTimer: 0, stockFlash: null,
     swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, kickTimer: 0, doorOpening: null,
+    pushingDoor: null,
     enteredAt: 0, visited, trail: [], prev: { ...NO_INPUT },
   };
 }

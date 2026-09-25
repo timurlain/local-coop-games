@@ -224,6 +224,10 @@ export interface Spy {
   kickTimer: number;
   /** door key this spy is opening (immobile); its 0.3 s countdown lives on `GameState.doorOpen[key]` (spec §5) */
   doorOpening: string | null;
+  /** the door (open or closed) this spy is standing at and pressing into this tick, or null; used to fire a
+   *  `bump` only on the tick pushing into a particular closed door starts (spec §5), not every tick held —
+   *  reset on room change and respawn so arriving fresh at a door (even the same one) bumps again */
+  pushingDoor: Dir | null;
   /** `GameState.tick` when the spy entered its current room: door pass, match start (same for both) or respawn (spec §2) */
   enteredAt: number;
   visited: boolean[];

@@ -110,6 +110,7 @@ export function updateDead(state: GameState, spy: Spy, dt: number, events: GameE
   spy.visited[spy.room] = true;
   spy.x = RULES.roomW / 2;
   spy.z = RULES.spawnZ;
+  spy.pushingDoor = null;
   spy.enteredAt = state.tick;
   events.push({ type: 'respawn', spy: spy.id });
 }

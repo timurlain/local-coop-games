@@ -47,6 +47,7 @@ export function place(s: GameState, id: PlayerId, room: number, x: number, z: nu
   spy.x = x;
   spy.z = z;
   spy.visited[room] = true;
+  spy.pushingDoor = null;
   return spy;
 }
 

@@ -18,11 +18,14 @@ export function updateMovement(state: GameState, spy: Spy, input: SpyInput, dt: 
   spy.x = clamp(spy.x + input.moveX * RULES.speedX * dt, 0, RULES.roomW);
   spy.z = clamp(spy.z + input.moveY * RULES.speedZ * dt, 0, RULES.roomD);
   const dir = pushingDoor(state, spy, input);
+  const wasPushing = spy.pushingDoor;
+  spy.pushingDoor = dir;
   if (dir === null) return false;
   const key = doorKeyFor(state, spy.room, dir);
   if (state.doorOpen[key]?.phase !== 'open') {
-    // Closed door (spec §5): no pass, just a bump — once per fresh push, not every tick held.
-    if (isFreshPush(spy, input, dir)) events.push({ type: 'bump', spy: spy.id });
+    // Closed door (spec §5): no pass, just a bump — once when the push into THIS door starts (he
+    // wasn't at it, or wasn't holding into it, last tick), not every tick it's held.
+    if (wasPushing !== dir) events.push({ type: 'bump', spy: spy.id });
     return false;
   }
   return goThrough(state, spy, dir, events);
@@ -36,17 +39,6 @@ function pushingDoor(state: GameState, spy: Spy, input: SpyInput): Dir | null {
   if (d === 'W' && input.moveX === -1 && spy.x <= 0) return d;
   if (d === 'E' && input.moveX === 1 && spy.x >= RULES.roomW) return d;
   return null;
-}
-
-/** True only on the tick the relevant direction was newly pressed into this door, so a held
- *  direction against a closed door bumps once, not every tick (spec §5, "once per push"). */
-function isFreshPush(spy: Spy, input: SpyInput, dir: Dir): boolean {
-  switch (dir) {
-    case 'N': return spy.prev.moveY !== -1;
-    case 'S': return spy.prev.moveY !== 1;
-    case 'W': return spy.prev.moveX !== -1;
-    case 'E': return spy.prev.moveX !== 1;
-  }
 }
 
 function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): boolean {
@@ -65,6 +57,7 @@ function goThrough(state: GameState, spy: Spy, dir: Dir, events: GameEvent[]): b
   spy.room = next;
   spy.enteredAt = state.tick;
   spy.visited[next] = true;
+  spy.pushingDoor = null;
   recordTrail(spy.trail, dir);
   switch (dir) {
     case 'N':
