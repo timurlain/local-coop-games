@@ -6,6 +6,10 @@ let sax = 0;
 let say = 0;
 const mx = (x: number): number => sax + (x - sax) * sk;
 const my = (y: number): number => say + (y - say) * sk;
+/** Snaps an already-scaled coordinate to a whole device pixel, like `r` does, so filled shapes stay crisp. */
+const snap = (v: number): number => Math.round(v);
+/** Snaps an already-scaled coordinate to the centre of a device pixel, so a 1-px stroke through it is crisp. */
+const snapLine = (v: number): number => Math.round(v) + 0.5;
 
 /**
  * Runs `draw` with every helper here (r, poly, line, text, disc) scaled by `k` around (ax, ay). Rectangles are
@@ -36,8 +40,8 @@ export function r(ctx: Ctx, x: number, y: number, w: number, h: number, color: s
 export function poly(ctx: Ctx, pts: readonly (readonly [number, number])[], color: string): void {
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(mx(pts[0][0]), my(pts[0][1]));
-  for (const [x, y] of pts.slice(1)) ctx.lineTo(mx(x), my(y));
+  ctx.moveTo(snap(mx(pts[0][0])), snap(my(pts[0][1])));
+  for (const [x, y] of pts.slice(1)) ctx.lineTo(snap(mx(x)), snap(my(y)));
   ctx.closePath();
   ctx.fill();
 }
@@ -46,8 +50,8 @@ export function line(ctx: Ctx, x1: number, y1: number, x2: number, y2: number, c
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(mx(x1), my(y1));
-  ctx.lineTo(mx(x2), my(y2));
+  ctx.moveTo(snapLine(mx(x1)), snapLine(my(y1)));
+  ctx.lineTo(snapLine(mx(x2)), snapLine(my(y2)));
   ctx.stroke();
 }
 
