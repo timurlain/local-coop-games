@@ -2,8 +2,8 @@ import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
 import { RULES, levelRules } from './rules';
 import { THEME_FURNITURE, assignThemes, decorate, pickHost } from './themes';
 import {
-  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, NO_INPUT, OPPOSITE, SECRETS, neighbor,
-  type Dir, type FixtureKind, type Furniture, type GameState, type PlayerId, type Room, type Spy, type TrapKind,
+  DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, FREE_STANDING_KINDS, NO_INPUT, OPPOSITE, SECRETS, neighbor,
+  type Dir, type FixtureKind, type Furniture, type FurnitureKind, type GameState, type PlayerId, type Room, type Spy, type TrapKind,
 } from './state';
 
 const LOOKS_SALT = 0x5eed7e3a;
@@ -106,30 +106,45 @@ function carveDoors(state: GameState): void {
 
 /**
  * Fewest furniture pieces per room so that fixtures (4 kinds × fixtureCount), 4 secrets and the kufřík always get
- * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (a 3×2 would need 3; no level is that small since round 5). Throws when
- * even a full room of `max` pieces is not enough.
+ * distinct pieces: `RULES.furniturePerRoom.min`, raised only for tiny embassies (a 3×2 would need 3; no level is
+ * that small since round 5). Fixtures stay on the wall, and a room with a free-standing piece may have one wall piece
+ * fewer than the minimum, so that is counted too. Throws when even full rooms of `max` pieces are not enough.
  */
 export function minFurniturePerRoom(roomCount: number): number {
-  const needed = FIXTURE_KINDS.length * fixtureCount(roomCount) + SECRETS.length + 1;
-  const min = Math.max(RULES.furniturePerRoom.min, Math.ceil(needed / roomCount));
+  const fixtures = FIXTURE_KINDS.length * fixtureCount(roomCount);
+  const needed = fixtures + SECRETS.length + 1;
+  const min = Math.max(
+    RULES.furniturePerRoom.min,
+    Math.ceil(needed / roomCount),
+    Math.ceil(fixtures / roomCount) + 1,
+  );
   if (min > RULES.furniturePerRoom.max) {
     throw new Error(`embassy of ${roomCount} rooms too small: needs room for ${needed} hidden things`);
   }
   return min;
 }
 
+/**
+ * 2-3 pieces per room (round 5 §5), on the gameplay RNG. About half the rooms (every room when `min` is 3) get one
+ * free-standing piece in the middle of the floor, of a free-standing kind from the room's theme; the rest stand on
+ * the back wall, at most one on each side of the back door. A room without a free piece has one on each side.
+ */
 function placeFurniture(state: GameState, min: number): void {
   const { max } = RULES.furniturePerRoom;
   for (const room of state.rooms) {
-    const count = min + randInt(state.rng, max - min + 1);
-    const slots = shuffle(state.rng, RULES.slotX).slice(0, count).sort((a, b) => a - b);
-    for (const x of slots) {
+    const pool = THEME_FURNITURE[room.theme];
+    const free = min >= max || rand(state.rng) < RULES.freeStandingChance;
+    const wallCount = free ? min - 1 + randInt(state.rng, max - min + 1) : RULES.slotX.length;
+    const sides = shuffle(state.rng, RULES.slotX).slice(0, wallCount);
+    const add = (kind: FurnitureKind, x: number, z: number) => {
       const id = state.furniture.length;
-      state.furniture.push({
-        id, room: room.id, kind: pick(state.rng, THEME_FURNITURE[room.theme]), x,
-        hidden: null, source: null, trap: null,
-      });
+      state.furniture.push({ id, room: room.id, kind, x, z, hidden: null, source: null, trap: null });
       room.furniture.push(id);
+    };
+    for (const x of sides.map((side) => pick(state.rng, side)).sort((a, b) => a - b)) add(pick(state.rng, pool), x, 0);
+    if (free) {
+      const kind = pick(state.rng, pool.filter((k) => FREE_STANDING_KINDS.includes(k)));
+      add(kind, pick(state.rng, RULES.freeSlotX), pick(state.rng, RULES.freeSlotZ));
     }
   }
 }
@@ -162,7 +177,8 @@ function placeFixtureKind(state: GameState, kind: FixtureKind, count: number): v
     for (const roomId of roomOrder) {
       if (placed >= count) return;
       if (!allowRepeat && usedRooms.has(roomId)) continue;
-      const candidates = state.rooms[roomId].furniture.filter((id) => !isFixture(state.furniture[id]));
+      // fixtures always hang on the wall (round 5 §5)
+      const candidates = state.rooms[roomId].furniture.filter((id) => !isFixture(state.furniture[id]) && state.furniture[id].z === 0);
       if (candidates.length === 0) continue;
       const f = state.furniture[pick(state.rng, candidates)];
       f.kind = kind;

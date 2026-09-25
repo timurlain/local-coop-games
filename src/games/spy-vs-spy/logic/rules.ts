@@ -21,15 +21,25 @@ export const RULES = {
   doorHalfX: 12,
   /** half-width of E/W doors along z */
   doorHalfZ: 8,
-  /** how close to a wall counts as "standing at the door" */
-  doorReach: 6,
+  /** how close to a wall counts as "standing at the door" (round 5 §1: 6 → 10) */
+  doorReach: 10,
   speedX: 60,
   speedZ: 30,
-  /** furniture slots on the back wall */
-  slotX: [30, 65, 135, 170] as readonly number[],
-  furnitureReachX: 14,
-  furnitureReachZ: 8,
-  furniturePerRoom: { min: 2, max: 4 },
+  /**
+   * Back-wall furniture positions (round 5 §5): one piece at most on each side of the back door, at one of these x.
+   * With the round-5 reach no two pieces' zones touch, nor the back door's (x 88-112) or a side door's (x ≤ 10).
+   */
+  slotX: [[36, 48, 60], [140, 152, 164]] as readonly (readonly number[])[],
+  /** free-standing pieces (round 5 §5): x in the middle of the floor, z = their front edge */
+  freeSlotX: [80, 86, 92, 100, 108, 114, 120] as readonly number[],
+  freeSlotZ: [13, 15, 17] as readonly number[],
+  /** chance a room gets a free-standing piece (at most one) */
+  freeStandingChance: 0.5,
+  /** Reach of a piece (round 5 §1: 14 → 22, 8 → 12), for searching and placing alike: up to `furnitureReachX` to
+   *  either side and `furnitureReachZ` in front of it (of the wall, or of a free-standing piece's front edge). */
+  furnitureReachX: 22,
+  furnitureReachZ: 12,
+  furniturePerRoom: { min: 2, max: 3 },
   extraDoorChance: 0.5,
   searchTime: 0.5,
   timeBombFuse: 15,

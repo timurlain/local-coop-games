@@ -35,6 +35,8 @@ export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'hasicak', 'naradi', 'lekarnicka',
 ];
 export const FIXTURE_KINDS: readonly FixtureKind[] = ['vesak', 'hasicak', 'naradi', 'lekarnicka'];
+/** Kinds that may stand free on the floor (round 5 §5); tall pieces and fixtures always stay on the wall. */
+export const FREE_STANDING_KINDS: readonly FurnitureKind[] = ['stul', 'pohovka', 'globus', 'kvetina', 'trezor'];
 /** A fixture's kind always means its remedy; set on `Furniture.source` for every fixture and only for fixtures. */
 export const FIXTURE_REMEDY: Readonly<Record<FixtureKind, RemedyKind>> = {
   vesak: 'destnik',
@@ -75,8 +77,10 @@ export interface Furniture {
   id: number;
   room: number;
   kind: FurnitureKind;
-  /** x position on the back wall, logic units */
+  /** floor position, logic units: x along the room; z = 0 for a piece against the back wall, otherwise the front
+   *  edge of a free-standing piece (round 5 §5) */
   x: number;
+  z: number;
   /** the single hidden-thing slot */
   hidden: Thing | null;
   /** infinite remedy source (does not use the hidden slot) */

@@ -5,7 +5,7 @@ import {
   type Dir, type DoorTrapKind, type FurnitureTrapKind, type GameEvent, type GameState, type PlayerId, type RemedyKind, type Thing,
 } from '../logic/state';
 import { line, r, text } from './draw';
-import { VIEW, project, wallX } from './geometry';
+import { VIEW, furnitureBase, hidingSpot, project } from './geometry';
 import { drawGuard } from './guard';
 import { doorCentre } from './room';
 import { ICONS, SPY_H, type SpyFrame } from './sprite-data';
@@ -200,9 +200,9 @@ export function effectPose(queue: EffectQueue, spy: PlayerId, now: number): Effe
 const SPARKLE = ['#fff6c0', '#e8c547'];
 const DUST = ['#bdbdbd', '#8a8a8a'];
 
-/** Draws the effects of `room` (call inside the room clip, after the spies). */
-export function drawEffects(ctx: Ctx, state: GameState, queue: EffectQueue, room: number, now: number): void {
-  for (const e of effectsIn(queue, room, now)) drawEffect(ctx, state, e, progress(e, now));
+/** Draws one running effect at `now`; the view depth-sorts effects by their anchor `z` (round 5 §5). */
+export function drawEffectAt(ctx: Ctx, state: GameState, e: Effect, now: number): void {
+  drawEffect(ctx, state, e, progress(e, now));
 }
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -217,7 +217,7 @@ function hand(e: Effect, frame: SpyFrame): { x: number; y: number } {
 /** The hiding spot of a piece: a little above the floor line at its centre. */
 function slot(state: GameState, e: Effect): { x: number; y: number } | null {
   if (e.furniture === null) return null;
-  return { x: Math.round(wallX(state.furniture[e.furniture].x)), y: VIEW.backY - 5 };
+  return hidingSpot(state.furniture[e.furniture]);
 }
 
 function icon(ctx: Ctx, t: Thing | null, x: number, y: number): void {
@@ -360,15 +360,17 @@ function drawDisarm(ctx: Ctx, state: GameState, e: Effect, t: number): void {
   // The spy may walk off through the door he just opened: then only the part in the room stays behind.
   const spy = state.spies[e.spy];
   const withSpy = spy.room === e.room && spy.mode !== 'dead';
+  // the floor line of the defused piece: the back wall's, or a free-standing piece's front edge (round 5 §5)
+  const base = (e.furniture === null ? VIEW.backY : Math.round(furnitureBase(state.furniture[e.furniture]).y)) - 1;
   switch (e.remedy) {
     case 'destnik':
       if (withSpy) umbrella(ctx, h, t);
       break;
     case 'voda':
-      water(ctx, frame, sx, sy, flip, h, e.facing, t, withSpy, handOutline(baseColor(spy)));
+      water(ctx, frame, sx, sy, flip, h, e.facing, t, withSpy, handOutline(baseColor(spy)), base);
       break;
     case 'kleste':
-      snipSpring(ctx, h, e.facing, t, withSpy);
+      snipSpring(ctx, h, e.facing, t, withSpy, base);
       break;
     case 'nuzky':
       cutString(ctx, e, h, t, withSpy);
@@ -407,10 +409,9 @@ function umbrella(ctx: Ctx, h: Pt, t: number): void {
 /** The bucket in hand pours an arc of water onto the bomb's lit fuse; a steam puff rises and the bomb is out. */
 function water(
   ctx: Ctx, frame: SpyFrame, sx: number, sy: number, flip: boolean, h: Pt, facing: -1 | 1, t: number, withSpy: boolean,
-  outline: string,
+  outline: string, by: number,
 ): void {
   const bx = h.x + facing * 11;
-  const by = VIEW.backY - 1;
   if (withSpy) drawInHand(ctx, 'voda', frame, sx, sy, flip, 'front', outline);
   if (t < 0.75) drawIcon(ctx, 'bomba', bx, by);
   const fuse = { x: bx + 2, y: by - 7 };
@@ -443,9 +444,8 @@ function steam(ctx: Ctx, x: number, y: number, k: number): void {
 }
 
 /** A coiled spring pops up out of the furniture, the pliers snap it, and the two halves drop. */
-function snipSpring(ctx: Ctx, h: Pt, facing: -1 | 1, t: number, withSpy: boolean): void {
+function snipSpring(ctx: Ctx, h: Pt, facing: -1 | 1, t: number, withSpy: boolean, base: number): void {
   const x = h.x + facing * 10;
-  const base = VIEW.backY - 1;
   const coil = (y0: number, y1: number, dx = 0): void => {
     for (let y = y0, i = 0; y > y1; y -= 2, i++) line(ctx, x - 2 + dx, y, x + 2 + dx, y - 1, i % 2 === 0 ? STEEL : '#8a8a8a');
   };

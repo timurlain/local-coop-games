@@ -3,7 +3,7 @@ import { sameRoomOpponent } from '../logic/fight';
 import { doorAt } from '../logic/places';
 import { isActive, type Dir, type GameState, type Placing, type Spy } from '../logic/state';
 import { line, r, text } from './draw';
-import { VIEW, project, wallX } from './geometry';
+import { VIEW, hidingSpot, project } from './geometry';
 import { doorCentre } from './room';
 import { SPY_H, SPY_W, type SpyFrame, type SpyPalette } from './sprite-data';
 import type { EffectPose } from './effects';
@@ -86,7 +86,7 @@ export function placeProgress(p: Placing): number {
 function placeTargetPoint(state: GameState, spy: Spy, p: Placing, sx: number, sy: number): { x: number; y: number } {
   switch (p.target.on) {
     case 'furniture':
-      return { x: Math.round(wallX(state.furniture[p.target.furniture].x)), y: VIEW.backY - 5 };
+      return hidingSpot(state.furniture[p.target.furniture]);
     case 'door': {
       const dir = doorAt(state, spy);
       return dir === null ? { x: sx, y: sy - 4 } : doorCentre(dir);

@@ -150,7 +150,7 @@ function drawMobbed(ctx: Ctx, state: GameState, loser: Spy, t: number, now: numb
   ctx.rect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
   ctx.clip();
   ctx.translate(shake, 0);
-  drawRoom(ctx, state, loser.room, null, now);
+  drawRoom(ctx, state, loser.room, now);
 
   const onFloor = loser.mode === 'normal' || loser.mode === 'searching';
   const { sx, sy } = project(onFloor ? loser.x : RULES.roomW / 2, onFloor ? loser.z : RULES.roomD / 2);

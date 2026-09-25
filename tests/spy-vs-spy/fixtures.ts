@@ -60,12 +60,14 @@ export function openDoor(s: GameState, spyId: PlayerId, dir: Dir): void {
   s.doorOpen[key] = { phase: 'open', timer: RULES.doorOpenDuration };
 }
 
+/** The room's first piece: always one on the back wall (they are generated first). */
 export function firstFurniture(s: GameState, room: number): Furniture {
   return s.furniture[s.rooms[room].furniture[0]];
 }
 
+/** Puts spy `id` right at the piece: on its front edge (z 0 for a wall piece). */
 export function atFurniture(s: GameState, id: PlayerId, f: Furniture): Spy {
-  return place(s, id, f.room, f.x, 0);
+  return place(s, id, f.room, f.x, f.z);
 }
 
 export const input = (p: Partial<SpyInput> = {}): SpyInput => ({ ...NO_INPUT, ...p });

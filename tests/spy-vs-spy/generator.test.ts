@@ -50,14 +50,13 @@ describe('createGame', () => {
     });
   });
 
-  it('puts 2-4 furniture pieces per room on distinct slots', () => {
+  it('puts 2-3 furniture pieces per room on distinct positions (round 5 §5)', () => {
     forAll((s) => {
       for (const r of s.rooms) {
         expect(r.furniture.length).toBeGreaterThanOrEqual(2);
-        expect(r.furniture.length).toBeLessThanOrEqual(4);
-        const xs = r.furniture.map((id) => s.furniture[id].x);
+        expect(r.furniture.length).toBeLessThanOrEqual(3);
+        const xs = r.furniture.map((id) => `${s.furniture[id].x},${s.furniture[id].z}`);
         expect(new Set(xs).size).toBe(xs.length);
-        for (const x of xs) expect(RULES.slotX).toContain(x);
         for (const id of r.furniture) expect(s.furniture[id].room).toBe(r.id);
       }
     });
@@ -173,11 +172,11 @@ describe('remedy fixtures', () => {
     });
   });
 
-  it('keeps 2-4 furniture pieces per room including fixtures', () => {
+  it('keeps 2-3 furniture pieces per room including fixtures', () => {
     forAll((s) => {
       for (const r of s.rooms) {
         expect(r.furniture.length).toBeGreaterThanOrEqual(2);
-        expect(r.furniture.length).toBeLessThanOrEqual(4);
+        expect(r.furniture.length).toBeLessThanOrEqual(3);
       }
     });
   });

@@ -30,7 +30,7 @@ function hiddenForFingerprint(hidden: Thing | null): string {
 function gameplayFingerprint(s: GameState): string {
   const doors = s.rooms.map((r) => `${+r.doors.N}${+r.doors.S}${+r.doors.E}${+r.doors.W}${r.exit ?? '-'}`).join('|');
   const furn = s.furniture
-    .map((f) => `${f.room}:${f.x}:${f.source ?? '-'}:${hiddenForFingerprint(f.hidden)}`)
+    .map((f) => `${f.room}:${f.x}:${f.z}:${f.source ?? '-'}:${hiddenForFingerprint(f.hidden)}`)
     .join('|');
   const spies = s.spies.map((p) => `${p.room}:${p.x}:${p.z}`).join('|');
   const str = `${doors}#${furn}#${spies}#${JSON.stringify(s.rng)}`;
@@ -39,14 +39,18 @@ function gameplayFingerprint(s: GameState): string {
   return h.toString(16).padStart(8, '0');
 }
 
-/** Recorded at b944621, before the host country and year existed. */
+/**
+ * Re-recorded on purpose for round 5 (§5): 2-3 pieces per room, one side of the back door each, and free-standing
+ * pieces on the floor (their `z` is part of the fingerprint now). Recorded at b944621 before that, when the host
+ * country and year were added.
+ */
 const RECORDED: Record<string, string> = {
-  'mala:1': '813ba75c', 'mala:7': 'bbc97d2a', 'mala:42': '8970a15b', 'mala:1234': '87ca148a',
-  'mala:99999': '71ade0d5', 'mala:3735928559': '00728c28',
-  'stredni:1': 'bea2f814', 'stredni:7': 'ced0688e', 'stredni:42': '666f32bf', 'stredni:1234': '598c7a06',
-  'stredni:99999': '5782b289', 'stredni:3735928559': '6f4e8491',
-  'velka:1': '133806f4', 'velka:7': 'e1e72e94', 'velka:42': 'db3abaa9', 'velka:1234': '3ffb1ee2',
-  'velka:99999': '96beed54', 'velka:3735928559': '78aebbca',
+  'mala:1': '04c8da8a', 'mala:7': 'a916c6b5', 'mala:42': '96358487', 'mala:1234': '6e9b0527',
+  'mala:99999': '94ca5302', 'mala:3735928559': '7b370b7b',
+  'stredni:1': '734761a5', 'stredni:7': '8aeab5e7', 'stredni:42': 'bf90b97f', 'stredni:1234': 'd54615ea',
+  'stredni:99999': 'ec9bea35', 'stredni:3735928559': '9e5c56f4',
+  'velka:1': 'bbbf2c22', 'velka:7': 'bcc9145e', 'velka:42': 'b3bb8f38', 'velka:1234': 'ff3c36cf',
+  'velka:99999': '08527c01', 'velka:3735928559': 'a4afe1d1',
 };
 
 describe('host embassy and year', () => {
@@ -98,7 +102,7 @@ describe('host embassy and year', () => {
     expect(years.size).toBe(9);
   });
 
-  it('leaves the gameplay layout of a seed exactly as before', () => {
+  it('keeps the gameplay layout of a seed as recorded (looks never move it)', () => {
     const now: Record<string, string> = {};
     for (const key of Object.keys(RECORDED)) {
       const [size, seed] = key.split(':');

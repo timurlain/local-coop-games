@@ -81,15 +81,24 @@ export function doorsToDraw(room: Room, showExit: boolean): { dir: Dir; isExit: 
   return out;
 }
 
+/** What a room view marks and leaves out (see `drawRoom`). */
+export interface RoomMarks {
+  /** furniture in reach of the viewer (white marker) */
+  near?: number | null;
+  /** where the trap in hand goes right now (red marker), round 4 §1 */
+  armedFurniture?: number | null;
+  armedDoor?: Dir | null;
+  /** false leaves the airport exit out (hidden from this viewer, spec §4) */
+  showExit?: boolean;
+  /** false leaves free-standing pieces to the caller, which depth-sorts them with the spies (round 5 §5) */
+  freePieces?: boolean;
+}
+
 /**
- * Draws one room in logical coordinates of a half-viewport. `highlightId` marks furniture in reach of the viewer
- * (white); `armedFurnitureId` / `armedDoor` mark where an armed trap can be placed right now (red), spec §5.
- * `showExit` false leaves the airport exit out (hidden from this viewer, spec §4).
+ * Draws one room in logical coordinates of a half-viewport: background, decorations, doors, furniture and time
+ * bombs. Free-standing pieces are drawn here too unless `marks.freePieces` is false.
  */
-export function drawRoom(
-  ctx: Ctx, state: GameState, roomId: number, highlightId: number | null, now: number,
-  armedFurnitureId: number | null = null, armedDoor: Dir | null = null, showExit = true,
-): void {
+export function drawRoom(ctx: Ctx, state: GameState, roomId: number, now: number, marks: RoomMarks = {}): void {
   const room = state.rooms[roomId];
   const look = LOOKS[room.theme];
   const bg = background(ctx, room.theme, room.rug);
@@ -98,14 +107,16 @@ export function drawRoom(
 
   for (const d of room.decor) drawDecor(ctx, d, now);
 
-  for (const { dir, isExit } of doorsToDraw(room, showExit)) {
+  for (const { dir, isExit } of doorsToDraw(room, marks.showExit ?? true)) {
     const key = doorKeyFor(state, roomId, dir);
-    drawDoor(ctx, dir, isExit, dir === armedDoor, leafFraction(state.doorOpen[key]));
+    drawDoor(ctx, dir, isExit, dir === marks.armedDoor, leafFraction(state.doorOpen[key]));
   }
   if (look.light === 'chandelier') drawChandelier(ctx, now);
 
   for (const id of room.furniture) {
-    drawFurniture(ctx, state.furniture[id], room.theme, id === highlightId, id === armedFurnitureId, now);
+    const f = state.furniture[id];
+    if (f.z > 0 && marks.freePieces === false) continue;
+    drawPiece(ctx, state, f.id, now, marks);
   }
 
   for (const bomb of state.timeBombs) {
@@ -114,6 +125,12 @@ export function drawRoom(
     drawIcon(ctx, 'casovana', p.sx, p.sy);
     if (Math.floor(now * 2) % 2 === 0) text(ctx, String(Math.ceil(bomb.fuse)), p.sx, p.sy - 10, '#ff5050', 7, 'center');
   }
+}
+
+/** One piece of `state` with the markers `marks` gives it. */
+export function drawPiece(ctx: Ctx, state: GameState, id: number, now: number, marks: RoomMarks): void {
+  const f = state.furniture[id];
+  drawFurniture(ctx, f, state.rooms[f.room].theme, { near: id === marks.near, armed: id === marks.armedFurniture }, now);
 }
 
 /** y of the left side wall's floor edge (backLeft, backY)→(frontLeft, frontY), extended to any x. */

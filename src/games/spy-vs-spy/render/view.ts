@@ -6,11 +6,11 @@ import { cs } from '../../../shared/i18n/cs';
 import { isActive, type GameState, type PlayerId } from '../logic/state';
 import { drawDebug } from './debug';
 import { r, text } from './draw';
-import { drawEffects, effectPose, type EffectQueue } from './effects';
+import { drawEffectAt, effectPose, effectsIn, type EffectQueue } from './effects';
 import { drawFrame, drawMessages, drawUnder } from './hud';
 import { ROOM } from './layout';
 import { drawBigMap } from './map';
-import { drawRoom } from './room';
+import { drawPiece, drawRoom, type RoomMarks } from './room';
 import { drawSpy, trackMotion } from './spy';
 import { currentToast, type ToastQueue } from './toast';
 import { drawCable, drawDevice } from './trapulator';
@@ -53,6 +53,37 @@ function drawDarkRoom(ctx: CanvasRenderingContext2D): void {
   text(ctx, cs.spy.duel, ROOM.x + ROOM.w / 2, ROOM.y + ROOM.h / 2 + 2, '#8a8a96', 6, 'center');
 }
 
+/** One thing standing on the floor, drawn back to front (round 5 §5). */
+export interface Layer {
+  /** depth: a spy's or an effect's z, a free-standing piece's front edge */
+  z: number;
+  /** order at the same depth: 0 furniture, 1 spy, 2 effect — a spy at a piece's front edge stands in front of it */
+  rank: 0 | 1 | 2;
+  draw: () => void;
+}
+
+/** Back to front: by depth, then by rank. */
+export function depthSorted(layers: readonly Layer[]): Layer[] {
+  return [...layers].sort((a, b) => a.z - b.z || a.rank - b.rank);
+}
+
+/** Free-standing pieces, spies and effects of a room, depth-sorted (round 5 §5): a piece in front of a spy covers
+ *  him, one behind him is covered. */
+function roomLayers(
+  ctx: CanvasRenderingContext2D, state: GameState, roomId: number, now: number, marks: RoomMarks, effects: EffectQueue,
+): Layer[] {
+  const layers: Layer[] = [];
+  for (const id of state.rooms[roomId].furniture) {
+    const f = state.furniture[id];
+    if (f.z > 0) layers.push({ z: f.z, rank: 0, draw: () => drawPiece(ctx, state, id, now, marks) });
+  }
+  for (const s of state.spies) {
+    if (s.room === roomId) layers.push({ z: s.z, rank: 1, draw: () => drawSpy(ctx, state, s, now, effectPose(effects, s.id, now)) });
+  }
+  for (const e of effectsIn(effects, roomId, now)) layers.push({ z: e.z, rank: 2, draw: () => drawEffectAt(ctx, state, e, now) });
+  return depthSorted(layers);
+}
+
 export interface DebugInfo {
   on: boolean;
   fps: number;
@@ -84,12 +115,15 @@ export function renderGame(
         // none when nothing valid is in reach (or in a shared room, where it would be refused).
         const target = viewer.mode === 'normal' && viewer.selected !== null && !sharesRoom(state, viewer)
           ? placeTargetFor(state, viewer, viewer.selected) : null;
-        const armedFurnitureId = target?.on === 'furniture' ? target.furniture : null;
-        const armedDoor = target?.on === 'door' ? doorAt(state, viewer) : null;
-        drawRoom(ctx, state, viewer.room, near?.id ?? null, now, armedFurnitureId, armedDoor, exitShownIn(state, viewer.id));
-        const here = state.spies.filter((s) => s.room === viewer.room).sort((a, b) => a.z - b.z);
-        for (const s of here) drawSpy(ctx, state, s, now, effectPose(effects, s.id, now));
-        drawEffects(ctx, state, effects, viewer.room, now);
+        const marks: RoomMarks = {
+          near: near?.id ?? null,
+          armedFurniture: target?.on === 'furniture' ? target.furniture : null,
+          armedDoor: target?.on === 'door' ? doorAt(state, viewer) : null,
+          showExit: exitShownIn(state, viewer.id),
+          freePieces: false,
+        };
+        drawRoom(ctx, state, viewer.room, now, marks);
+        for (const layer of roomLayers(ctx, state, viewer.room, now, marks, effects)) layer.draw();
         if (debug.on) drawDebug(ctx, state, viewer.room, debug.fps);
       }
       drawMessages(ctx, viewer);

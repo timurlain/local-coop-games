@@ -54,7 +54,7 @@ describe('Akce at furniture always searches (round 4 §2)', () => {
 
   it('pressing away from furniture does nothing', () => {
     const s = openGame();
-    const spy = place(s, 0, 4, 100, 20);
+    const spy = place(s, 0, 4, 70, 34); // in reach of nothing, whatever the layout
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);
     expect(spy.mode).toBe('normal');
@@ -200,7 +200,7 @@ describe('a trap in hand (round 4 §1)', () => {
 
   it('refuses when there is no valid target and keeps the trap in hand', () => {
     const s = openGame();
-    const spy = place(s, 0, 4, 100, 20);
+    const spy = place(s, 0, 4, 70, 34); // in reach of nothing, whatever the layout
     spy.selected = 'bomba';
     const ev: GameEvent[] = [];
     act(s, spy, input({ action: true }), 1 / 60, ev);

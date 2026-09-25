@@ -40,3 +40,23 @@ export function project(x: number, z: number): { sx: number; sy: number } {
 export function wallX(x: number): number {
   return VIEW.backLeft + x * VIEW.scale;
 }
+
+/** Screen px per logic unit at depth z: the wall scale at the back, growing towards the viewer with the floor. */
+export function floorScale(z: number): number {
+  return (project(RULES.roomW, z).sx - project(0, z).sx) / RULES.roomW;
+}
+
+/**
+ * Where a furniture piece stands on screen and how big it is drawn (round 5 §5): wall pieces (z 0) on the back wall's
+ * floor line at the wall scale, free-standing ones on the floor at their front edge, scaled with the perspective.
+ */
+export function furnitureBase(f: { x: number; z: number }): { x: number; y: number; k: number } {
+  const { sx, sy } = project(f.x, f.z);
+  return { x: sx, y: sy, k: floorScale(f.z) };
+}
+
+/** The hiding spot of a piece, where things pop out and traps fly in: a little above its floor line, at its centre. */
+export function hidingSpot(f: { x: number; z: number }): { x: number; y: number } {
+  const b = furnitureBase(f);
+  return { x: Math.round(b.x), y: Math.round(b.y) - 5 };
+}

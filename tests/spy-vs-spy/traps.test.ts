@@ -354,7 +354,7 @@ describe('refused: the head shake (round 4 §1)', () => {
 
   it('furniture trap with no furniture in reach', () => {
     const s = openGame();
-    place(s, 0, 4, 100, 20);
+    place(s, 0, 4, 70, 34); // in reach of nothing, whatever the layout
     select(s, 'bomba');
     expectRefused(s, 'bomba');
   });
@@ -435,12 +435,12 @@ describe('refused: the head shake (round 4 §1)', () => {
 
   it('shows the shake for refuseTime without blocking movement', () => {
     const s = openGame();
-    const spy = place(s, 0, 4, 100, 20);
+    const spy = place(s, 0, 4, 70, 34); // in reach of nothing, whatever the layout
     select(s, 'bomba');
     step(s, [input({ action: true }), IDLE], TICK);
     expect(spy.refuseTimer).toBe(RULES.refuseTime);
     step(s, [input({ moveX: 1 }), IDLE], TICK);
-    expect(spy.x).toBeGreaterThan(100);
+    expect(spy.x).toBeGreaterThan(70);
     expect(spy.refuseTimer).toBeCloseTo(RULES.refuseTime - TICK, 9);
     run(s, [IDLE, IDLE], RULES.refuseTime);
     expect(spy.refuseTimer).toBe(0);

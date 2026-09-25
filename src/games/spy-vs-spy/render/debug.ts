@@ -1,7 +1,7 @@
 import { doorKeyFor } from '../logic/places';
 import { DIRS, type GameState, type Thing } from '../logic/state';
 import { text } from './draw';
-import { VIEW, wallX } from './geometry';
+import { VIEW, furnitureBase } from './geometry';
 
 function label(t: Thing): string {
   if (t.kind === 'secret') return t.secret;
@@ -19,7 +19,10 @@ export function drawDebug(ctx: CanvasRenderingContext2D, state: GameState, roomI
       f.hidden ? `H:${label(f.hidden)}` : '',
       f.trap ? `T:${f.trap.kind}` : '',
     ].filter(Boolean);
-    lines.forEach((l, i) => text(ctx, l, wallX(f.x), VIEW.wallTop + 2 + i * 6, '#ffeb3b', 5, 'center'));
+    // wall pieces label the wall above them, free-standing ones the floor under them
+    const x = furnitureBase(f).x;
+    const y0 = f.z === 0 ? VIEW.wallTop + 2 : furnitureBase(f).y + 5;
+    lines.forEach((l, i) => text(ctx, l, x, y0 + i * 6, '#ffeb3b', 5, 'center'));
   }
   DIRS.forEach((d, i) => {
     if (!room.doors[d] && room.exit !== d) return;

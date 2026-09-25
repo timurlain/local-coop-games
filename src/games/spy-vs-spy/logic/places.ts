@@ -2,15 +2,25 @@ import { hasAllSecrets } from './hand';
 import { RULES } from './rules';
 import { EXIT_KEY, doorKey, neighbor, type Dir, type Furniture, type GameState, type Spy } from './state';
 
-/** Nearest furniture within reach of a spy standing at the back wall, or null. */
+/**
+ * Whether a spy standing at (x, z) reaches piece `f` (round 5 §1, §5): at most `RULES.furnitureReachX` to either side
+ * and 0..`RULES.furnitureReachZ` in front of it — of the back wall for a wall piece, of the front edge for a
+ * free-standing one (never from behind it).
+ */
+export function inReach(f: Pick<Furniture, 'x' | 'z'>, x: number, z: number): boolean {
+  const dz = z - f.z;
+  return Math.abs(f.x - x) <= RULES.furnitureReachX && dz >= 0 && dz <= RULES.furnitureReachZ;
+}
+
+/** The furniture in reach of a spy (the nearest, should zones ever touch), or null. */
 export function furnitureAt(state: GameState, spy: Spy): Furniture | null {
-  if (spy.z > RULES.furnitureReachZ) return null;
   let best: Furniture | null = null;
   let bestDist = Infinity;
   for (const id of state.rooms[spy.room].furniture) {
     const f = state.furniture[id];
-    const d = Math.abs(f.x - spy.x);
-    if (d <= RULES.furnitureReachX && d < bestDist) {
+    if (!inReach(f, spy.x, spy.z)) continue;
+    const d = Math.abs(f.x - spy.x) + (spy.z - f.z);
+    if (d < bestDist) {
       best = f;
       bestDist = d;
     }
