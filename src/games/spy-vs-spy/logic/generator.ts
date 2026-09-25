@@ -14,7 +14,7 @@ export function createSpy(
   const visited = Array<boolean>(roomCount).fill(false);
   visited[room] = true;
   return {
-    id, room, x, z: RULES.roomD / 2, facing: id === 0 ? 1 : -1,
+    id, room, x, z: RULES.spawnZ, facing: id === 0 ? 1 : -1,
     hand: null, clock, health: RULES.health, sinceHit: 0, score: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, deathCause: null,
     selected: null, trapPress: null, mapOpen: false, placing: null, refuseTimer: 0, stock: { ...stock },

@@ -152,3 +152,13 @@ describe('furniture layout (round 5 §5)', () => {
     }
   });
 });
+
+describe('free-standing slots', () => {
+  it('keep even the widest piece (the 36-px pohovka) clear of the back door (x 88-112)', () => {
+    for (const x of RULES.freeSlotX) expect(x + 18 <= 88 || x - 18 >= 112).toBe(true);
+  });
+
+  it('leave the spawn point well in front of every free-standing piece', () => {
+    for (const z of RULES.freeSlotZ) expect(RULES.spawnZ).toBeGreaterThanOrEqual(z + 10);
+  });
+});

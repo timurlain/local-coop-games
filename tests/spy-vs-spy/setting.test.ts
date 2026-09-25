@@ -40,18 +40,19 @@ function gameplayFingerprint(s: GameState): string {
 }
 
 /**
- * Re-recorded on purpose for round 5 (at most one secret item per room): `placeThings` now shuffles rooms with a
+ * Re-recorded on purpose for round 5 review fixes: free-standing pieces moved off the back door (x 62-70 / 130-138).
+ * Before that, re-recorded for round 5 (at most one secret item per room): `placeThings` now shuffles rooms with a
  * non-fixture piece and picks 5 distinct ones, instead of shuffling the flat furniture pool, so the RNG draws
  * change and every seed's hidden-thing rooms move. Previously re-recorded for round 5 §5 (2-3 pieces per room,
  * one side of the back door each, and free-standing pieces on the floor).
  */
 const RECORDED: Record<string, string> = {
-  'mala:1': '19fc68a4', 'mala:7': '5f841147', 'mala:42': 'dca4708f', 'mala:1234': 'c4677035',
-  'mala:99999': 'be9fc83a', 'mala:3735928559': '00b7895e',
-  'stredni:1': '4dbb7144', 'stredni:7': 'a36a7365', 'stredni:42': '82f5e420', 'stredni:1234': '7203e808',
-  'stredni:99999': '37f73737', 'stredni:3735928559': '234eed45',
-  'velka:1': '4785aea0', 'velka:7': '3c32054f', 'velka:42': '77f8fda2', 'velka:1234': 'a58242fb',
-  'velka:99999': '0e6fdba8', 'velka:3735928559': '14441f66',
+  'mala:1': '80173b6b', 'mala:7': '8ac9ce7d', 'mala:42': 'b87dc9e4', 'mala:1234': 'aef4a76a',
+  'mala:99999': 'a4b47e96', 'mala:3735928559': 'a8049ff1',
+  'stredni:1': '4bb93e4c', 'stredni:7': 'd813e088', 'stredni:42': 'f067f3a1', 'stredni:1234': 'aa0ecaf6',
+  'stredni:99999': '784cc7f7', 'stredni:3735928559': '28ac696d',
+  'velka:1': '63c13978', 'velka:7': 'c7c4f47b', 'velka:42': '5d82b72e', 'velka:1234': '2ba1c3d9',
+  'velka:99999': '64a37b0b', 'velka:3735928559': 'b474d6b8',
 };
 
 describe('host embassy and year', () => {

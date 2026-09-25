@@ -99,7 +99,9 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
   const fighting = inFight(state, spy);
   if (fighting || pose !== null) busy(spy.id, now);
   const frame = pickFrame(spy, fighting, moving, now, pose, idleTime(spy.id, now));
-  const flip = spy.facing < 0;
+  // A blocking spy stands still (facing no longer follows the stick), so the open umbrella turns to the attacker.
+  const opponent = spy.blocking ? sameRoomOpponent(state, spy) : null;
+  const flip = opponent !== null ? opponent.x < spy.x : spy.facing < 0;
   drawSpySprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
   const { front, back } = handItems(spy, frame);
   const outline = handOutline(baseColor(spy));

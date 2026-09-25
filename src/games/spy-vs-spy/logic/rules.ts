@@ -30,11 +30,14 @@ export const RULES = {
    * With the round-5 reach no two pieces' zones touch, nor the back door's (x 88-112) or a side door's (x ≤ 10).
    */
   slotX: [[36, 48, 60], [140, 152, 164]] as readonly (readonly number[])[],
-  /** free-standing pieces (round 5 §5): x in the middle of the floor, z = their front edge */
-  freeSlotX: [80, 86, 92, 100, 108, 114, 120] as readonly number[],
+  /** free-standing pieces (round 5 §5): x on the floor to either side of the back door (x 88-112, so even the widest
+   *  piece never stands in front of it), z = their front edge */
+  freeSlotX: [62, 66, 70, 130, 134, 138] as readonly number[],
   freeSlotZ: [13, 15, 17] as readonly number[],
   /** chance a room gets a free-standing piece (at most one) */
   freeStandingChance: 0.5,
+  /** where a spy starts and respawns: centre x, in front of any free-standing piece's reach-free floor */
+  spawnZ: 28,
   /** Reach of a piece (round 5 §1: 14 → 22, 8 → 12), for searching and placing alike: up to `furnitureReachX` to
    *  either side and `furnitureReachZ` in front of it (of the wall, or of a free-standing piece's front edge). */
   furnitureReachX: 22,

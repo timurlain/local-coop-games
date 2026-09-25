@@ -99,8 +99,8 @@ describe('createGame', () => {
       expect(white.room).toBe(black.room);
       expect(white.x).toBe(40);
       expect(black.x).toBe(160);
-      expect(white.z).toBe(RULES.roomD / 2);
-      expect(black.z).toBe(RULES.roomD / 2);
+      expect(white.z).toBe(RULES.spawnZ);
+      expect(black.z).toBe(RULES.spawnZ);
       expect(white.facing).toBe(1);
       expect(black.facing).toBe(-1);
       expect(white.visited[white.room]).toBe(true);

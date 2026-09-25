@@ -108,19 +108,21 @@ export function updateDead(state: GameState, spy: Spy, dt: number, events: GameE
   spy.room = respawnRoom(state, spy, spy.room);
   spy.visited[spy.room] = true;
   spy.x = RULES.roomW / 2;
-  spy.z = RULES.roomD / 2;
+  spy.z = RULES.spawnZ;
   spy.enteredAt = state.tick;
   events.push({ type: 'respawn', spy: spy.id });
 }
 
 /**
  * Where a spy killed in `deathRoom` comes back (round 5 §2), picked with the gameplay RNG: any room that is neither
- * the room of death, nor the opponent's current room, nor the exit room; when no such room exists, any room but the
- * opponent's.
+ * the room of death, nor the opponent's current room, nor the exit room, nor a room with a ticking time bomb; when no such room
+ * exists, any room but the opponent's.
  */
 export function respawnRoom(state: GameState, spy: Spy, deathRoom: number): number {
   const opponentRoom = opponentOf(state, spy).room;
   const ids = state.rooms.map((r) => r.id).filter((id) => id !== opponentRoom);
-  const preferred = ids.filter((id) => id !== deathRoom && state.rooms[id].exit === null);
+  const preferred = ids.filter(
+    (id) => id !== deathRoom && state.rooms[id].exit === null && !state.timeBombs.some((b) => b.room === id),
+  );
   return pick(state.rng, preferred.length > 0 ? preferred : ids);
 }

@@ -160,7 +160,7 @@ describe('updateDead', () => {
     expect(spy.mode).toBe('normal');
     expect(spy.room).not.toBe(4);
     expect(spy.x).toBe(RULES.roomW / 2);
-    expect(spy.z).toBe(RULES.roomD / 2);
+    expect(spy.z).toBe(RULES.spawnZ);
     expect(spy.enteredAt).toBe(77);
     expect(spy.visited[spy.room]).toBe(true);
     expect(spy.health).toBe(RULES.health);
@@ -182,6 +182,16 @@ describe('respawnRoom (round 5 §2)', () => {
     }
     // spread over all the others: 0, 1, 3, 6, 7, 8
     expect([...rooms].sort()).toEqual([0, 1, 3, 6, 7, 8]);
+  });
+
+  it('never picks a room with a ticking time bomb', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = openGame();
+      s.rng = makeRng(seed);
+      place(s, 1, 5, 100, 20);
+      s.timeBombs = [{ room: 3, x: 100, z: 20, fuse: 1, owner: 1 }];
+      expect([4, 5, 2, 3]).not.toContain(respawnRoom(s, s.spies[0], 4));
+    }
   });
 
   it('is decided by the gameplay RNG, deterministically', () => {
