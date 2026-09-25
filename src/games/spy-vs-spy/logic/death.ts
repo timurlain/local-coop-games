@@ -1,7 +1,7 @@
 import { pick } from '../../../shared/rng';
 import { RULES } from './rules';
 import {
-  DIRS, isActive, neighbor,
+  DIRS, isActive, neighbor, opponentOf,
   type DeathCause, type Furniture, type GameEvent, type GameState, type PlayerId, type Spy,
 } from './state';
 
@@ -99,8 +99,24 @@ export function updateDead(state: GameState, spy: Spy, dt: number, events: GameE
   spy.health = RULES.health;
   spy.sinceHit = 0;
   spy.deathCause = null;
+  // Round 5 §2: back in another room. Until now `spy.room` stayed the room of death, so the death animation and
+  // the angel play there.
+  spy.room = respawnRoom(state, spy, spy.room);
+  spy.visited[spy.room] = true;
   spy.x = RULES.roomW / 2;
   spy.z = RULES.roomD / 2;
   spy.enteredAt = state.tick;
   events.push({ type: 'respawn', spy: spy.id });
+}
+
+/**
+ * Where a spy killed in `deathRoom` comes back (round 5 §2), picked with the gameplay RNG: any room that is neither
+ * the room of death, nor the opponent's current room, nor the exit room; when no such room exists, any room but the
+ * opponent's.
+ */
+export function respawnRoom(state: GameState, spy: Spy, deathRoom: number): number {
+  const opponentRoom = opponentOf(state, spy).room;
+  const ids = state.rooms.map((r) => r.id).filter((id) => id !== opponentRoom);
+  const preferred = ids.filter((id) => id !== deathRoom && state.rooms[id].exit === null);
+  return pick(state.rng, preferred.length > 0 ? preferred : ids);
 }

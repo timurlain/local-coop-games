@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { kill, updateDead } from '../../src/games/spy-vs-spy/logic/death';
+import { kill, respawnRoom, updateDead } from '../../src/games/spy-vs-spy/logic/death';
+import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
+import { makeRng } from '../../src/shared/rng';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import { OPEN_RULES, kufrik, openGame, place, remedy, secret } from './fixtures';
@@ -94,7 +96,7 @@ describe('kill', () => {
 });
 
 describe('updateDead', () => {
-  it('respawns in the room centre with full health after the respawn time', () => {
+  it('respawns with full health after the respawn time, at the centre of another room (round 5 §2)', () => {
     const s = openGame();
     const spy = place(s, 0, 4, 10, 5);
     spy.health = 1;
@@ -102,13 +104,53 @@ describe('updateDead', () => {
     const ev: GameEvent[] = [];
     updateDead(s, spy, RULES.respawnTime - 0.5, ev);
     expect(spy.mode).toBe('dead');
+    expect(spy.room).toBe(4); // the death animation plays where he died
+    s.tick = 77;
     updateDead(s, spy, 0.5, ev);
     expect(spy.mode).toBe('normal');
-    expect(spy.room).toBe(4);
+    expect(spy.room).not.toBe(4);
     expect(spy.x).toBe(RULES.roomW / 2);
     expect(spy.z).toBe(RULES.roomD / 2);
+    expect(spy.enteredAt).toBe(77);
+    expect(spy.visited[spy.room]).toBe(true);
     expect(spy.health).toBe(RULES.health);
     expect(spy.deathCause).toBeNull();
     expect(ev).toEqual([{ type: 'respawn', spy: 0 }]);
+  });
+});
+
+describe('respawnRoom (round 5 §2)', () => {
+  it("never picks the room of death, the opponent's room or the exit room", () => {
+    const rooms = new Set<number>();
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = openGame();
+      s.rng = makeRng(seed);
+      place(s, 1, 5, 100, 20);
+      const room = respawnRoom(s, s.spies[0], 4);
+      expect([4, 5, 2]).not.toContain(room);
+      rooms.add(room);
+    }
+    // spread over all the others: 0, 1, 3, 6, 7, 8
+    expect([...rooms].sort()).toEqual([0, 1, 3, 6, 7, 8]);
+  });
+
+  it('is decided by the gameplay RNG, deterministically', () => {
+    const a = openGame();
+    const b = openGame();
+    expect(respawnRoom(a, a.spies[0], 4)).toBe(respawnRoom(b, b.spies[0], 4));
+    expect(a.rng).toEqual(b.rng);
+  });
+
+  it("falls back to any room but the opponent's when nothing else is left", () => {
+    const s = createGame(1, 1);
+    // a hypothetical 1×3 corridor: death room 0, opponent in 1, exit in 2
+    s.rooms = s.rooms.slice(0, 3);
+    s.rooms[2].exit = 'E';
+    for (const r of s.rooms) if (r.id !== 2) r.exit = null;
+    place(s, 1, 1, 100, 20);
+    for (let seed = 1; seed <= 20; seed++) {
+      s.rng = makeRng(seed);
+      expect([0, 2]).toContain(respawnRoom(s, s.spies[0], 0));
+    }
   });
 });

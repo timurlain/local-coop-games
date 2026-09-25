@@ -565,7 +565,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
     expect(ev).toContainEqual({ type: 'dropped', spy: 0, thing: kufrik('pas', 'klic'), furniture: holders[0].id });
   });
 
-  it('does not drop a respawning spy even though the opponent is already in that room', () => {
+  it('does not drop a respawning spy: the opponent sitting in the room of death sends it elsewhere', () => {
     const s = openGame();
     const f = firstFurniture(s, 0);
     f.trap = { kind: 'bomba', owner: 1 };
@@ -580,6 +580,7 @@ describe('meeting: entering is judged at the end of the tick (spec §3, fairness
       ev = step(s, [IDLE, IDLE], dt);
     }
     expect(spy.mode).toBe('normal');
+    expect(spy.room).not.toBe(0);
     expect(ev).toContainEqual({ type: 'respawn', spy: 0 });
     expect(ev).not.toContainEqual(expect.objectContaining({ type: 'dropped' }));
   });
