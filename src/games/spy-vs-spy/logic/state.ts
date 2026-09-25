@@ -10,7 +10,7 @@ export type TrapKind = FurnitureTrapKind | DoorTrapKind | 'casovana';
 export type FurnitureKind =
   | 'stul' | 'knihovna' | 'lampa' | 'pohovka' | 'trezor' | 'obraz' | 'skrin' | 'vesak'
   | 'kartoteka' | 'gramofon' | 'globus' | 'kredenc' | 'radio' | 'kvetina' | 'krb' | 'telefon'
-  | 'hasicak' | 'naradi' | 'lekarnicka';
+  | 'hasicak' | 'naradi' | 'lekarnicka' | 'zbrojnice';
 /** Furniture kinds that are always an infinite source of exactly one remedy (never ordinary theme pool pieces). */
 export type FixtureKind = 'vesak' | 'hasicak' | 'naradi' | 'lekarnicka';
 /** Spec §8: a jab (Akce) or a head bash (Akce while holding up). */
@@ -32,8 +32,10 @@ export const TRAPS: readonly TrapKind[] = ['bomba', 'pruzina', 'elektrina', 'pis
 export const FURNITURE_KINDS: readonly FurnitureKind[] = [
   'stul', 'knihovna', 'lampa', 'pohovka', 'trezor', 'obraz', 'skrin', 'vesak',
   'kartoteka', 'gramofon', 'globus', 'kredenc', 'radio', 'kvetina', 'krb', 'telefon',
-  'hasicak', 'naradi', 'lekarnicka',
+  'hasicak', 'naradi', 'lekarnicka', 'zbrojnice',
 ];
+/** Round 6 §4: the armoury cabinet (zbrojní skříň), one per embassy; searching it hands out a trap, never a thing. */
+export const ARMOURY_KIND = 'zbrojnice' satisfies FurnitureKind;
 export const FIXTURE_KINDS: readonly FixtureKind[] = ['vesak', 'hasicak', 'naradi', 'lekarnicka'];
 /** Kinds that may stand free on the floor (round 5 §5); tall pieces and fixtures always stay on the wall. */
 export const FREE_STANDING_KINDS: readonly FurnitureKind[] = ['stul', 'pohovka', 'globus', 'kvetina', 'trezor'];
@@ -44,6 +46,15 @@ export const FIXTURE_REMEDY: Readonly<Record<FixtureKind, RemedyKind>> = {
   naradi: 'kleste',
   lekarnicka: 'nuzky',
 };
+/**
+ * Whether a piece can hold a hidden thing for the generator and for death drops (round 6 §4): not a fixture (its
+ * remedy source; the generator never hides anything there and drops skip it) and not the armoury (nothing can ever be
+ * hidden in it). The one rule for "can hold an item" — use it instead of checking `source` directly.
+ */
+export function canHold(f: Pick<Furniture, 'kind' | 'source'>): boolean {
+  return f.source === null && f.kind !== ARMOURY_KIND;
+}
+
 /** Wall decorations: purely visual, never searchable. */
 export type FlagKind = `vlajka_${HostCountry}`;
 export type DecorKind =
@@ -141,6 +152,13 @@ export interface Placing {
   timer: number;
 }
 
+/** A Trapulator stock digit blinking after +1 (round 6 §4). */
+export interface StockFlash {
+  trap: TrapKind;
+  /** seconds left */
+  timer: number;
+}
+
 export type SpyMode = 'normal' | 'searching' | 'dead' | 'out' | 'escaped';
 
 /** Held state of one player's controls for this tick. Edges are derived from `Spy.prev`. */
@@ -184,6 +202,10 @@ export interface Spy {
   /** >0 while the refusal head shake shows (round 4 §1); purely visual, never blocks anything */
   refuseTimer: number;
   stock: Record<TrapKind, number>;
+  /** Round 6 §4: seconds until the armoury opens again for this spy (0 = open); ticked in `step` in every mode */
+  armouryTimer: number;
+  /** Round 6 §4: a stock digit just went up (salvaged or resupplied) and blinks on the Trapulator; visual only */
+  stockFlash: StockFlash | null;
   /** seconds until another swing may start; set at the strike (spec §8) */
   swingCooldown: number;
   /** >0 while the club swing animation shows (wind-up + strike) */
@@ -249,6 +271,10 @@ export type GameEvent =
   | { type: 'refused'; spy: PlayerId }
   /** a matching remedy defused a trap (round 4 §3: the render shows how, by `remedy`) */
   | { type: 'disarmed'; spy: PlayerId; trap: FurnitureTrapKind | DoorTrapKind; remedy: RemedyKind }
+  /** round 6 §4: right after `disarmed`, when the trap was the opponent's — the disarming spy keeps it (+1 stock) */
+  | { type: 'salvaged'; spy: PlayerId; trap: FurnitureTrapKind | DoorTrapKind }
+  /** round 6 §4: the armoury handed out one trap (+1 stock of `trap`) and closed for this spy */
+  | { type: 'resupplied'; spy: PlayerId; trap: TrapKind; furniture: number }
   /** `killer` is set only for cause 'fight': the opponent who landed the strike (spec §7). */
   | { type: 'died'; spy: PlayerId; cause: DeathCause; killer?: PlayerId }
   | { type: 'respawn'; spy: PlayerId }

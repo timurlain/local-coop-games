@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
 import { LEVELS } from '../../src/games/spy-vs-spy/logic/rules';
 import {
-  FURNITURE_KINDS, HOSTS, ROOM_THEMES, YEAR_MAX, YEAR_MIN, type GameState, type Thing,
+  ARMOURY_KIND, FURNITURE_KINDS, HOSTS, ROOM_THEMES, YEAR_MAX, YEAR_MIN, type GameState, type Thing,
 } from '../../src/games/spy-vs-spy/logic/state';
 import { DECOR_KINDS, THEME_FURNITURE, flagOf } from '../../src/games/spy-vs-spy/logic/themes';
 import { TITLE_CARD_TIME, titleCardAlpha, titleCardLines } from '../../src/games/spy-vs-spy/render/title';
@@ -13,9 +13,9 @@ const LEVEL_OF_SIZE: Record<string, number> = { mala: 2, stredni: 3, velka: 5 };
 const SEEDS = Array.from({ length: 200 }, (_, i) => i * 7919 + 11);
 
 /**
- * Hash of everything the gameplay RNG decides: doors, exit, furniture slots, fixtures (via `source`), hidden
- * things, spawn, and the gameplay RNG state left after generation. Furniture kinds are left out on purpose
- * (renamed ids and a bigger pool change which picture is drawn, never where or what is hidden).
+ * Hash of everything the gameplay RNG decides: doors, exit, furniture slots, fixtures (via `source`), the armoury
+ * (round 6 §4), hidden things, spawn, and the gameplay RNG state left after generation. Other furniture kinds are left
+ * out on purpose (renamed ids and a bigger pool change which picture is drawn, never where or what is hidden).
  */
 /** `f.hidden` for the fingerprint, with `lastHolder` left out — it isn't decided by the gameplay
  *  RNG this fingerprint guards (spec §7, round 3 L4): it starts `null` for every hidden `Thing`
@@ -30,7 +30,7 @@ function hiddenForFingerprint(hidden: Thing | null): string {
 function gameplayFingerprint(s: GameState): string {
   const doors = s.rooms.map((r) => `${+r.doors.N}${+r.doors.S}${+r.doors.E}${+r.doors.W}${r.exit ?? '-'}`).join('|');
   const furn = s.furniture
-    .map((f) => `${f.room}:${f.x}:${f.z}:${f.source ?? '-'}:${hiddenForFingerprint(f.hidden)}`)
+    .map((f) => `${f.room}:${f.x}:${f.z}:${f.source ?? '-'}:${f.kind === ARMOURY_KIND ? 'A' : '-'}:${hiddenForFingerprint(f.hidden)}`)
     .join('|');
   const spies = s.spies.map((p) => `${p.room}:${p.x}:${p.z}`).join('|');
   const str = `${doors}#${furn}#${spies}#${JSON.stringify(s.rng)}`;
@@ -40,7 +40,10 @@ function gameplayFingerprint(s: GameState): string {
 }
 
 /**
- * Re-recorded on purpose for round 6 §3 (two money and two passports): `placeThings` hides 6 secret items plus the
+ * Re-recorded on purpose for round 6 §4 (the armoury cabinet): the exit is now placed before the furniture, the
+ * armoury's room is drawn from the gameplay RNG, that room is always furnished with three pieces, and the fingerprint
+ * now also marks the armoury piece — so every seed's layout moves.
+ * Before that, re-recorded for round 6 §3 (two money and two passports): `placeThings` hides 6 secret items plus the
  * kufřík (7 distinct rooms instead of 5), and fixtures now skip a room's last non-fixture piece, so the RNG draws of
  * both change and every seed's fixtures and hidden things move.
  * Before that, re-recorded for round 5 review fixes: free-standing pieces moved off the back door (x 62-70 / 130-138).
@@ -50,12 +53,12 @@ function gameplayFingerprint(s: GameState): string {
  * one side of the back door each, and free-standing pieces on the floor).
  */
 const RECORDED: Record<string, string> = {
-  'mala:1': '8fe55cbc', 'mala:7': '71b5474f', 'mala:42': '78e4ac40', 'mala:1234': '416ff80c',
-  'mala:99999': 'f738e92e', 'mala:3735928559': 'fe5ef789',
-  'stredni:1': '7d096a6a', 'stredni:7': 'a1d8a594', 'stredni:42': '917a1c46', 'stredni:1234': '74835ff3',
-  'stredni:99999': '38049066', 'stredni:3735928559': '1f0781cb',
-  'velka:1': '4d6c4bdd', 'velka:7': 'c51e5f0f', 'velka:42': '6d049499', 'velka:1234': '8888796d',
-  'velka:99999': 'b467f6a7', 'velka:3735928559': '788f558a',
+  'mala:1': 'd0c747e6', 'mala:7': '0cffddd6', 'mala:42': 'c8712c7b', 'mala:1234': 'd52593fc',
+  'mala:99999': '864f19a4', 'mala:3735928559': '4dc191a2',
+  'stredni:1': 'b43f398a', 'stredni:7': '42db53af', 'stredni:42': 'c2ab26ce', 'stredni:1234': '8c865be0',
+  'stredni:99999': 'fcffe59c', 'stredni:3735928559': '61b5e7f7',
+  'velka:1': 'cbac228f', 'velka:7': '6a6cf4f3', 'velka:42': 'c6a9d555', 'velka:1234': '51b26b76',
+  'velka:99999': 'c6856841', 'velka:3735928559': '2f9fd82b',
 };
 
 describe('host embassy and year', () => {

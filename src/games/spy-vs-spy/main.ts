@@ -379,6 +379,8 @@ function soundFor(e: GameEvent): SfxName | null {
     case 'trapSet': return 'trapSet';
     case 'refused': return 'grumble';
     case 'disarmed': return DISARM_SOUND[e.remedy];
+    case 'salvaged': return 'salvage';
+    case 'resupplied': return 'resupply';
     case 'died':
       switch (e.cause) {
         case 'bomba': return 'bomb';

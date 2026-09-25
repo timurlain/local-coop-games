@@ -102,6 +102,7 @@ export const cs = {
       hasicak: 'Hasičská skříňka',
       naradi: 'Bedna na nářadí',
       lekarnicka: 'Lékárnička',
+      zbrojnice: 'Zbrojní skříň',
     },
     traps: {
       bomba: 'Bomba',

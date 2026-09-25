@@ -1,3 +1,4 @@
+import { updateArmouryTimers } from './armoury';
 import { cancelDoorOpening, cancelSwing, dropHand, updateDead } from './death';
 import { sharesRoom, updateBlocking, updateDucking, updateHealthRegen, updateSwing } from './fight';
 import { updateAction, updateDoorOpening, updateSearching } from './interact';
@@ -43,6 +44,7 @@ export function step(state: GameState, inputs: readonly [SpyInput, SpyInput], dt
     const input = inputs[spy.id];
     spy.swingCooldown = Math.max(0, spy.swingCooldown - dt);
     spy.refuseTimer = Math.max(0, spy.refuseTimer - dt);
+    updateArmouryTimers(spy, dt);
     // A strike lands in this spy's turn of the alternating order (fairness above), judged against
     // the opponent's stance as last set; ducking is re-decided below only if the spy is free to.
     updateSwing(state, spy, dt, events);

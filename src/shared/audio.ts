@@ -7,7 +7,8 @@ export type SfxName =
   | 'laugh' | 'mob'
   | 'lowtime'
   | 'grumble'
-  | 'umbrella' | 'hiss' | 'snip';
+  | 'umbrella' | 'hiss' | 'snip'
+  | 'salvage' | 'resupply';
 
 interface ToneOpts {
   freq: number;
@@ -57,6 +58,14 @@ function noise(c: AudioContext, { dur, vol = 0.3, delay = 0, lowpass = 2000 }: N
   src.stop(t0 + dur);
 }
 
+/** Two short metallic clicks, like a rifle bolt worked back and forth. */
+function clickClack(c: AudioContext, delay: number): void {
+  tone(c, { freq: 1900, dur: 0.025, delay, type: 'square', vol: 0.12 });
+  noise(c, { dur: 0.03, vol: 0.18, delay, lowpass: 7000 });
+  tone(c, { freq: 1300, dur: 0.03, delay: delay + 0.09, type: 'square', vol: 0.12 });
+  noise(c, { dur: 0.035, vol: 0.2, delay: delay + 0.09, lowpass: 6000 });
+}
+
 const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   join: (c) => { tone(c, { freq: 440, dur: 0.08 }); tone(c, { freq: 660, dur: 0.1, delay: 0.08 }); },
   search: (c) => noise(c, { dur: 0.25, vol: 0.12, lowpass: 1200 }),
@@ -94,6 +103,19 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     noise(c, { dur: 0.03, vol: 0.15, lowpass: 8000 });
     tone(c, { freq: 3100, to: 2600, dur: 0.12, delay: 0.06, type: 'triangle', vol: 0.1 });
     noise(c, { dur: 0.03, vol: 0.15, delay: 0.06, lowpass: 8000 });
+  },
+  /** round 6 §4, a disarmed trap kept: after the disarm sound, a bolt's click-clack and a small bright „ding-ding" */
+  salvage: (c) => {
+    clickClack(c, 0.5);
+    tone(c, { freq: 880, dur: 0.07, delay: 0.66, type: 'triangle', vol: 0.12 });
+    tone(c, { freq: 1320, dur: 0.1, delay: 0.73, type: 'triangle', vol: 0.12 });
+  },
+  /** round 6 §4, a trap from the armoury: the cabinet door's wooden clunk, a bolt's click-clack, a rising chirp */
+  resupply: (c) => {
+    tone(c, { freq: 170, to: 110, dur: 0.08, type: 'sine', vol: 0.3 });
+    noise(c, { dur: 0.05, vol: 0.12, lowpass: 900 });
+    clickClack(c, 0.12);
+    tone(c, { freq: 660, to: 1100, dur: 0.12, delay: 0.3, type: 'triangle', vol: 0.1 });
   },
   bomb: (c) => { noise(c, { dur: 0.8, vol: 0.5, lowpass: 600 }); tone(c, { freq: 120, to: 40, dur: 0.6, type: 'sine', vol: 0.4 }); },
   zap: (c) => {

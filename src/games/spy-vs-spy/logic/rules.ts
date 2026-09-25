@@ -60,6 +60,11 @@ export const RULES = {
   refuseTime: 0.5,
   /** clock cost to open the big map (MAPA), charged once per opening */
   mapCost: 5,
+  /** Round 6 §4: after a spy takes a trap from the armoury it stays closed for him this long (the other spy's timer
+   *  is his own) */
+  armouryCooldown: 60,
+  /** Round 6 §4: how long a stock digit blinks on the Trapulator after +1 (salvage or armoury); visual only */
+  stockFlashTime: 1.2,
   deathPenalty: 30,
   respawnTime: 3,
   health: 7,

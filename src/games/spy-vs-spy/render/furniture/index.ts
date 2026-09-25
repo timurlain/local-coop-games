@@ -1,6 +1,7 @@
 import type { Furniture, FurnitureKind, RoomTheme } from '../../logic/state';
 import { r, withScale } from '../draw';
 import { furnitureBase } from '../geometry';
+import { drawZbrojnice } from './armoury';
 import { drawHasicak, drawLekarnicka, drawNaradi, drawVesak } from './fixtures';
 import { drawKrb, drawKredenc, drawGramofon, drawKvetina, drawLampa, drawObraz, drawPohovka, drawSkrin } from './salon';
 import type { Ctx, DrawFn } from './shared';
@@ -30,6 +31,8 @@ const DRAWERS: Readonly<Record<FurnitureKind, DrawFn>> = {
   hasicak: drawHasicak,
   naradi: drawNaradi,
   lekarnicka: drawLekarnicka,
+  // round 6 §4
+  zbrojnice: drawZbrojnice,
 };
 
 /** A small chevron marker over a target, e.g. furniture in reach (white) or an armed trap's target (red). */

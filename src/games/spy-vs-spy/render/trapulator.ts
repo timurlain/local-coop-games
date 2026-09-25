@@ -1,6 +1,6 @@
 import { cs } from '../../../shared/i18n/cs';
 import { REMEDY_FOR } from '../logic/traps';
-import { SECRETS, TRAPS, type DoorTrapKind, type FurnitureTrapKind, type GameState, type RemedyKind, type Spy } from '../logic/state';
+import { SECRETS, TRAPS, type DoorTrapKind, type FurnitureTrapKind, type GameState, type RemedyKind, type Spy, type TrapKind } from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { disc, line, r, roundRect, text } from './draw';
 import { DEV, DEVICE, FRAME, type Rect } from './layout';
@@ -73,7 +73,7 @@ export function drawDevice(ctx: Ctx, state: GameState, spy: Spy, now: number): v
   r(ctx, DEVICE.x + 1, DEVICE.y + 4, 1, DEVICE.h - 8, BODY_LIGHT);
 
   drawLed(ctx, spy, now);
-  drawButtons(ctx, spy);
+  drawButtons(ctx, spy, now);
   drawRemedy(ctx, spy);
   drawSecrets(ctx, spy, now);
 
@@ -99,8 +99,15 @@ function drawLed(ctx: Ctx, spy: Spy, now: number): void {
   if (low) r(ctx, cx - 1, cy - 2, 1, 1, '#ffd0c0');
 }
 
-/** The trap buttons with their stock; the trap in hand and MAPA (while held open) light up (round 4 §7). */
-function drawButtons(ctx: Ctx, spy: Spy): void {
+/** Round 6 §4: whether the stock digit of `trap` shows its highlight right now — it blinks (6 Hz) while
+ *  `spy.stockFlash` names it, after a salvage or an armoury resupply. */
+export function stockFlashOn(spy: Spy, trap: TrapKind, now: number): boolean {
+  return spy.stockFlash?.trap === trap && Math.floor(now * 6) % 2 === 0;
+}
+
+/** The trap buttons with their stock; the trap in hand and MAPA (while held open) light up (round 4 §7); a digit that
+ *  just went up blinks (round 6 §4). */
+function drawButtons(ctx: Ctx, spy: Spy, now: number): void {
   text(ctx, D.traps, DEV.traps[0].x, DEV.buttonLabelY, LABEL, 5);
   text(ctx, D.map, DEV.map.x + DEV.map.w / 2, DEV.buttonLabelY, LABEL, 5, 'center');
   TRAPS.forEach((trap, i) => {
@@ -109,6 +116,7 @@ function drawButtons(ctx: Ctx, spy: Spy): void {
     framed(ctx, b, HAND_COLORS.trap, lit ? '#ffe27a' : KEY);
     drawIcon(ctx, trap, b.x + b.w / 2, b.y + 9);
     const stock = spy.stock[trap];
+    if (stockFlashOn(spy, trap, now)) r(ctx, b.x + 1, b.y + b.h - 6, b.w - 2, 6, '#ffe27a');
     text(ctx, String(stock), b.x + b.w / 2, b.y + b.h - 1, stock > 0 ? '#1a1a1a' : '#9a9aa0', 5, 'center');
   });
 

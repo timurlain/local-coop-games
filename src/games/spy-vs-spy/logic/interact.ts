@@ -1,9 +1,10 @@
+import { searchArmoury } from './armoury';
 import { sharesRoom, trySwing } from './fight';
 import { resolveSearch } from './hand';
 import { doorAt, doorKeyFor, furnitureAt } from './places';
 import { RULES } from './rules';
 import { startPlacing, triggerDoorTrap, triggerFurnitureTrap } from './traps';
-import type { Dir, Furniture, GameEvent, GameState, Spy, SpyInput } from './state';
+import { ARMOURY_KIND, type Dir, type Furniture, type GameEvent, type GameState, type Spy, type SpyInput } from './state';
 
 /**
  * Akce handling for a spy in 'normal' mode. While the opponent shares this room (spec §3, round 4
@@ -96,6 +97,10 @@ export function updateSearching(state: GameState, spy: Spy, dt: number, events: 
   spy.mode = 'normal';
   spy.modeTimer = 0;
   spy.searchTarget = null;
+  if (f.kind === ARMOURY_KIND) {
+    searchArmoury(spy, f, events);
+    return;
+  }
   const { outcome, found, stolenFrom } = resolveSearch(spy, f);
   switch (outcome) {
     case 'nothing':

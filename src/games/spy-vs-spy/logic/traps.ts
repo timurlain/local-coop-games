@@ -1,3 +1,4 @@
+import { addStock } from './armoury';
 import { kill } from './death';
 import { sharesRoom } from './fight';
 import { doorAt, doorKeyFor, exitVisibleTo, furnitureAt } from './places';
@@ -5,7 +6,7 @@ import { RULES } from './rules';
 import {
   DIRS, TRAPS, isActive,
   type Dir, type DoorTrapKind, type Furniture, type FurnitureTrapKind, type GameEvent, type GameState,
-  type PlaceTarget, type RemedyKind, type Spy, type SpyInput, type TimeBomb, type TrapKind,
+  type PlaceTarget, type PlayerId, type RemedyKind, type Spy, type SpyInput, type TimeBomb, type TrapKind,
 } from './state';
 
 export const REMEDY_FOR: Readonly<Record<FurnitureTrapKind | DoorTrapKind, RemedyKind>> = {
@@ -15,11 +16,20 @@ export const REMEDY_FOR: Readonly<Record<FurnitureTrapKind | DoorTrapKind, Remed
   pistole: 'nuzky',
 };
 
-/** Returns true when the spy survives (matching remedy in hand, which is consumed). */
-function spring(state: GameState, spy: Spy, trap: FurnitureTrapKind | DoorTrapKind, events: GameEvent[]): boolean {
+/**
+ * Returns true when the spy survives (matching remedy in hand, which is consumed). Round 6 §4: disarming the
+ * opponent's trap salvages it (+1 of that kind); his own trap gives nothing back. Časovaná never comes here (no remedy).
+ */
+function spring(
+  state: GameState, spy: Spy, trap: FurnitureTrapKind | DoorTrapKind, owner: PlayerId, events: GameEvent[],
+): boolean {
   if (spy.hand?.kind === 'remedy' && spy.hand.remedy === REMEDY_FOR[trap]) {
     events.push({ type: 'disarmed', spy: spy.id, trap, remedy: spy.hand.remedy });
     spy.hand = null;
+    if (owner !== spy.id) {
+      addStock(spy, trap);
+      events.push({ type: 'salvaged', spy: spy.id, trap });
+    }
     return true;
   }
   kill(state, spy, trap, events);
@@ -28,16 +38,16 @@ function spring(state: GameState, spy: Spy, trap: FurnitureTrapKind | DoorTrapKi
 
 export function triggerFurnitureTrap(state: GameState, spy: Spy, f: Furniture, events: GameEvent[]): boolean {
   if (f.trap === null) return true;
-  const kind = f.trap.kind;
+  const { kind, owner } = f.trap;
   f.trap = null;
-  return spring(state, spy, kind, events);
+  return spring(state, spy, kind, owner, events);
 }
 
 export function triggerDoorTrap(state: GameState, spy: Spy, key: string, events: GameEvent[]): boolean {
   const trap = state.doorTraps[key];
   if (!trap) return true;
   delete state.doorTraps[key];
-  return spring(state, spy, trap.kind, events);
+  return spring(state, spy, trap.kind, trap.owner, events);
 }
 
 /** Successful placement costs the placer clock (spec §4); never applied on a refusal. */

@@ -3,7 +3,7 @@ import { doorKeyFor } from '../../src/games/spy-vs-spy/logic/places';
 import { RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
 import {
-  DIRS, NO_INPUT, TRAPS, neighbor,
+  ARMOURY_KIND, DIRS, NO_INPUT, TRAPS, neighbor,
   type Dir, type Furniture, type GameEvent, type GameState, type PlayerId, type RemedyKind, type SecretKind, type Spy, type SpyInput, type Thing, type TrapKind,
 } from '../../src/games/spy-vs-spy/logic/state';
 
@@ -14,7 +14,7 @@ export const OPEN_RULES = levelRules(OPEN_LEVEL);
 
 /**
  * 3×3 embassy (level 2) with every internal door open, the exit on room 2's east wall,
- * nothing hidden, no sources, no traps. Spy 0 in room 0, spy 1 in room 8, apart
+ * nothing hidden, no sources, no traps, no armoury (round 6 §4: it becomes a plain skříň; see `makeArmoury`). Spy 0 in room 0, spy 1 in room 8, apart
  * (createGame's own R3 shared start would otherwise put both in the same room) —
  * most tests here only place one spy and rely on the other being harmlessly far away.
  *
@@ -33,6 +33,7 @@ export function openGame(): GameState {
     f.hidden = null;
     f.source = null;
     f.trap = null;
+    if (f.kind === ARMOURY_KIND) f.kind = 'skrin';
   }
   for (const spy of s.spies) spy.visited.fill(false);
   place(s, 0, 0, 40, RULES.roomD / 2);
@@ -63,6 +64,15 @@ export function openDoor(s: GameState, spyId: PlayerId, dir: Dir): void {
 /** The room's first piece: always one on the back wall (they are generated first). */
 export function firstFurniture(s: GameState, room: number): Furniture {
   return s.furniture[s.rooms[room].furniture[0]];
+}
+
+/** Round 6 §4: turns the room's first (back-wall) piece into the armoury cabinet and returns it. */
+export function makeArmoury(s: GameState, room: number): Furniture {
+  const f = firstFurniture(s, room);
+  f.kind = ARMOURY_KIND;
+  f.source = null;
+  f.hidden = null;
+  return f;
 }
 
 /** Puts spy `id` right at the piece: on its front edge (z 0 for a wall piece). */
