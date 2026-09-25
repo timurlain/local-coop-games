@@ -16,10 +16,15 @@ export function inFightRange(a: Spy, b: Spy): boolean {
   return Math.abs(a.x - b.x) <= RULES.fightRangeX && Math.abs(a.z - b.z) <= RULES.fightRangeZ;
 }
 
-/** Holding the direction away from the opponent = block. */
+/**
+ * Holding the direction away from the opponent = block (guard stance, round 4 §2), but only while
+ * the opponent is within fight range: standing your ground only makes sense against someone close
+ * enough to swing at you. Out of range, holding away is just walking towards the back of the room.
+ */
 export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): void {
   const o = sameRoomOpponent(state, spy);
-  spy.blocking = o !== null && spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveX !== 0 && input.moveX === -Math.sign(o.x - spy.x);
+  spy.blocking = o !== null && spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveX !== 0
+    && input.moveX === -Math.sign(o.x - spy.x) && inFightRange(spy, o);
 }
 
 /**
@@ -80,7 +85,13 @@ function strike(state: GameState, spy: Spy, kind: AttackKind, events: GameEvent[
   // this, luring the opponent into the guard would bait a free, undefendable hit.
   if (o.kickTimer > 0) return;
   if (kind === 'jab' ? o.blocking : o.ducking) {
-    events.push({ type: 'blocked', spy: o.id });
+    events.push({ type: 'blocked', spy: o.id, kind });
+    // A blocked jab visibly stops at the guard's club: shove the attacker back, away from the
+    // defender (round 4 §2). A bash stopped by ducking has no clubs meeting, so no shove.
+    if (kind === 'jab') {
+      const push = Math.sign(spy.x - o.x) || -spy.facing;
+      spy.x = Math.max(0, Math.min(RULES.roomW, spy.x + push * RULES.blockPushback));
+    }
     return;
   }
   o.health -= kind === 'bash' ? RULES.bashDamage : RULES.jabDamage;

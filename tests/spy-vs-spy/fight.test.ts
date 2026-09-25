@@ -127,8 +127,28 @@ describe('updateSwing: the strike (spec §8)', () => {
     const ev: GameEvent[] = [];
     updateSwing(s, a, RULES.swingWindup, ev);
     expect(b.health).toBe(RULES.health);
-    expect(ev).toEqual([{ type: 'blocked', spy: 1 }]);
+    expect(ev).toEqual([{ type: 'blocked', spy: 1, kind: 'jab' }]);
     expect(a.swingCooldown).toBe(RULES.swingCooldown);
+  });
+
+  it('a blocked jab visibly stops: the attacker is shoved back, away from the defender (round 4 §2)', () => {
+    const { s, a, b } = duel(); // a at 100, b at 110 (b is to a's right)
+    trySwing(s, a, 'jab', []);
+    updateBlocking(s, b, input({ moveX: 1 })); // b holds away from a
+    updateSwing(s, a, RULES.swingWindup, []);
+    expect(RULES.blockPushback).toBe(8);
+    expect(a.x).toBe(100 - RULES.blockPushback); // pushed away from b, back towards the west wall
+    expect(b.x).toBe(110); // the defender doesn't move
+  });
+
+  it('a blocked jab clamps the attacker\'s pushback at the wall', () => {
+    const s = openGame();
+    const a = place(s, 0, 4, RULES.blockPushback - 1, 20);
+    const b = place(s, 1, 4, a.x + 10, 20);
+    trySwing(s, a, 'jab', []);
+    updateBlocking(s, b, input({ moveX: 1 }));
+    updateSwing(s, a, RULES.swingWindup, []);
+    expect(a.x).toBe(0);
   });
 
   it('a block dropped before the strike does not help', () => {
@@ -148,6 +168,27 @@ describe('updateSwing: the strike (spec §8)', () => {
     expect(b.blocking).toBe(false);
   });
 
+  it('does not block an opponent sharing the room but out of fight range (round 4 §2)', () => {
+    const { s, a, b } = duel();
+    b.x = a.x + RULES.fightRangeX + 1;
+    updateBlocking(s, b, input({ moveX: 1 })); // still "away" in x, but too far to guard against
+    expect(b.blocking).toBe(false);
+    b.x = a.x;
+    b.z = a.z + RULES.fightRangeZ + 1;
+    updateBlocking(s, b, input({ moveX: 1 }));
+    expect(b.blocking).toBe(false);
+  });
+
+  it('blocks again once the opponent is back within fight range', () => {
+    const { s, a, b } = duel();
+    b.x = a.x + RULES.fightRangeX + 1;
+    updateBlocking(s, b, input({ moveX: 1 }));
+    expect(b.blocking).toBe(false);
+    b.x = a.x + RULES.fightRangeX;
+    updateBlocking(s, b, input({ moveX: 1 }));
+    expect(b.blocking).toBe(true);
+  });
+
   it('a head bash is not stopped by holding away', () => {
     const { s, a, b } = duel();
     updateBlocking(s, b, input({ moveX: 1 }));
@@ -164,7 +205,8 @@ describe('updateSwing: the strike (spec §8)', () => {
     const ev: GameEvent[] = [];
     updateSwing(s, a, RULES.bashWindup, ev);
     expect(b.health).toBe(RULES.health);
-    expect(ev).toEqual([{ type: 'blocked', spy: 1 }]);
+    expect(ev).toEqual([{ type: 'blocked', spy: 1, kind: 'bash' }]);
+    expect(a.x).toBe(100); // a bash stopped by ducking has no clubs meeting: no shove
   });
 
   it('ducking does not stop a jab', () => {

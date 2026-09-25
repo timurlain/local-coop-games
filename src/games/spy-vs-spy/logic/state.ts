@@ -248,7 +248,7 @@ export type GameEvent =
   | { type: 'respawn'; spy: PlayerId }
   | { type: 'swing'; spy: PlayerId }
   | { type: 'hit'; spy: PlayerId }
-  | { type: 'blocked'; spy: PlayerId }
+  | { type: 'blocked'; spy: PlayerId; kind: AttackKind }
   | { type: 'door'; spy: PlayerId }
   | { type: 'doorOpened'; spy: PlayerId; key: string }
   | { type: 'bump'; spy: PlayerId }

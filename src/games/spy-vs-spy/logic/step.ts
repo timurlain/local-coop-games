@@ -114,6 +114,11 @@ function updateClock(state: GameState, spy: Spy, dt: number, events: GameEvent[]
 
 /** Returns true when the spy passed through an internal door into a new room this tick. */
 function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): boolean {
+  // This tick's guard stance (round 4 §2), as judged by the pre-pass before either spy moved —
+  // not the `updateBlocking` re-run below, which exists only to keep the render-facing flag current
+  // and can otherwise see a room the opponent only reached by crossing paths with this spy through
+  // the same door this very tick (spec §3 fairness: that must not freeze either spy mid-crossing).
+  const guarding = spy.blocking;
   // Kicked back by the airport guard (spec §9): tumbling, fully immobile — no movement, Akce or Trapulator.
   // The trap in hand (spy.selected) intentionally stays through the kick: stock isn't spent until
   // the trap is placed, so there's nothing here to cancel.
@@ -146,6 +151,9 @@ function updateNormal(state: GameState, spy: Spy, input: SpyInput, dt: number, e
   // Duck (spec §8): shared room + holding down + not swinging; a ducking spy doesn't move.
   updateDucking(state, spy, input);
   if (spy.ducking) return false;
+  // Guard stance (round 4 §2): holding away from an opponent within fight range stands his ground
+  // instead of walking — the block frame, immobile, same idea as ducking above.
+  if (guarding) return false;
   if (spy.mode !== 'normal' || spy.placing !== null) return false;
   return updateMovement(state, spy, input, dt, events);
 }

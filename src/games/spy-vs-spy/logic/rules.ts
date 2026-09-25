@@ -64,6 +64,8 @@ export const RULES = {
   jabDamage: 1,
   bashDamage: 2,
   knockback: 12,
+  /** a blocked jab shoves the attacker this far back, away from the defender (round 4 §2) */
+  blockPushback: 8,
   /** the airport guard (spec §9): how far he kicks a spy without the full kufřík back into the room, and how
    *  long that spy tumbles, immobile */
   guardKick: 30,

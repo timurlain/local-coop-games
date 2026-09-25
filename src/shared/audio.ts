@@ -104,7 +104,11 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
   shot: (c) => noise(c, { dur: 0.2, vol: 0.5, lowpass: 3000 }),
   swing: (c) => noise(c, { dur: 0.08, vol: 0.1, lowpass: 2500 }),
   hit: (c) => tone(c, { freq: 180, to: 90, dur: 0.1, vol: 0.3 }),
-  block: (c) => tone(c, { freq: 1200, dur: 0.05, type: 'triangle', vol: 0.15 }),
+  // clubs meeting (round 4 §2): a sharp high crack plus a burst of noise for the wood-on-wood clack, louder than before
+  block: (c) => {
+    tone(c, { freq: 2200, to: 1400, dur: 0.06, type: 'square', vol: 0.3 });
+    noise(c, { dur: 0.04, vol: 0.3, lowpass: 6000 });
+  },
   door: (c) => { noise(c, { dur: 0.1, vol: 0.1, delay: 0.02, lowpass: 800 }); tone(c, { freq: 220, to: 180, dur: 0.08, type: 'triangle', vol: 0.12 }); },
   bump: (c) => tone(c, { freq: 110, to: 70, dur: 0.06, type: 'sine', vol: 0.08 }),
   // a boot's thump, then a short indignant whistle (up, then down)

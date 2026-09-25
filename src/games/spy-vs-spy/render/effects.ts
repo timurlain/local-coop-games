@@ -1,7 +1,7 @@
 import { doorAt, furnitureAt } from '../logic/places';
 import { RULES } from '../logic/rules';
 import {
-  isActive,
+  isActive, opponentOf,
   type Dir, type DoorTrapKind, type FurnitureTrapKind, type GameEvent, type GameState, type PlayerId, type RemedyKind, type Thing,
 } from '../logic/state';
 import { line, r, text } from './draw';
@@ -22,6 +22,8 @@ export const LAUGH_TIME = 1.2;
 const LAUGH_FPS = 6;
 /** How long a remedy's disarm animation shows, seconds (round 4 §3). */
 export const DISARM_TIME = 0.8;
+/** How long a blocked jab's club-spark shows, seconds (round 4 §2). */
+export const BLOCK_SPARK_TIME = 0.3;
 
 /**
  * Render-side feedback for a logic event (spec §7):
@@ -32,8 +34,11 @@ export const DISARM_TIME = 0.8;
  * - `laugh`: the other spy laughing at a trap death (spec §3), for `LAUGH_TIME` — a pose only, nothing drawn;
  * - `disarm`: a remedy defusing a trap (round 4 §3), for `DISARM_TIME` — umbrella under the electric bucket, water on
  *   the bomb's fuse, pliers snipping the spring, scissors cutting the pistol's string.
+ * - `blockSpark`: a jab stopped by the guard's club (round 4 §2), for `BLOCK_SPARK_TIME` — a few white/yellow
+ *   pixels flying from the point where the clubs meet, between the two spies at club height.
  */
-export type EffectKind = 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh' | 'disarm';
+export type EffectKind =
+  | 'found' | 'nothing' | 'hidden' | 'swapped' | 'stored' | 'dropped' | 'poof' | 'guard' | 'laugh' | 'disarm' | 'blockSpark';
 
 /** Pose the spy sprite shows while an effect runs (overrides search/fight/walk, not swing/block). */
 export type EffectPose = Extract<SpyFrame, 'liftFind' | 'shrug' | 'hidePut' | 'laugh1' | 'laugh2' | 'placeTrap'>;
@@ -110,6 +115,17 @@ function effectFor(state: GameState, e: GameEvent): EffectSeed | null {
     }
     case 'bounced':
       return { kind: 'guard', spy: e.spy, duration: RULES.guardKickTime };
+    case 'blocked': {
+      // Only a blocked jab shows a spark: the clubs actually meet. A bash stopped by ducking has
+      // no club contact to spark from.
+      if (e.kind !== 'jab') return null;
+      const defender = state.spies[e.spy];
+      const attacker = opponentOf(state, defender);
+      return {
+        kind: 'blockSpark', spy: e.spy, duration: BLOCK_SPARK_TIME,
+        x: (attacker.x + defender.x) / 2, z: (attacker.z + defender.z) / 2,
+      };
+    }
     case 'died': {
       const spy = laugher(state, e);
       return spy === null ? null : { kind: 'laugh', spy, duration: LAUGH_TIME };
@@ -164,6 +180,7 @@ function poseOf(e: Effect, now: number): EffectPose | null {
     case 'dropped':
     case 'poof':
     case 'guard':
+    case 'blockSpark':
       return null;
   }
 }
@@ -290,6 +307,11 @@ function drawEffect(ctx: Ctx, state: GameState, e: Effect, t: number): void {
     case 'disarm':
       drawDisarm(ctx, state, e, t);
       break;
+    case 'blockSpark': {
+      const h = hand(e, 'block');
+      sparkles(ctx, h.x, h.y, t);
+      break;
+    }
 
   }
 }

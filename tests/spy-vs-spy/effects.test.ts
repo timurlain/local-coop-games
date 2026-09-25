@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 import {
-  EFFECT_TIME, LAUGH_TIME, activeEffects, effectPose, effectsIn, laugher, spawnEffects, type EffectQueue,
+  BLOCK_SPARK_TIME, EFFECT_TIME, LAUGH_TIME, activeEffects, effectPose, effectsIn, laugher, spawnEffects, type EffectQueue,
 } from '../../src/games/spy-vs-spy/render/effects';
 import { pickFrame } from '../../src/games/spy-vs-spy/render/spy';
 import { atFurniture, firstFurniture, openGame, place, remedy, secret } from './fixtures';
@@ -81,6 +82,52 @@ describe('spawnEffects (spec §7 table)', () => {
     const q: EffectQueue = [];
     spawnEffects(q, s, [{ type: 'searchStart', spy: 0 }, { type: 'door', spy: 1 }, { type: 'draw' }], 0);
     expect(q).toHaveLength(0);
+  });
+});
+
+describe('blockSpark (round 4 §2: a blocked jab visibly stops)', () => {
+  it('spawns at the midpoint between attacker and defender, in their shared room, for BLOCK_SPARK_TIME', () => {
+    const s = openGame();
+    const a = place(s, 0, 4, 100, 20);
+    const b = place(s, 1, 4, 110, 20);
+    const q: EffectQueue = [];
+    const ev: GameEvent = { type: 'blocked', spy: 1, kind: 'jab' };
+    spawnEffects(q, s, [ev], 10);
+    expect(BLOCK_SPARK_TIME).toBe(0.3);
+    expect(q).toHaveLength(1);
+    expect(q[0]).toMatchObject({
+      kind: 'blockSpark', spy: 1, room: 4, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, start: 10, duration: BLOCK_SPARK_TIME,
+    });
+    expect(effectsIn(q, 4, 10.1).map((e) => e.kind)).toEqual(['blockSpark']);
+    expect(activeEffects(q, 10 + BLOCK_SPARK_TIME - 0.01)).toHaveLength(1);
+    expect(activeEffects(q, 10 + BLOCK_SPARK_TIME)).toHaveLength(0);
+  });
+
+  it('does not spark a bash stopped by ducking: no clubs meet', () => {
+    const s = openGame();
+    place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 110, 20);
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [{ type: 'blocked', spy: 1, kind: 'bash' }], 0);
+    expect(q).toHaveLength(0);
+  });
+
+  it('has no pose override (a spark is drawn, not a stance)', () => {
+    const s = openGame();
+    place(s, 0, 4, 100, 20);
+    place(s, 1, 4, 110, 20);
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [{ type: 'blocked', spy: 1, kind: 'jab' }], 0);
+    expect(effectPose(q, 1, 0.1)).toBeNull();
+  });
+
+  it('lands between the two spies wherever they stand (RULES-driven, not a magic literal)', () => {
+    const s = openGame();
+    const a = place(s, 0, 4, 30, 5);
+    const b = place(s, 1, 4, 30 + RULES.fightRangeX, 5 + RULES.fightRangeZ);
+    const q: EffectQueue = [];
+    spawnEffects(q, s, [{ type: 'blocked', spy: 1, kind: 'jab' }], 0);
+    expect(q[0]).toMatchObject({ x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 });
   });
 });
 

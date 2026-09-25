@@ -318,7 +318,7 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(b.ducking).toBe(true);
     expect(b.z).toBe(20);
     expect(b.health).toBe(RULES.health);
-    expect(ev).toContainEqual({ type: 'blocked', spy: 1 });
+    expect(ev).toContainEqual({ type: 'blocked', spy: 1, kind: 'bash' });
     expect(a.swingCooldown).toBeGreaterThan(0);
   });
 
@@ -349,7 +349,7 @@ describe('two attacks and ducking (spec §8)', () => {
     const ev = step(s, [IDLE, input({ moveY: 1 })], 1 / 60);
     expect(b.ducking).toBe(true);
     expect(b.health).toBe(RULES.health);
-    expect(ev).toContainEqual({ type: 'blocked', spy: 1 });
+    expect(ev).toContainEqual({ type: 'blocked', spy: 1, kind: 'bash' });
   });
 
   it('holding down outside a shared room still walks towards the front', () => {
@@ -381,6 +381,24 @@ describe('two attacks and ducking (spec §8)', () => {
     expect(b.ducking).toBe(false);
     expect(ev).not.toContainEqual({ type: 'blocked', spy: 1 });
     expect(ev).not.toContainEqual({ type: 'hit', spy: 1 });
+  });
+
+  it('guard stance (round 4 §2): holding away from an opponent in range stands his ground, no movement', () => {
+    const { s, b } = duel(); // a at 100, b at 110, within fight range
+    const away = input({ moveX: 1 }); // b holds away from a (a is to b's left)
+    const ev = run(s, [IDLE, away], 0.3);
+    expect(b.blocking).toBe(true);
+    expect(b.x).toBe(110); // stands his ground, doesn't walk off
+    expect(ev.filter((e) => e.type === 'bump')).toHaveLength(0);
+  });
+
+  it('holding away from an opponent out of fight range just walks (round 4 §2)', () => {
+    const { s, b } = duel();
+    b.x = RULES.roomW - 5; // shares the room, but out of fight range
+    const away = input({ moveX: 1 });
+    run(s, [IDLE, away], 0.2);
+    expect(b.blocking).toBe(false);
+    expect(b.x).toBeGreaterThan(RULES.roomW - 5);
   });
 
   it('a spy swinging while holding down is not ducking', () => {
