@@ -20,20 +20,25 @@ export function inFightRange(a: Spy, b: Spy): boolean {
  * Holding the Trapulator button while an opponent shares the room = block (guard stance with the open umbrella,
  * round 4 §2; play test 5: its own key, so walking away from the opponent is plain walking). The spy stands still
  * while blocking. In a shared room the button does nothing else (see `updateTrapButton`).
+ *
+ * Round 6 §1: holding down at the same time is a duck instead (`updateDucking`), not a block — block and duck
+ * are exclusive on the same button.
  */
 export function updateBlocking(state: GameState, spy: Spy, input: SpyInput): void {
-  spy.blocking = input.trap && spy.mode === 'normal' && spy.kickTimer <= 0 && sameRoomOpponent(state, spy) !== null;
+  spy.blocking = input.trap && input.moveY !== 1 && spy.mode === 'normal' && spy.kickTimer <= 0
+    && sameRoomOpponent(state, spy) !== null;
 }
 
 /**
- * Holding down while not swinging = duck (spec §8): stops a head bash, and the spy doesn't move
- * that tick — but only when the opponent is actually within fight range (L3 review). An opponent
- * merely sharing the room but out of reach can't be ducked at, so holding down still just walks
- * towards the front, letting the spy get to the S door instead of being stuck.
+ * Round 6 §1: the Trapulator button held together with down, while not swinging, is a duck — stops a head
+ * bash, and the spy doesn't move that tick — but only when the opponent is actually within fight range (L3
+ * review, carried over from the old "down alone" duck). An opponent merely sharing the room but out of reach
+ * can't be ducked at, so holding trap+down there still just stands in place with the head bash still landing
+ * (no duck), and down alone always just walks, like the other directions.
  */
 export function updateDucking(state: GameState, spy: Spy, input: SpyInput): void {
   const o = sameRoomOpponent(state, spy);
-  spy.ducking = spy.mode === 'normal' && spy.kickTimer <= 0 && input.moveY === 1 && spy.attack === null
+  spy.ducking = spy.mode === 'normal' && spy.kickTimer <= 0 && input.trap && input.moveY === 1 && spy.attack === null
     && o !== null && inFightRange(spy, o);
 }
 

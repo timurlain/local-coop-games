@@ -76,8 +76,9 @@ export function cancelTrapButton(spy: Spy): void {
 /**
  * The Trapulator button for a free spy (round 4 §1), every tick. A press released before `trapTapMax` is a tap: the
  * hand cycles (decided on release, so a hold never changes it). Reaching `trapTapMax` opens the map for as long as
- * the button stays held — charged once per opening. In a shared room the button blocks instead (play test 5).
- * Neither the press nor a tap stops the spy walking; only the open map does (see `step`).
+ * the button stays held — charged once per opening. In a shared room the button is defence instead (play test 5):
+ * block, or duck if down is held too (round 6 §1). Neither the press nor a tap stops the spy walking; only the
+ * open map does (see `step`).
  */
 export function updateTrapButton(state: GameState, spy: Spy, input: SpyInput, dt: number, events: GameEvent[]): void {
   if (!input.trap) {
@@ -86,8 +87,9 @@ export function updateTrapButton(state: GameState, spy: Spy, input: SpyInput, dt
     return;
   }
   if (sharesRoom(state, spy)) {
-    // In a shared room the button is the block (play test 5, see `updateBlocking`): no cycling, no map. A press
-    // made here (or an open map the opponent walked in on) is spent; it stays ignored until released.
+    // In a shared room the button is defence — block, or duck with down held too (play test 5, round 6 §1; see
+    // `updateBlocking`/`updateDucking`): no cycling, no map. A press made here (or an open map the opponent
+    // walked in on) is spent; it stays ignored until released.
     cancelTrapButton(spy);
     return;
   }
