@@ -39,9 +39,10 @@ describe('applyEffects (L1620–1664)', () => {
 });
 
 describe('affordable (cash check L2020–2022)', () => {
-  it('is affordable whenever treasury + cost stays positive', () => {
+  it('is affordable while treasury + cost does not go below zero', () => {
     expect(affordable(200, { cost: -120 })).toBe(true);
-    expect(affordable(100, { cost: -100 })).toBe(false);
+    expect(affordable(100, { cost: -100 })).toBe(true); // original: spending down to exactly 0 is allowed
+    expect(affordable(99, { cost: -100 })).toBe(false);
   });
   it('a rising monthly cost with an empty treasury is unaffordable', () => {
     expect(affordable(0, { monthly: 5 })).toBe(false);

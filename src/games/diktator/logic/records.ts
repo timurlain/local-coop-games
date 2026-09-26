@@ -76,6 +76,6 @@ export function affordable(treasury: number, e: Effects): boolean {
   const cost = e.cost ?? 0;
   const monthly = e.monthly ?? 0;
   if (treasury + cost > 0) return true;
-  if ((cost < 0 || monthly > 0) && (treasury + cost <= 0 || treasury - monthly < 0)) return false;
+  if ((cost < 0 || monthly > 0) && (treasury + cost < 0 || treasury - monthly < 0)) return false;
   return true;
 }
