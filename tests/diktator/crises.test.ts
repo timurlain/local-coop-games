@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { assassination } from '../../src/games/diktator/logic/assassination';
 import { war } from '../../src/games/diktator/logic/war';
 import { initialState, type GameEvent } from '../../src/games/diktator/logic/state';
+import { newPalaceDay } from '../../src/games/diktator/logic/palace';
+import { albania } from '../../src/games/diktator/scenario/albania';
 import { scriptedDice } from './helpers';
 
 function state() {
@@ -42,6 +44,18 @@ describe('assassination (L1500–1560)', () => {
     const s = state();
     s.plots = { armada: { kind: 'assassination' }, rolnici: { kind: 'assassination' }, statkari: { kind: 'assassination' } };
     expect(assassination(s, scriptedDice([2]), [])).toBe(true);
+  });
+
+  it('guarded by the commander, the last-chance coin saves 3 times in 4 (our addition)', () => {
+    const s = state();
+    s.plots.armada = { kind: 'assassination' };
+    s.pop.policie = 2;
+    s.str.policie = 1;
+    s.palace = newPalaceDay(albania.palace!);
+    s.palace.guarded = true;
+    expect(assassination(s, scriptedDice([0, 1]), [])).toBe(false);
+    expect(assassination(s, scriptedDice([0, 3]), [])).toBe(false);
+    expect(assassination(s, scriptedDice([0, 0]), [])).toBe(true);
   });
 });
 
