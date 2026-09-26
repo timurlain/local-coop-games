@@ -77,6 +77,8 @@ function commandLabel(cmd: Command): string {
     case 'fight': return T.fight;
     case 'ally': return name(cmd.group);
     case 'punish': return cmd.punish ? T.punishYes : T.punishNo;
+    default:
+      return cmd.type;
   }
 }
 

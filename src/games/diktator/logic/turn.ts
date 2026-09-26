@@ -4,6 +4,7 @@ import { STRENGTH_GROUPS, type StrengthGroupId } from './groups';
 import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
 import { maybeNews } from './news';
+import { newPalaceDay } from './palace';
 import { formPlots } from './plot';
 import { policeReport } from './police';
 import { afterVictory, eligibleAllies, fightRevolution, findRevolution, flee, throughMountains } from './revolution';
@@ -32,6 +33,7 @@ function startQuarter(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[
   s.threshold = RULES.thresholdBase + dice.int(RULES.thresholdSpread);
   s.quarter += 1;
   s.decisionTaken = false;
+  if (s.palace) s.palace = newPalaceDay(sc.palace!);
   events.push({ type: 'quarterStarted', quarter: s.quarter });
   formPlots(s);
   settleTreasury(s, events);
@@ -70,9 +72,18 @@ function resolveFight(s: GameState, chosen: StrengthGroupId | null, dice: Dice, 
   else end(s, { kind: 'killed', cause: 'revolution' }, events);
 }
 
+export interface GameOptions {
+  /** Play the palace day (plan 2); requires a scenario with a palace. */
+  readonly palace?: boolean;
+}
+
 /** Starts a game: the state before the first turn, then the first turn begins. */
-export function newGame(sc: Scenario, seed: number, regime?: StartingRegime): StepResult {
+export function newGame(sc: Scenario, seed: number, regime?: StartingRegime, opts: GameOptions = {}): StepResult {
   const s = initialState(seed, regime);
+  if (opts.palace) {
+    if (!sc.palace) throw new Error(`scenario ${sc.id} has no palace`);
+    s.palace = newPalaceDay(sc.palace);
+  }
   const events: GameEvent[] = [];
   startQuarter(sc, s, rngDice(s.rng), events);
   return { state: s, events };

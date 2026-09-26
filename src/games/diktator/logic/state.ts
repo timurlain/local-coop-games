@@ -1,5 +1,6 @@
 import { makeRng, type RngState } from '../../../shared/rng';
 import { GROUPS, STRENGTH_GROUPS, type FactionId, type GroupId, type LenderId, type StrengthGroupId } from './groups';
+import type { Direction, Hero, PalaceState } from './palace';
 import { RULES } from './rules';
 
 export type Plot =
@@ -28,7 +29,7 @@ export interface StartingRegime {
 }
 
 export interface GameState {
-  readonly version: 1;
+  readonly version: 2;
   readonly seed: number;
   rng: RngState;
   /** 0 before the first turn; 1 = 1925-Q1 … 57 = 1939-Q1. The original's `mth`. */
@@ -52,6 +53,8 @@ export interface GameState {
   used: Record<string, true>;
   decisionTaken: boolean;
   phase: Phase;
+  /** The palace day (plan 2); null in the classic text mode. */
+  palace: PalaceState | null;
 }
 
 export type AidRefusal = 'tooEarly' | 'used' | 'unpopular';
@@ -88,18 +91,43 @@ export type GameEvent =
   | { readonly type: 'joking' }
   | { readonly type: 'revolutionFight'; readonly rebels: number; readonly ours: number; readonly won: boolean }
   | { readonly type: 'punished'; readonly faction: FactionId; readonly ally: StrengthGroupId }
+  | { readonly type: 'moved'; readonly hero: Hero; readonly from: string; readonly to: string }
+  | { readonly type: 'seal'; readonly holder: Hero | null }
+  | { readonly type: 'wish'; readonly group: StrengthGroupId; readonly decision: string | null }
+  | { readonly type: 'advised'; readonly subject: 'petition' | 'decision'; readonly id: string }
+  | { readonly type: 'envoys'; readonly offers: Readonly<Record<LenderId, number | null>> }
+  | { readonly type: 'investigated'; readonly faction: FactionId; readonly plot: Plot }
+  | { readonly type: 'guarding' }
+  | { readonly type: 'heroDone'; readonly hero: Hero }
   | { readonly type: 'ended'; readonly ending: Ending };
 
 export type Command =
   | { readonly type: 'answer'; readonly answer: 'yes' | 'no' | 'goAway' | 'suggestOther' }
-  | { readonly type: 'policeReport' }
-  /** `share` only for the Swiss account: send 1/share of the treasury (1, 2, 3 or 4; the original is 2). */
-  | { readonly type: 'decide'; readonly decision: string; readonly share?: 1 | 2 | 3 | 4 }
-  | { readonly type: 'endDay' }
+  /** Palace mode: only the commander, in the guardroom, 1 hour. */
+  | { readonly type: 'policeReport'; readonly hero?: Hero }
+  /** `share` only for the Swiss account: send 1/share of the treasury (1, 2, 3 or 4; the original is 2).
+   * Palace mode: `hero` must carry the seal and stand in the decision's room. */
+  | { readonly type: 'decide'; readonly decision: string; readonly share?: 1 | 2 | 3 | 4; readonly hero?: Hero }
+  /** Palace mode: `hero` ends his day; the evening starts when both have. */
+  | { readonly type: 'endDay'; readonly hero?: Hero }
   | { readonly type: 'flee' }
   | { readonly type: 'fight' }
   | { readonly type: 'ally'; readonly group: StrengthGroupId }
-  | { readonly type: 'punish'; readonly punish: boolean };
+  | { readonly type: 'punish'; readonly punish: boolean }
+  // palace mode only (plan 2a)
+  | { readonly type: 'move'; readonly hero: Hero; readonly dir: Direction }
+  | { readonly type: 'takeSeal'; readonly hero: Hero }
+  | { readonly type: 'giveSeal'; readonly hero: Hero }
+  /** Zogu, in a group's room, 1 hour. */
+  | { readonly type: 'talk' }
+  /** Zogu, 1 hour: without `decision` during the audience (about the petition), with it in Mother's room. */
+  | { readonly type: 'advice'; readonly decision?: string }
+  /** Zogu, in the envoys' salon, 1 hour. */
+  | { readonly type: 'envoys' }
+  /** The commander, in a faction's room, 1 hour. */
+  | { readonly type: 'investigate' }
+  /** The commander, in Zogu's room, his remaining hours. */
+  | { readonly type: 'guard' };
 
 function record<K extends string>(keys: readonly K[], v: (k: K) => number): Record<K, number> {
   return Object.fromEntries(keys.map((k) => [k, v(k)])) as Record<K, number>;
@@ -109,7 +137,7 @@ function record<K extends string>(keys: readonly K[], v: (k: K) => number): Reco
 export function initialState(seed: number, regime: StartingRegime = {}): GameState {
   const st = RULES.start;
   return {
-    version: 1,
+    version: 2,
     seed,
     rng: makeRng(seed),
     quarter: 0,
@@ -127,5 +155,6 @@ export function initialState(seed: number, regime: StartingRegime = {}): GameSta
     used: {},
     decisionTaken: false,
     phase: { kind: 'day' },
+    palace: null,
   };
 }

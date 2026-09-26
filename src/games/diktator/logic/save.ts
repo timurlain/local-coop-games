@@ -1,7 +1,7 @@
 import { makeRng } from '../../../shared/rng';
 import type { GameState } from './state';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SaveFile {
   readonly version: typeof SAVE_VERSION;

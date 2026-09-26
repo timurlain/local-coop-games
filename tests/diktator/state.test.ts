@@ -4,7 +4,8 @@ import { initialState } from '../../src/games/diktator/logic/state';
 describe('initialState (L140–L244)', () => {
   it('uses the original starting values', () => {
     const s = initialState(42);
-    expect(s.version).toBe(1);
+    expect(s.version).toBe(2);
+    expect(s.palace).toBeNull();
     expect(s.quarter).toBe(0);
     expect(s.treasury).toBe(1000);
     expect(s.costs).toBe(60);
