@@ -1,6 +1,6 @@
 import { answerPetition, drawPetition, suggestOther } from './audience';
 import { assassination } from './assassination';
-import type { StrengthGroupId } from './groups';
+import { STRENGTH_GROUPS, type StrengthGroupId } from './groups';
 import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
 import { maybeNews } from './news';
@@ -136,7 +136,11 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
   return { state: s, events };
 }
 
-/** Every command the UI may offer in the current phase (used by the text UI and the bot test). */
+/**
+ * Every command the UI may offer in the current phase (used by the text UI and the bot test).
+ * `chooseAlly` lists every strength group, not only the eligible allies: spec §9 has the ally screen
+ * list all six, and picking a hostile one (pop ≤ low) is a valid choice — it takes the "joking" branch.
+ */
 export function validCommands(sc: Scenario, s: GameState): Command[] {
   switch (s.phase.kind) {
     case 'audience': {
@@ -159,7 +163,7 @@ export function validCommands(sc: Scenario, s: GameState): Command[] {
     case 'revolution':
       return [{ type: 'flee' }, { type: 'fight' }];
     case 'chooseAlly':
-      return eligibleAllies(s).map((group) => ({ type: 'ally', group }) as Command);
+      return STRENGTH_GROUPS.map((group) => ({ type: 'ally', group }) as Command);
     case 'punish':
       return [{ type: 'punish', punish: true }, { type: 'punish', punish: false }];
     case 'ended':

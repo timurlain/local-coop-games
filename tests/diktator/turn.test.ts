@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { advance, newGame, quarterLabel, validCommands } from '../../src/games/diktator/logic/turn';
-import type { Command, GameState } from '../../src/games/diktator/logic/state';
+import type { Command, GameEvent, GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { makeRng, randInt } from '../../src/shared/rng';
 
@@ -77,6 +77,99 @@ describe('advance', () => {
   });
 });
 
+describe('revolution phase', () => {
+  it('flee always ends the game, escaped or killed', () => {
+    const s: GameState = structuredClone(newGame(albania, 1).state);
+    s.phase = { kind: 'revolution', faction: 'armada' };
+    const { state, events } = advance(albania, s, { type: 'flee' });
+    expect(state.phase.kind).toBe('ended');
+    if (state.phase.kind === 'ended') expect(['escaped', 'killed']).toContain(state.phase.ending.kind);
+    expect(events.some((e) => e.type === 'ended')).toBe(true);
+  });
+
+  it('fight with an eligible ally reaches chooseAlly; a hostile pick jokes and ends, a winning friendly pick punishes and advances the quarter', () => {
+    // Hostile ally: joking, ends the game regardless of the dice.
+    {
+      const s: GameState = structuredClone(newGame(albania, 1).state);
+      s.low = 2;
+      s.pop.jugoslavie = 1; // hostile: pop <= low
+      s.plots.armada = { kind: 'revolution', ally: 'rolnici' };
+      s.phase = { kind: 'revolution', faction: 'armada' };
+      const fight = advance(albania, s, { type: 'fight' });
+      expect(fight.state.phase.kind).toBe('chooseAlly');
+      const picked = advance(albania, fight.state, { type: 'ally', group: 'jugoslavie' });
+      expect(picked.events.some((e) => e.type === 'joking')).toBe(true);
+      expect(picked.state.phase.kind).toBe('ended');
+    }
+    // Friendly ally, engineered so the ruler's side always wins: punish then next quarter's audience.
+    {
+      const s: GameState = structuredClone(newGame(albania, 1).state);
+      s.quarter = 5;
+      s.low = 2;
+      s.pop.policie = 9; // friendly: eligible ally
+      s.str.armada = 0; // rebel faction strength
+      s.str.rolnici = 0; // the rebels' own ally strength (plot.ally)
+      s.guard = 9;
+      s.str.policie = 9; // chosen ally strength
+      s.plots.armada = { kind: 'revolution', ally: 'rolnici' };
+      s.phase = { kind: 'revolution', faction: 'armada' };
+      const fight = advance(albania, s, { type: 'fight' });
+      expect(fight.state.phase.kind).toBe('chooseAlly');
+      const chosen = advance(albania, fight.state, { type: 'ally', group: 'policie' });
+      expect(chosen.state.phase).toEqual({ kind: 'punish', faction: 'armada', chosen: 'policie' });
+      const punished = advance(albania, chosen.state, { type: 'punish', punish: true });
+      expect(punished.state.phase.kind).toBe('audience');
+      expect(punished.state.quarter).toBe(6);
+    }
+  });
+});
+
+describe('punish at the last quarter', () => {
+  it('ends the game as survived', () => {
+    const s: GameState = structuredClone(newGame(albania, 1).state);
+    s.quarter = 57;
+    s.plots.armada = { kind: 'none' };
+    s.phase = { kind: 'punish', faction: 'armada', chosen: null };
+    const { state } = advance(albania, s, { type: 'punish', punish: false });
+    expect(state.phase).toEqual({ kind: 'ended', ending: { kind: 'survived' } });
+  });
+});
+
+describe('evening event order', () => {
+  function buildEveningState(seed: number): GameState {
+    const s: GameState = structuredClone(newGame(albania, seed).state);
+    s.quarter = 10;
+    s.phase = { kind: 'day' };
+    s.low = 2;
+    s.pop.armada = 7;
+    s.pop.rolnici = 7;
+    s.pop.statkari = 7;
+    s.pop.jugoslavie = 1; // hostile: war triggers
+    s.pop.policie = 9; // friendly and strong: survives any assassination attempt
+    s.str.jugoslavie = 2; // >= low: war triggers
+    s.str.policie = 9;
+    s.guard = 9; // home side always outnumbers the small guaranteed enemy strength
+    s.plots = { armada: { kind: 'none' }, rolnici: { kind: 'none' }, statkari: { kind: 'assassination' } };
+    return s;
+  }
+
+  it('emits assassination, then war, then optional news, then revolution/quarterStarted, in that order', () => {
+    let events: readonly GameEvent[] | null = null;
+    for (let seed = 1; seed <= 60 && !events; seed++) {
+      const result = advance(albania, buildEveningState(seed), { type: 'endDay' });
+      if (result.events[0]?.type === 'assassination' && result.events[0].survived) events = result.events;
+    }
+    if (!events) throw new Error('no seed in range picked the plotting faction for the assassination attempt');
+    const idxAssassination = events.findIndex((e) => e.type === 'assassination');
+    const idxWar = events.findIndex((e) => e.type === 'warThreat' || e.type === 'invasion');
+    const idxNews = events.findIndex((e) => e.type === 'news');
+    const idxNext = events.findIndex((e) => e.type === 'revolution' || e.type === 'quarterStarted');
+    expect(idxWar).toBeGreaterThan(idxAssassination);
+    if (idxNews >= 0) expect(idxNews).toBeGreaterThan(idxWar);
+    expect(idxNext).toBeGreaterThan(idxNews >= 0 ? idxNews : idxWar);
+  });
+});
+
 /** Plays random valid commands until the game ends. */
 function playRandom(seed: number): GameState {
   const pickRng = makeRng(seed ^ 0x5bd1e995);
@@ -98,6 +191,11 @@ describe('bot playthrough', () => {
       expect(s.quarter).toBeLessThanOrEqual(57);
       for (const v of Object.values(s.pop)) expect(v >= 0 && v <= 9).toBe(true);
       for (const v of Object.values(s.str)) expect(v >= 0 && v <= 9).toBe(true);
+      if (s.phase.kind === 'ended') {
+        const kind = s.phase.ending.kind;
+        expect(['killed', 'escaped', 'survived']).toContain(kind);
+        if (kind === 'survived') expect(s.quarter).toBe(57);
+      }
     }
   });
 });

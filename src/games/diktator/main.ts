@@ -1,6 +1,6 @@
 import { cs } from '../../shared/i18n/cs';
 import { randomSeed } from '../../shared/rng';
-import { loadJson, saveJson } from '../../shared/storage';
+import { saveJson } from '../../shared/storage';
 import { decisionById } from './logic/decision';
 import { GROUPS, hasStrength, type GroupId } from './logic/groups';
 import { deserialize, newSave, recordTurn, retryFromYear, type SaveFile } from './logic/save';
@@ -128,8 +128,10 @@ function render(): void {
   if (!file) {
     prompt.textContent = T.subtitle;
     choices.append(button(T.newGame, '1', startNew));
-    const saved = deserialize(JSON.stringify(loadJson<Record<string, unknown>>(SAVE_KEY, {})));
-    if (saved && saved.current.phase.kind !== 'ended') choices.append(button(T.continueGame, '2', () => { file = saved; render(); }));
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(SAVE_KEY); } catch { /* storage unavailable */ }
+    const saved = deserialize(raw);
+    if (saved) choices.append(button(T.continueGame, '2', () => { file = saved; render(); }));
     return;
   }
   const s = file.current;
@@ -142,7 +144,7 @@ function render(): void {
     prompt.textContent = `${endingText(s)} ${T.score(score(s, s.phase.ending).total)}`;
     let key = 1;
     const retry = retryFromYear(file);
-    if (retry) choices.append(button(T.retry(quarterLabel(retry.state.quarter).year), String(key++), () => { file = retry.file; log = []; render(); }));
+    if (retry) choices.append(button(T.retry(quarterLabel(retry.state.quarter).year), String(key++), () => { file = retry.file; log = []; lastReport = null; render(); }));
     choices.append(button(T.newGame, String(key++), startNew));
     return;
   }

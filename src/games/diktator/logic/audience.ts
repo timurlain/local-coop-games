@@ -9,7 +9,10 @@ export function petitionById(sc: Scenario, id: string): Petition {
   return p;
 }
 
-/** L630–648: random start, cyclic scan for an unused petition; when all are used, reset them and draw again. */
+/**
+ * L630–648: random start, cyclic scan for an unused petition; when all are used, only the petitions'
+ * used flags are reset and a fresh draw is made — decisions and news keep their own used flags.
+ */
 export function drawPetition(sc: Scenario, s: GameState, dice: Dice): string {
   const ps = sc.petitions;
   for (let attempt = 0; attempt < 2; attempt++) {

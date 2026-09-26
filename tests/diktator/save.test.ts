@@ -46,4 +46,42 @@ describe('save file', () => {
     expect(r.file.retries).toBe(1);
     expect(r.file.current).toEqual(r.state);
   });
+
+  it('reseeds each retry so successive retries diverge', () => {
+    const starts = playQuarters(6);
+    let f = newSave('albania', starts[0]);
+    for (const s of starts.slice(1)) f = recordTurn(f, s);
+    const first = retryFromYear(f)!;
+    const second = retryFromYear(first.file)!;
+    expect(second.state.rng.s).not.toBe(first.state.rng.s);
+    expect(second.state.seed).toBe(first.state.seed);
+  });
+
+  it('retrying the same file object twice replays identically', () => {
+    const starts = playQuarters(6);
+    let f = newSave('albania', starts[0]);
+    for (const s of starts.slice(1)) f = recordTurn(f, s);
+    const a = retryFromYear(f)!;
+    const b = retryFromYear(f)!;
+    expect(a.state).toEqual(b.state);
+  });
+
+  it('does not treat a suggested Q1 audience as a new year start', () => {
+    let base: GameState | undefined;
+    let suggested: GameState | undefined;
+    for (let seed = 1; seed <= 30 && !suggested; seed++) {
+      const s = newGame(albania, seed).state;
+      try {
+        suggested = advance(albania, s, { type: 'answer', answer: 'suggestOther' }).state;
+        base = s;
+      } catch {
+        // this seed's Q1 petition has no sibling from the same petitioner to suggest instead
+      }
+    }
+    if (!base || !suggested) throw new Error('no seed in range produced a suggestOther-eligible Q1 petition');
+    expect(base.quarter % 4).toBe(1);
+    const f0 = newSave('albania', base);
+    const f1 = recordTurn(f0, suggested);
+    expect(f1.checkpoints).toEqual(f0.checkpoints);
+  });
 });

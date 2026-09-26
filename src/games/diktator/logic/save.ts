@@ -1,3 +1,4 @@
+import { makeRng } from '../../../shared/rng';
 import type { GameState } from './state';
 
 export const SAVE_VERSION = 1;
@@ -12,7 +13,7 @@ export interface SaveFile {
 }
 
 function isYearStart(s: GameState): boolean {
-  return s.phase.kind === 'audience' && s.quarter % 4 === 1;
+  return s.phase.kind === 'audience' && !s.phase.suggested && s.quarter % 4 === 1;
 }
 
 export function newSave(scenario: string, state: GameState): SaveFile {
@@ -32,6 +33,7 @@ export function retryFromYear(f: SaveFile): { file: SaveFile; state: GameState }
   const cp = [...f.checkpoints].reverse().find((c) => c.quarter <= f.current.quarter);
   if (!cp) return null;
   const state = structuredClone(cp);
+  state.rng = makeRng((cp.seed ^ Math.imul(f.retries + 1, 0x9e3779b9)) >>> 0);
   return { state, file: { ...f, current: state, retries: f.retries + 1 } };
 }
 
