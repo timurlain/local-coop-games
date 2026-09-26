@@ -5,7 +5,7 @@ import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
 import { maybeNews } from './news';
 import { newPalaceDay } from './palace';
-import { applyPalaceCommand, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
+import { applyPalaceCommand, palaceCommands, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
 import { formPlots } from './plot';
 import { policeReport } from './police';
 import { afterVictory, eligibleAllies, fightRevolution, findRevolution, flee, throughMountains } from './revolution';
@@ -159,8 +159,21 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
  * Every command the UI may offer in the current phase (used by the text UI and the bot test).
  * `chooseAlly` lists every strength group, not only the eligible allies: spec §9 has the ally screen
  * list all six, and picking a hostile one (pop ≤ low) is a valid choice — it takes the "joking" branch.
+ * In palace mode the audience and the day list the answers (audience only) and every command of both heroes (`palaceCommands`).
  */
 export function validCommands(sc: Scenario, s: GameState): Command[] {
+  if (s.palace && (s.phase.kind === 'audience' || s.phase.kind === 'day')) {
+    const answers: Command[] = [];
+    if (s.phase.kind === 'audience') {
+      answers.push({ type: 'answer', answer: 'yes' }, { type: 'answer', answer: 'no' }, { type: 'answer', answer: 'goAway' });
+      const phase = s.phase;
+      const from = sc.petitions.find((p) => p.id === phase.petition)?.from;
+      if (!phase.suggested && sc.petitions.some((p) => p.from === from && !s.used[p.id])) {
+        answers.push({ type: 'answer', answer: 'suggestOther' });
+      }
+    }
+    return [...answers, ...palaceCommands(sc, s, 'zogu'), ...palaceCommands(sc, s, 'velitel')];
+  }
   switch (s.phase.kind) {
     case 'audience': {
       const cmds: Command[] = [

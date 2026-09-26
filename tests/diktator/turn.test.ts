@@ -199,3 +199,30 @@ describe('bot playthrough', () => {
     }
   });
 });
+
+/** Plays random valid commands in palace mode until the game ends. */
+function playRandomPalace(seed: number): GameState {
+  const pickRng = makeRng(seed ^ 0x2c1b3c6d);
+  let { state } = newGame(albania, seed, undefined, { palace: true });
+  for (let step = 0; step < 60000; step++) {
+    if (state.phase.kind === 'ended') return state;
+    const options: Command[] = validCommands(albania, state);
+    state = advance(albania, state, options[randInt(pickRng, options.length)]).state;
+  }
+  throw new Error(`palace seed ${seed} did not end`);
+}
+
+describe('palace bot playthrough', () => {
+  it('20 random palace games always end properly', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const s = playRandomPalace(seed);
+      expect(s.phase.kind).toBe('ended');
+      expect(s.quarter).toBeLessThanOrEqual(57);
+      if (s.phase.kind === 'ended' && s.phase.ending.kind === 'survived') expect(s.quarter).toBe(57);
+    }
+  });
+
+  it('is deterministic', () => {
+    expect(JSON.stringify(playRandomPalace(3))).toBe(JSON.stringify(playRandomPalace(3)));
+  });
+});

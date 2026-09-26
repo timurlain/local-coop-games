@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { deserialize, newSave, serialize } from '../../src/games/diktator/logic/save';
-import { advance, newGame } from '../../src/games/diktator/logic/turn';
+import { advance, newGame, validCommands } from '../../src/games/diktator/logic/turn';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import type { Command, GameState } from '../../src/games/diktator/logic/state';
+import { palaceCommands } from '../../src/games/diktator/logic/palace-actions';
 
 describe('palace mode', () => {
   it('newGame with palace starts a palace day; classic mode has none', () => {
@@ -234,5 +235,57 @@ describe('ending the day', () => {
     expect(() => advance(albania, day(), { type: 'endDay' })).toThrow();
     const classic = play(newGame(albania, 4).state, { type: 'answer', answer: 'no' });
     expect(() => advance(albania, classic, { type: 'move', hero: 'zogu', dir: 'left' })).toThrow();
+  });
+});
+
+describe('palaceCommands', () => {
+  it('during the audience Zogu may only ask for advice; the commander may move and act', () => {
+    const s = newGame(albania, 4, undefined, { palace: true }).state;
+    expect(palaceCommands(albania, s, 'zogu')).toEqual([{ type: 'advice' }]);
+    expect(palaceCommands(albania, s, 'velitel')).toEqual([
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'left' },
+      { type: 'move', hero: 'velitel', dir: 'right' },
+      { type: 'policeReport', hero: 'velitel' },
+    ]);
+  });
+
+  it('in the day, with the seal in the guardroom, the holder may seal the guardroom decisions', () => {
+    let s = day();
+    s = play(
+      s,
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'takeSeal', hero: 'zogu' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+      { type: 'move', hero: 'zogu', dir: 'right' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+    );
+    const cmds = palaceCommands(albania, s, 'zogu');
+    const decisions = cmds.filter((c) => c.type === 'decide').map((c) => (c as { decision: string }).decision);
+    expect(decisions).toEqual(['d33', 'd34', 'd35', 'd36']);
+    expect(cmds).toContainEqual({ type: 'talk' });
+    expect(cmds).toContainEqual({ type: 'giveSeal', hero: 'zogu' });
+    expect(cmds[cmds.length - 1]).toEqual({ type: 'endDay', hero: 'zogu' });
+  });
+
+  it('validCommands in palace mode lists the answers plus both heroes\' commands', () => {
+    const s = newGame(albania, 4, undefined, { palace: true }).state;
+    const cmds = validCommands(albania, s);
+    expect(cmds.filter((c) => c.type === 'answer').length).toBeGreaterThanOrEqual(3);
+    expect(cmds).toContainEqual({ type: 'advice' });
+    expect(cmds).toContainEqual({ type: 'move', hero: 'velitel', dir: 'up' });
+    expect(cmds.some((c) => c.type === 'endDay')).toBe(false);
+  });
+
+  it('every command palaceCommands offers is accepted by advance', () => {
+    let s = day(7);
+    for (let i = 0; i < 40 && s.phase.kind === 'day'; i++) {
+      for (const hero of ['zogu', 'velitel'] as const) {
+        for (const c of palaceCommands(albania, s, hero)) expect(() => advance(albania, s, c), JSON.stringify(c)).not.toThrow();
+      }
+      const moves = palaceCommands(albania, s, 'velitel').filter((c) => c.type === 'move');
+      if (moves.length === 0) break;
+      s = advance(albania, s, moves[i % moves.length]).state;
+    }
   });
 });
