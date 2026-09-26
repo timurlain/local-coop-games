@@ -9,9 +9,11 @@ describe('moneyText (the original cash advice)', () => {
   it('names one-off cost and the change of quarterly costs', () => {
     expect(moneyText(p('p24'))).toBe('stojí 120 tis., výdaje +10 tis. každé čtvrtletí');
     expect(moneyText(d('d40'))).toBe('vynese 130 tis.');
-    expect(moneyText(p('p16'))).toBe('výdaje −6 tis. každé čtvrtletí');
-    expect(moneyText(d('d31'))).toBe('výdaje +8 tis. každé čtvrtletí');
+    expect(moneyText(p('p11'))).toBe('výdaje −3 tis. každé čtvrtletí');
     expect(moneyText(p('p02'))).toBe('bez peněz');
+    // p16 and d31 are re-booked to income (our addition, play-test change; same numbers, opposite sign, moved from `monthly`).
+    expect(moneyText(p('p16'))).toBe('příjmy +6 tis. každé čtvrtletí');
+    expect(moneyText(d('d31'))).toBe('příjmy −8 tis. každé čtvrtletí');
   });
 });
 

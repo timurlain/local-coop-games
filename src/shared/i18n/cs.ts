@@ -122,7 +122,10 @@ export const cs = {
     quarter: (year: number, q: number) => `${['', 'Zima', 'Jaro', 'Léto', 'Podzim'][q]} ${year}`,
     address: (isKing: boolean) => (isKing ? 'Veličenstvo' : 'Excelence'),
     treasury: (amount: number) => `Pokladna: ${amount.toLocaleString('cs-CZ')} tis. franků`,
-    costs: (amount: number) => `Čtvrtletní výdaje: ${amount} tis.`,
+    /** Income and balance (our addition, play-test change): the original had no income, only costs. */
+    income: (amount: number) => `Příjmy: ${amount} tis.`,
+    costs: (amount: number) => `Výdaje: ${amount} tis.`,
+    balance: (amount: number) => `Bilance: ${amount} tis. za čtvrtletí`,
     swiss: (amount: number) => `Švýcarský účet: ${amount.toLocaleString('cs-CZ')} tis.`,
     guard: (n: number) => `Tvá stráž: ${n}`,
     audienceFrom: (group: string) => `Žádost: ${group}`,
@@ -148,7 +151,8 @@ export const cs = {
     plots: { none: '', assassination: 'spiknutí: atentát', revolution: (ally: string) => `spiknutí: revoluce, spojenec ${ally}` },
     events: {
       bankrupt: 'Pokladna je prázdná! Armáda a tajná policie reptají, stráž slábne.',
-      costsPaid: (n: number) => `Zaplaceno ${n} tis. výdajů.`,
+      /** Replaces `costsPaid` (our addition, play-test change): the balance is always booked now. */
+      budget: (income: number, costs: number) => `Rozpočet: příjmy ${income} tis., výdaje ${costs} tis.`,
       forcedNo: 'Na to v pokladně nejsou peníze. Odpověď musí být NE.',
       policeRefusedMoney: 'Na hlášení nejsou peníze.',
       policeRefusedHostile: 'Tajná policie odmítá spolupracovat.',

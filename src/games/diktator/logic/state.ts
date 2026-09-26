@@ -29,7 +29,7 @@ export interface StartingRegime {
 }
 
 export interface GameState {
-  readonly version: 2;
+  readonly version: 3;
   readonly seed: number;
   rng: RngState;
   /** 0 before the first turn; 1 = 1925-Q1 … 57 = 1939-Q1. The original's `mth`. */
@@ -38,6 +38,8 @@ export interface GameState {
   str: Record<StrengthGroupId, number>;
   plots: Record<FactionId, Plot>;
   treasury: number;
+  /** Per-quarter revenue (our addition, play-test change): the original had no income, only `costs`. */
+  income: number;
   /** Per-turn costs, the original `mpy`. */
   costs: number;
   /** The player's own strength (bodyguard), the original `st`. */
@@ -71,7 +73,8 @@ export interface PoliceSnapshot {
 export type GameEvent =
   | { readonly type: 'quarterStarted'; readonly quarter: number }
   | { readonly type: 'bankrupt' }
-  | { readonly type: 'costsPaid'; readonly amount: number }
+  /** Replaces `costsPaid` (our addition, play-test change): the balance is always booked now, income and costs both shown. */
+  | { readonly type: 'budget'; readonly income: number; readonly costs: number }
   | { readonly type: 'petition'; readonly id: string }
   | { readonly type: 'answered'; readonly id: string; readonly answer: 'yes' | 'no' | 'goAway' }
   | { readonly type: 'forcedNo'; readonly id: string }
@@ -137,7 +140,7 @@ function record<K extends string>(keys: readonly K[], v: (k: K) => number): Reco
 export function initialState(seed: number, regime: StartingRegime = {}): GameState {
   const st = RULES.start;
   return {
-    version: 2,
+    version: 3,
     seed,
     rng: makeRng(seed),
     quarter: 0,
@@ -145,6 +148,7 @@ export function initialState(seed: number, regime: StartingRegime = {}): GameSta
     str: record(STRENGTH_GROUPS, (g) => regime.str?.[g] ?? st.str),
     plots: { armada: { kind: 'none' }, rolnici: { kind: 'none' }, statkari: { kind: 'none' } },
     treasury: regime.treasury ?? st.treasury,
+    income: st.income,
     costs: st.costs,
     guard: st.guard,
     swiss: 0,

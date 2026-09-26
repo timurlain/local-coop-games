@@ -4,10 +4,11 @@ import { initialState } from '../../src/games/diktator/logic/state';
 describe('initialState (L140–L244)', () => {
   it('uses the original starting values', () => {
     const s = initialState(42);
-    expect(s.version).toBe(2);
+    expect(s.version).toBe(3);
     expect(s.palace).toBeNull();
     expect(s.quarter).toBe(0);
-    expect(s.treasury).toBe(1000);
+    expect(s.treasury).toBe(300); // starting reserve 300, not the original 1000 (our addition, play-test change)
+    expect(s.income).toBe(60); // per-quarter income (our addition, play-test change; the original had none)
     expect(s.costs).toBe(60);
     expect(s.guard).toBe(4);
     expect(s.swiss).toBe(0);

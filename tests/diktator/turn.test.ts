@@ -17,7 +17,7 @@ describe('newGame', () => {
     const { state, events } = newGame(albania, 123);
     expect(state.quarter).toBe(1);
     expect(state.phase.kind).toBe('audience');
-    expect(state.treasury).toBe(940);
+    expect(state.treasury).toBe(300); // balanced budget (income 60 = costs 60): our addition, play-test change
     expect(events[0]).toEqual({ type: 'quarterStarted', quarter: 1 });
     expect(state.low).toBeGreaterThanOrEqual(2);
     expect(state.low).toBeLessThanOrEqual(4);

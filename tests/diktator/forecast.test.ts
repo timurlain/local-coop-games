@@ -43,13 +43,15 @@ describe('forecast (Mother’s advice)', () => {
     expect(forecast(state(), { pop: { jugoslavie: -4 } })).toEqual([{ kind: 'warRisk' }]);
   });
 
+  // Money warnings use the per-quarter balance income − costs (our addition, play-test change): a one-off
+  // spend that leaves the budget balanced no longer warns of running out (see budget.test.ts for the rest).
   it('warns about money: an empty treasury, or money running out soon', () => {
     const s = state();
     s.treasury = 100;
     expect(forecast(s, { cost: -120 })).toEqual([{ kind: 'broke' }]);
-    s.treasury = 400; // 400 / 60 = 6 quarters
-    expect(forecast(s, { cost: -250 })).toEqual([{ kind: 'moneyRunsOut', quarters: 2 }]);
-    expect(forecast(s, { monthly: 90 })).toEqual([{ kind: 'moneyRunsOut', quarters: 2 }]);
+    s.treasury = 400; // income 60, costs 60: balanced, a one-off spend alone never runs out
+    expect(forecast(s, { cost: -250 })).toEqual([]);
+    expect(forecast(s, { monthly: 150 })).toEqual([{ kind: 'moneyRunsOut', quarters: 2 }]); // balance -150 → 400/150
   });
 
   it('tells good news: a hostile faction reconciles', () => {

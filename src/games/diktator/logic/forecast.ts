@@ -19,7 +19,7 @@ export type Warning =
 const MONEY_WARNING_QUARTERS = 3;
 
 function copyStats(s: GameState): Stats {
-  return { pop: { ...s.pop }, str: { ...s.str }, treasury: s.treasury, costs: s.costs };
+  return { pop: { ...s.pop }, str: { ...s.str }, treasury: s.treasury, income: s.income, costs: s.costs };
 }
 
 function revolutionAlly(t: Stats, f: FactionId, low: number, threshold: number): StrengthGroupId | null {
@@ -34,10 +34,12 @@ export function forecast(s: GameState, effects: Effects): Warning[] {
   const { low, threshold } = s;
   const out: Warning[] = [];
 
-  if (after.treasury < 0 || (after.treasury === 0 && after.costs > 0)) out.push({ kind: 'broke' });
-  else if (after.costs > 0) {
-    const quarters = Math.floor(after.treasury / after.costs);
-    const was = before.costs > 0 ? Math.floor(before.treasury / before.costs) : Infinity;
+  // Money warnings (our addition, play-test change): use the per-quarter balance `income − costs`. A
+  // balanced or surplus budget never runs out, since the treasury no longer melts by `costs` alone.
+  if (after.treasury < 0) out.push({ kind: 'broke' });
+  else if (after.costs > after.income) {
+    const quarters = Math.floor(after.treasury / (after.costs - after.income));
+    const was = before.costs > before.income ? Math.floor(before.treasury / (before.costs - before.income)) : Infinity;
     if (quarters <= MONEY_WARNING_QUARTERS && quarters < was) out.push({ kind: 'moneyRunsOut', quarters });
   }
 

@@ -8,6 +8,7 @@ function state() {
   const s = initialState(1);
   s.quarter = 6;
   s.low = 3;
+  s.treasury = 1000; // arithmetic recomputed from the original 1000 (our starting reserve is now 300)
   return s;
 }
 

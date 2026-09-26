@@ -18,10 +18,13 @@ export function moneyText(e: Effects): string {
   const parts: string[] = [];
   const cost = e.cost ?? 0;
   const monthly = e.monthly ?? 0;
+  const income = e.income ?? 0;
   if (cost < 0) parts.push(`stojí ${money(cost)}`);
   if (cost > 0) parts.push(`vynese ${money(cost)}`);
   if (monthly > 0) parts.push(`výdaje +${money(monthly)} každé čtvrtletí`);
   if (monthly < 0) parts.push(`výdaje −${money(monthly)} každé čtvrtletí`);
+  if (income > 0) parts.push(`příjmy +${money(income)} každé čtvrtletí`);
+  if (income < 0) parts.push(`příjmy −${money(income)} každé čtvrtletí`);
   return parts.length ? parts.join(', ') : 'bez peněz';
 }
 

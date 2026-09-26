@@ -8,7 +8,9 @@ export const RULES = {
   /** Popularity and strength are clamped to this range. */
   min: 0,
   max: 9,
-  start: { pop: 7, str: 6, rebelsPop: 0, treasury: 1000, costs: 60, guard: 4 },
+  /** `income` and the 300 starting `treasury` are our addition (play-test change, 2026-09-26): the original had
+   * no income and started with 1000, melting by `costs` every quarter with no way back. */
+  start: { pop: 7, str: 6, rebelsPop: 0, treasury: 300, income: 60, costs: 60, guard: 4 },
   /** low = 2 + rnd(0..2): a group at or below it is hostile (L603). */
   lowBase: 2,
   lowSpread: 3,

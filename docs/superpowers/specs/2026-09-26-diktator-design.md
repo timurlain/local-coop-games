@@ -167,6 +167,16 @@ petition and decision shows its money: the one-off cost or income and the change
 the treasury cannot pay are marked. The quarterly costs are the running of the state (officials, army pay);
 other income is abstracted away, as in the original.
 
+**Budget (play-test change, our addition).** The original's treasury melts by the per-turn costs alone; over 57
+quarters with no income it emptied in about 16 turns and money dominated the game. Instead `GameState` carries a
+per-quarter `income` (start 60, like `costs`; starting reserve 300 instead of 1000). At the start of each quarter
+`settleTreasury` always books `income − costs` (after the original's bankruptcy penalties, unchanged, when the
+treasury is already negative) — a deficit now only comes from the players' own choices, not from existing purely
+by playing. No original record number changes: five records whose money was really revenue are re-booked from
+`monthly` (expenses) to `income` with the opposite sign, so each choice's net effect on the balance matches the
+original exactly. `affordable` and Mother's money warnings use the same net change (`monthly − income`) in place
+of the original's `monthly` alone.
+
 **Mother's advice says where a choice leads** (play-test feedback). `logic/forecast.ts` applies the choice to a
 copy of the state and reports what crosses the rules' thresholds: a faction turning hostile or reconciling, a
 revolution becoming possible (and with whom), the police no longer protecting the ruler, war with Yugoslavia

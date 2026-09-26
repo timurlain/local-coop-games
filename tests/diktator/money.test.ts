@@ -3,26 +3,9 @@ import { settleTreasury } from '../../src/games/diktator/logic/money';
 import { policeReport } from '../../src/games/diktator/logic/police';
 import { initialState, type GameEvent } from '../../src/games/diktator/logic/state';
 
+// settleTreasury's budget behaviour (income against costs, our addition) is covered by budget.test.ts.
 describe('settleTreasury (L618–620, L900)', () => {
-  it('pays the costs when there is money', () => {
-    const s = initialState(1);
-    const ev: GameEvent[] = [];
-    settleTreasury(s, ev);
-    expect(s.treasury).toBe(940);
-    expect(ev).toEqual([{ type: 'costsPaid', amount: 60 }]);
-  });
-
-  it('pays nothing at exactly zero, and can go negative when paying', () => {
-    const s = initialState(1);
-    s.treasury = 0;
-    settleTreasury(s, []);
-    expect(s.treasury).toBe(0);
-    s.treasury = 10;
-    settleTreasury(s, []);
-    expect(s.treasury).toBe(-50);
-  });
-
-  it('bankruptcy hits army, police and the bodyguard, floored at zero, and pays nothing', () => {
+  it('bankruptcy hits army, police and the bodyguard, floored at zero', () => {
     const s = initialState(1);
     s.treasury = -5;
     s.pop.armada = 0;
@@ -32,8 +15,7 @@ describe('settleTreasury (L618–620, L900)', () => {
     expect(s.pop.policie).toBe(6);
     expect(s.str.policie).toBe(5);
     expect(s.guard).toBe(3);
-    expect(s.treasury).toBe(-5);
-    expect(ev).toEqual([{ type: 'bankrupt' }]);
+    expect(ev[0]).toEqual({ type: 'bankrupt' });
   });
 });
 
@@ -43,7 +25,7 @@ describe('policeReport (L1700)', () => {
     s.low = 3;
     const ev: GameEvent[] = [];
     policeReport(s, ev);
-    expect(s.treasury).toBe(999);
+    expect(s.treasury).toBe(299); // starting reserve 300 (our addition, play-test change) minus the report's cost 1
     expect(ev[0].type).toBe('policeReport');
   });
 

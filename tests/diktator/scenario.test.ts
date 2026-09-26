@@ -48,6 +48,21 @@ describe('albania scenario data', () => {
     expect(d('d39').special).toEqual({ kind: 'aid', lender: 'britanie' });
   });
 
+  it('re-books five records from monthly to income, same number, opposite sign (our addition, play-test change)', () => {
+    const p = (id: string) => albania.petitions.find((x) => x.id === id)!;
+    const d = (id: string) => albania.decisions.find((x) => x.id === id)!;
+    expect(p('p16').effects.monthly).toBeUndefined();
+    expect(p('p16').effects.income).toBe(6);
+    expect(p('p20').effects.monthly).toBeUndefined();
+    expect(p('p20').effects.income).toBe(5);
+    expect(p('p22').effects.monthly).toBeUndefined();
+    expect(p('p22').effects.income).toBe(-5);
+    expect(d('d30').effects.monthly).toBeUndefined();
+    expect(d('d30').effects.income).toBe(10);
+    expect(d('d31').effects.monthly).toBeUndefined();
+    expect(d('d31').effects.income).toBe(-8);
+  });
+
   it('decisions are in the original sections', () => {
     const sections = albania.decisions.map((d) => d.section);
     expect(sections).toEqual([1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5]);

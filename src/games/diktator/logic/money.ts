@@ -3,7 +3,9 @@ import type { GameEvent, GameState } from './state';
 
 /**
  * Start-of-turn money (L618–620): a negative treasury is bankrupt (army and police popularity, police
- * strength and the bodyguard drop by 1, then plots re-form); a positive treasury pays the per-turn costs.
+ * strength and the bodyguard drop by 1, then plots re-form); then the quarter's budget is always booked
+ * (our addition, play-test change): `income − costs`, replacing the original's costs-only settlement. The
+ * original's "pay nothing at exactly 0" no longer applies — with income, the balance is always booked.
  */
 export function settleTreasury(s: GameState, events: GameEvent[]): void {
   if (s.treasury < 0) {
@@ -14,8 +16,6 @@ export function settleTreasury(s: GameState, events: GameEvent[]): void {
     events.push({ type: 'bankrupt' });
     formPlots(s);
   }
-  if (s.treasury > 0) {
-    s.treasury -= s.costs;
-    events.push({ type: 'costsPaid', amount: s.costs });
-  }
+  s.treasury += s.income - s.costs;
+  events.push({ type: 'budget', income: s.income, costs: s.costs });
 }

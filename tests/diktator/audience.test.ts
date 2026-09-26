@@ -31,6 +31,7 @@ describe('drawPetition (L630–648)', () => {
 describe('answerPetition (L694–766)', () => {
   it('yes applies the effects', () => {
     const s = initialState(1);
+    s.treasury = 1000; // arithmetic recomputed from the original 1000 (our starting reserve is now 300)
     const ev: GameEvent[] = [];
     answerPetition(albania, s, 'p03', 'yes', ev);
     expect(s.treasury).toBe(900);

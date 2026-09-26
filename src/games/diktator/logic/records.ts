@@ -8,6 +8,8 @@ import { RULES } from './rules';
 export interface Effects {
   readonly cost?: number;
   readonly monthly?: number;
+  /** Change of per-quarter income, + = more revenue (our addition, play-test change). */
+  readonly income?: number;
   readonly pop?: Readonly<Partial<Record<GroupId, number>>>;
   readonly str?: Readonly<Partial<Record<StrengthGroupId, number>>>;
 }
@@ -53,6 +55,8 @@ export interface Stats {
   pop: Record<GroupId, number>;
   str: Record<StrengthGroupId, number>;
   treasury: number;
+  /** Per-quarter income (our addition, play-test change). */
+  income: number;
   costs: number;
 }
 
@@ -66,16 +70,18 @@ export function applyEffects(s: Stats, e: Effects): void {
   for (const [g, d] of Object.entries(e.str ?? {}) as [StrengthGroupId, number][]) s.str[g] = clamp(s.str[g] + d);
   s.treasury += e.cost ?? 0;
   s.costs = Math.max(0, s.costs + (e.monthly ?? 0));
+  s.income = Math.max(0, s.income + (e.income ?? 0));
 }
 
 /**
  * The original cash check (L2020–2022). In the original `mcst` is the negated monthly change, so
- * `bk + mcst` is `treasury - monthly` here.
+ * `bk + mcst` is `treasury - monthly` here. `net` (our addition, play-test change) is the per-quarter
+ * deficit the choice adds: more expenses or less income.
  */
 export function affordable(treasury: number, e: Effects): boolean {
   const cost = e.cost ?? 0;
-  const monthly = e.monthly ?? 0;
+  const net = (e.monthly ?? 0) - (e.income ?? 0);
   if (treasury + cost > 0) return true;
-  if ((cost < 0 || monthly > 0) && (treasury + cost < 0 || treasury - monthly < 0)) return false;
+  if ((cost < 0 || net > 0) && (treasury + cost < 0 || treasury - net < 0)) return false;
   return true;
 }

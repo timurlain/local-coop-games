@@ -6,6 +6,7 @@ function stats() {
     pop: { armada: 7, rolnici: 7, statkari: 7, povstalci: 0, jugoslavie: 7, policie: 7, italie: 7, britanie: 7 },
     str: { armada: 6, rolnici: 6, statkari: 6, povstalci: 6, jugoslavie: 6, policie: 6 },
     treasury: 1000,
+    income: 60,
     costs: 60,
   };
 }
@@ -35,6 +36,16 @@ describe('applyEffects (L1620–1664)', () => {
     s.costs = 3;
     applyEffects(s, { monthly: -10 });
     expect(s.costs).toBe(0);
+  });
+
+  // Income (our addition, play-test change): the original had no per-quarter revenue.
+  it('moves income the same way as costs, floored at zero', () => {
+    const s = stats();
+    applyEffects(s, { income: 5 });
+    expect(s.income).toBe(65);
+    s.income = 3;
+    applyEffects(s, { income: -10 });
+    expect(s.income).toBe(0);
   });
 });
 

@@ -30,7 +30,7 @@ function describe(e: GameEvent): string | null {
   const E = T.events;
   switch (e.type) {
     case 'bankrupt': return E.bankrupt;
-    case 'costsPaid': return E.costsPaid(e.amount);
+    case 'budget': return E.budget(e.income, e.costs);
     case 'forcedNo': return E.forcedNo;
     case 'policeReportRefused': return e.reason === 'noMoney' ? E.policeRefusedMoney : E.policeRefusedHostile;
     case 'decisionUnaffordable': return E.unaffordable;
@@ -145,7 +145,14 @@ function render(): void {
   const s = file.current;
   const { year, q } = quarterLabel(Math.max(1, s.quarter));
   $('date').textContent = T.quarter(year, q);
-  $('money').textContent = [T.treasury(s.treasury), T.costs(s.costs), T.swiss(s.swiss), T.guard(s.guard)].join('\n');
+  $('money').textContent = [
+    T.treasury(s.treasury),
+    T.income(s.income),
+    T.costs(s.costs),
+    T.balance(s.income - s.costs),
+    T.swiss(s.swiss),
+    T.guard(s.guard),
+  ].join('\n');
   renderReport();
 
   if (s.phase.kind === 'ended') {
