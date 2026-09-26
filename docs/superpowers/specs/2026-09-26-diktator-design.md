@@ -87,7 +87,7 @@ src/games/diktator/
 │  ├─ petitions.ts  decisions.ts  news.ts
 │  ├─ history.ts                  dated events: newspaper articles, big moments, dated decisions
 │  └─ march-map.ts                the hand-authored march map
-├─ render/                        canvas: palace dollhouse, puppets, march, posters
+├─ render/                        canvas: palace rooms (split screen via shared/splitscreen), palace strip, puppets, march, posters
 │  └─ puppets/                    character rigs (skeleton + poses as data) and part-sheet skins
 ├─ ui/                            DOM overlays: newspaper, dialogs, reports, menus, chronicle, endings
 └─ assets/manifest.ts             every image with size, alpha flag and generation prompt
@@ -168,43 +168,85 @@ Plot formation, `low`, `str`, cooldown, statuses and allies all run exactly as i
 
 ## 5. The palace
 
-A **dollhouse cross-section** of the royal palace in Tirana: 3 floors, about 9 rooms, all visible on one screen
-(no split screen). Both characters walk along the floors and use stairs. Moving between rooms takes a few seconds.
+The royal palace in Tirana is a set of **rooms connected by doors**, played in **split screen** like the embassy in
+Spy vs Spy. Each player's half shows **the room his character is in**, as a full scene. Walking through a door moves
+you to the next room, and the room transitions and door logic of Spy vs Spy are reused where they fit. A small
+**palace strip** at the top centre is a miniature dollhouse map: it shows where both characters are and every
+room's crowd, so the players can direct each other ("the landowners' room is full, go and look!").
 
-| Room | Purpose |
-|---|---|
-| Trůnní sál (throne room) | audience |
-| Pracovna krále (king's study) | "please all" decisions; the seal starts here each quarter |
-| Pokoj královny matky (Queen Mother's room) | advice (the original's advice screen: shows every effect) |
-| Armáda / Rolníci / Statkáři | one room per faction; talk, "please / strengthen this group" decisions |
-| Salonek vyslanců (envoys' salon) | flags of Italy, Britain and Yugoslavia; loans and foreign decisions |
-| Strážnice (guardroom) | secret police, bodyguard, plane decisions; police report |
-| Pokladna (treasury) | Swiss account |
-| Knihovna (library) | the chronicle (free; no hour) |
+The newspaper, the evening crises, the posters, the mini-games and the endings use the **shared full screen**. Only
+the palace day is split. The rhythm is together → apart → together.
 
-**Visible state:**
-- **Strength** is shown as the number of figures in a faction's room (0–9), always visible.
-- **Mood (popularity) and plots** are covered by **mist** until revealed this quarter.
-- Revealed mood shows as colour and posture of the figures, plus a word ("spokojeni" = content, "reptají" = grumbling, "zlí" = angry).
-- A revealed plot shows as whispering figures, with a marker naming the ally.
+### 5.1 Rooms
 
-**Actions (1 hour each unless noted):**
+About 11 rooms on 2 floors plus a courtyard. Every room is its own full generated background.
+
+| Room | Who is there | Purpose |
+|---|---|---|
+| Trůnní sál (throne room) | the petitioner | audience |
+| Pracovna krále (king's study) | — | "please all" decisions; the seal starts here each quarter |
+| Pokoj královny matky (Queen Mother's room; Adile's from 1934-Q4) | Sadije / Adile | advice (the original's advice view) |
+| Důstojnický sál (officers' hall) | **Armáda** | talk; army decisions |
+| Selská světnice (peasants' room) | **Rolníci** | talk; peasant decisions |
+| Salon statkářů (landowners' salon) | **Statkáři** | talk; landowner decisions |
+| Strážnice (guardroom) | **Tajná policie** | police report; bodyguard, police and plane decisions; **the mountain map** |
+| Salonek vyslanců (envoys' salon) | **envoys of Italy, Britain and Yugoslavia** | receive envoys; loans and foreign decisions |
+| Pokladna (treasury) | treasurer | Swiss account; the visible gold pile |
+| Knihovna (library) | — | the chronicle (free) |
+| Nádvoří (courtyard) | guards, the plane once bought | the connecting hub between the wings |
+
+- **Povstalci (the rebels) are not in the palace.** They appear on **the mountain map** in the guardroom: the number of campfires is their strength, and the smoke and banners show their mood.
+- **The foreign powers** are one envoy each in the envoys' salon. Each envoy shows his own country's mood.
+
+### 5.2 Strength and mood you can see
+
+- **Strength (0–9)** is the **number of people in the room**: 0 means an empty room and 9 means a crowded one. For the rebels it is the number of campfires. The palace strip shows every room's crowd at all times.
+- **Popularity (0–9)** has **ten mood levels, and each level has its own look**:
+  - **A room variant.** The same room, generated with different props and lighting per level. It ranges from garlands, a raised glass and the king's portrait crowned with laurel, down to a turned-away or defaced portrait, a broken chair, weapons on the table and drawn curtains.
+  - **A puppet pose.** One of ten mood poses from the rig: from arms raised and cheering down to fists shaking.
+  - **A face expression.** One of five expression heads in each part sheet, each shared by two neighbouring levels.
+
+  The room variant, pose and expression together make each level unique.
+
+| Level | Czech label | Look (brief) |
+|---|---|---|
+| 9 | nadšení (ecstatic) | cheering, garlands, the portrait crowned with laurel |
+| 8 | oddaní (devoted) | toasting the king, flags out |
+| 7 | spokojení (content) | relaxed, chatting, smiling |
+| 6 | klidní (calm) | going about their business |
+| 5 | vlažní (lukewarm) | shrugging, bored |
+| 4 | nejistí (uneasy) | glancing around, arms crossed |
+| 3 | reptají (grumbling) | frowning, complaining in groups |
+| 2 | rozzlobení (angry) | pointing, shouting, the portrait turned to the wall |
+| 1 | zuřiví (furious) | fists shaking, a chair knocked over |
+| 0 | vzbouření (rebellious) | the portrait defaced, weapons on the table, the door barricaded |
+
+- **Entering a room shows its mood.** Walking costs time but no hour. The palace strip remembers the mood you last saw in each room this quarter; rooms nobody has entered this quarter show "?".
+- **The visuals update live.** When a decision changes the numbers during the day, the people in the room react on the spot.
+- **Plots are never visible just by looking.** They need the commander's check (§5.3). A revealed plot shows as whispering figures in a corner, plus a marker naming the ally.
+
+### 5.3 Hours and actions
+
+Zog has 3 hours and the commander has 3. The audience is free and comes first for Zog. Walking is free.
 
 | Who | Action | Effect |
 |---|---|---|
-| Zog | Talk to a faction | Reveals that room's mood, but not plots. |
-| Zog | Ask for advice | Opens the advice view for the current petition or a candidate decision. |
-| Zog | Receive envoys | Reveals the moods of Italy, Britain and Yugoslavia. |
-| Commander | Check a room | Reveals that room's mood, plot and ally. Always possible, costs no money. |
-| Commander | Police report (in the guardroom) | Reveals **everything**, as the original report. Costs 1 unit of money, and has the original preconditions (treasury > 0; police popularity > low and police strength > low). |
-| Commander | Guard the king (must be the day's last action) | This quarter, the 50 % survival coin in an assassination becomes 75 %. (Our addition; `rules.ts`.) |
-| Either | Seal a decision (free; seal required) | Carries out one decision in its room. Only one per quarter. |
-| Either | Pick up or hand over the seal | Free. |
+| Zog | Talk to a faction (1 h) | The faction says what it wants: it names one petition or decision it would welcome. |
+| Zog | Ask for advice (1 h, Mother's room) | Opens the advice view for the current petition or a candidate decision, showing every effect. |
+| Zog | Receive envoys (1 h) | The envoys say how much a loan could bring (the original formula shown as a hint). |
+| Commander | Investigate a room (1 h) | Reveals that room's plot and ally. Always possible, costs no money. |
+| Commander | Police report (1 h, guardroom) | Reveals **every** plot, ally, `low` and `str`, as the original report. Costs 1 unit of money and has the original preconditions: treasury > 0, police popularity > low, police strength > low. |
+| Commander | Guard the king (his last hour) | This quarter, the 50 % survival coin in an assassination becomes 75 %. (Our addition; `rules.ts`.) |
+| Either | Seal a decision (free; needs the seal, in the right room) | Carries out one decision. Only one per quarter. |
+| Either | Pick up or hand over the seal (free) | Handing over works only in the same room. |
 
-**Solo play.** Tab / Y / the gamepad's Back button switches control between Zog and the commander, so one player can
-play alone. The rules are unchanged.
+**Dialogs belong to their own half.** An audience in Zog's half and an investigation in Kovář's half can run at the
+same time without covering each other.
 
-When both players have spent all their hours, or both press "Konec dne" (end the day), the evening starts.
+**Solo play.** Tab / the gamepad's Back button switches which character you control. The screen stays split, and the
+character you are not controlling waits where he is.
+
+The evening starts when both players have spent all their hours, or when both press "Konec dne" (end the day).
 
 ## 6. Pochod na Tiranu (the opening mini-game)
 
@@ -359,9 +401,9 @@ in `rules.ts`). The number of retries used is shown next to the score.
 **Everything is generated imagery**, made by the user from the prompt sheet. The code never blocks on missing art.
 
 **Characters are puppets first, look second** (lessons from Spy vs Spy):
-1. **Rig first.** Each character is a skeleton rig with human-cartoon proportions (big head, small body). Poses are data: stand, walk cycle, talk, bow, point, shocked, salute, fall.
+1. **Rig first.** Each character is a skeleton rig with human-cartoon proportions (big head, small body). Poses are data: stand, walk cycle, talk, bow, point, shocked, salute, fall, plus **ten mood poses** (§5.2) for faction members and envoys.
 2. **Grey puppets.** The palace and the march are fully playable with plain grey puppets. Motion, size and readability are tuned at game scale before any skin exists.
-3. **Skin.** One generated **part sheet** per character: head front and side, torso, upper and lower arms, legs, hat. Each part is a transparent cut-out from one reference. The parts are mounted on the bones, so the generator never has to draw the same person twice in different poses.
+3. **Skin.** One generated **part sheet** per character: head front and side, **five expression heads** (ecstatic, happy, neutral, grumpy, furious), torso, upper and lower arms, legs, hat. Each part is a transparent cut-out from one reference. The parts are mounted on the bones, so the generator never has to draw the same person twice in different poses.
 4. **Final look.** Smooth cut-out with a light outline, matching the painted illustrations. It is not pixelated.
 
 **Static art is whole generated images:** newspaper illustrations, room backgrounds, big-moment posters, the march map
@@ -378,12 +420,14 @@ and march props.
 - **`npm run assets:check`** is a Node script with no dependencies. It lists missing files and files with the wrong size or no alpha, reading the PNG IHDR header.
 - **Approximate count:**
   - about 95 newspaper illustrations
-  - about 12 character part sheets
-  - about 12 rooms
+  - about 14 character part sheets (main characters, one member type per faction, three envoys)
+  - about 7 plain rooms (throne, study, Mother's room, library, treasury, courtyard, envoys' salon)
+  - **4 mood rooms × 10 mood variants = 40** (officers' hall, peasants' room, landowners' salon, guardroom)
+  - the mountain map × 10 mood variants = 10
   - 9 posters
   - the march map and about 8 props
 
-  That is about 140 images, added gradually.
+  That is about 190 images, added gradually. Mood variants are generated from their room's base image with an image-edit step, so the room stays recognisably the same.
 
 ## 12. Controls
 
@@ -402,7 +446,8 @@ A dialog belongs to the player who opened it. The other player keeps walking.
 
 Vitest, logic only, the same as Spy vs Spy:
 - **Original formulas against the BASIC**, with a table-driven test per rule: plot formation, bankruptcy, cash check, refuse penalty, assassination truth table, war threat vs invasion, revolution fight, mountain escape odds, foreign aid, score.
-- **The phase machine:** valid commands per phase, one seal per quarter, hours, mist reveal, audience answers, checkpoints.
+- **The phase machine:** valid commands per phase, one seal per quarter, hours, what each action reveals (entering = mood, investigate = plot and ally, report = everything), audience answers, checkpoints.
+- **Mood mapping:** popularity 0–9 maps to exactly one of the ten mood levels, and each level has its room variant, pose and expression in the manifest.
 - **Determinism:** the same seed plus the same commands produce the same state.
 - **The march:** step, rope, negotiation, patrol capture, and `StartingRegime` staying within ranges.
 - **Save:** serialize → deserialize round-trip, version guard.
