@@ -45,4 +45,8 @@ export const RULES = {
   pointsPerQuarter: 9,
   aliveBonus: 10,
   swissDivisor: 10,
+  /** Palace day (spec §5): hours per hero per quarter. */
+  palace: { hours: { zogu: 3, velitel: 3 } },
+  /** Guarded by the commander, the last-chance coin becomes rnd(0..3) ≠ 0, i.e. 75 % (spec §5.3, our addition). */
+  guardedCoin: 4,
 } as const;

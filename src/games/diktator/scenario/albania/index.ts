@@ -1,5 +1,6 @@
 import type { Scenario } from '../../logic/scenario';
 import { GROUP_NAMES } from './groups';
+import { PALACE } from './palace';
 import { DECISIONS, NEWS, PETITIONS } from './records';
 
 export const albania: Scenario = {
@@ -8,4 +9,5 @@ export const albania: Scenario = {
   petitions: PETITIONS,
   decisions: DECISIONS,
   news: NEWS,
+  palace: PALACE,
 };
