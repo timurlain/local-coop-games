@@ -2,7 +2,6 @@ import type { Dice } from './dice';
 import { affordable, applyEffects, clamp, type Petition } from './records';
 import type { Scenario } from './scenario';
 import type { GameEvent, GameState } from './state';
-import type { GroupId } from './groups';
 
 export function petitionById(sc: Scenario, id: string): Petition {
   const p = sc.petitions.find((x) => x.id === id);
@@ -39,12 +38,7 @@ export function suggestOther(sc: Scenario, s: GameState, currentId: string, dice
 }
 
 function refuse(s: GameState, p: Petition): void {
-  if (p.effects.pop) {
-    for (const [faction, change] of Object.entries(p.effects.pop)) {
-      const g = faction as GroupId;
-      s.pop[g] = clamp(s.pop[g] - change);
-    }
-  }
+  s.pop[p.from] = clamp(s.pop[p.from] - (p.effects.pop?.[p.from] ?? 0));
 }
 
 /** L694–766. `goAway` is our addition: −1 popularity and the petition goes back into the deck. */

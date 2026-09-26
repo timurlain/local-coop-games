@@ -45,14 +45,13 @@ describe('answerPetition (L694–766)', () => {
     expect(s.costs).toBe(60);
   });
 
-  it('refusing a petition that would have cost the petitioner raises it (original behaviour), clamped', () => {
+  it('refusing lowers only the petitioner, clamped at 0', () => {
     const s = initialState(1);
-    s.pop.armada = 9;
-    answerPetition(albania, s, 'p09', 'no', []); // p09 gives armada -1
-    expect(s.pop.armada).toBe(9);
-    s.pop.armada = 5;
-    answerPetition(albania, s, 'p09', 'no', []);
-    expect(s.pop.armada).toBe(6);
+    s.pop.rolnici = 2;
+    answerPetition(albania, s, 'p10', 'no', []); // p10: rolnici +4, statkari -4, jugoslavie +1
+    expect(s.pop.rolnici).toBe(0);
+    expect(s.pop.statkari).toBe(7);
+    expect(s.pop.jugoslavie).toBe(7);
   });
 
   it('an unaffordable yes becomes a forced no', () => {
