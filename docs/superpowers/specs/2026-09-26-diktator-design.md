@@ -184,7 +184,7 @@ the palace day is split. The rhythm is together → apart → together.
 
 ### 5.1 Rooms
 
-11 rooms in a grid (defined in `scenario/albania/palace.ts` as cells with their neighbours). Every room is its own full generated background, composed as a stage with the right-hand side left free for its people.
+12 rooms in a grid (defined in `scenario/albania/palace.ts` as cells with their neighbours). Every room is its own full generated background, composed as a stage with the right-hand side left free for its people.
 
 | Room | Who is there | Purpose |
 |---|---|---|
@@ -198,6 +198,7 @@ the palace day is split. The rhythm is together → apart → together.
 | Salonek vyslanců (envoys' salon) | **envoys of Italy, Britain and Yugoslavia** | receive envoys; loans and foreign decisions |
 | Pokladna (treasury) | treasurer | Swiss account; the visible gold pile |
 | Knihovna (library) | — | the chronicle (free) |
+| Herna (playroom) | sometimes a surprise | small one-off Easter eggs, trivia and seasonal moments (§5.4) |
 | Nádvoří (courtyard) | guards, the plane once bought | the central cell of the grid |
 
 - **Povstalci (the rebels) are not in the palace.** They appear on **the mountain map** in the guardroom: the number of campfires is their strength, and the smoke and banners show their mood.
@@ -252,6 +253,24 @@ same time without covering each other.
 character you are not controlling stays in his room.
 
 The evening starts when both players have spent all their hours, or when both press "Konec dne" (end the day).
+
+### 5.4 The playroom (Herna)
+
+The playroom is usually empty and quiet. In about **one quarter in three** it holds something, and the palace strip
+shows a small star on it that quarter. Each item is a **tiny one-off**: it happens once per game, and its reward is
+small (±1 popularity, ±1 strength, or up to 20 money) so it never changes the balance. Visiting is free; resolving
+the item costs no hour, and only the first player to act on it gets it.
+
+| Kind | Example | Reward |
+|---|---|---|
+| **Seasonal** | Q4: a Christmas tree. Put a gift under it: for the peasants' children (Rolníci +1, −10 money), for the officers (Armáda +1, −10) or nothing. Q2 around Easter: painted eggs from the villages. | small |
+| **Trivia** | A question about an article from this or an earlier newspaper, with 3 answers. "Kdo letěl sám přes Atlantik v roce 1927?" (Who flew alone across the Atlantic in 1927?) | right answer: +10 money or +1 popularity to one named group; wrong: nothing, and the correct answer is shown |
+| **Easter egg** | 1928: a Mickey Mouse film reel (a short silent gag plays). 1928: a mouldy dish (penicillin, "keep it!"). The king's ashtray counter ("dnes už 200. cigareta"). 1939: little Leka's cradle. | flavour, or a tiny effect |
+| **Toy** | Kovář's tin soldiers from the Czechoslovak Legion; the princesses' gramophone plays a 1930s tune. | flavour |
+
+- **Data.** Items live in `scenario/albania/playroom.ts`, each with a date window, a condition, and effects in the same format as the other records.
+- **Trivia and the chronicle.** Trivia only asks about articles that have already been shown, so the chronicle doubles as a study guide.
+- **Order.** Seasonal items are dated. The others are drawn from a pool, using the seed.
 
 ## 6. Pochod na Tiranu (the opening mini-game)
 
@@ -426,13 +445,14 @@ and march props.
 - **Approximate count:**
   - about 95 newspaper illustrations
   - about 14 character part sheets (main characters, one member type per faction, three envoys)
-  - about 7 plain rooms (throne, study, Mother's room, library, treasury, courtyard, envoys' salon)
+  - about 8 plain rooms (throne, study, Mother's room, library, playroom, treasury, courtyard, envoys' salon)
+  - about 20 playroom item pictures
   - **4 mood rooms × 10 mood variants = 40** (officers' hall, peasants' room, landowners' salon, guardroom)
   - the mountain map × 10 mood variants = 10
   - 9 posters
   - the march map and about 8 props
 
-  That is about 190 images, added gradually. Mood variants are generated from their room's base image with an image-edit step, so the room stays recognisably the same.
+  That is about 210 images, added gradually. Mood variants are generated from their room's base image with an image-edit step, so the room stays recognisably the same.
 
 ## 12. Controls
 
