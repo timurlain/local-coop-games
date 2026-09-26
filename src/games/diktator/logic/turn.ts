@@ -5,6 +5,7 @@ import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
 import { maybeNews } from './news';
 import { newPalaceDay } from './palace';
+import { applyPalaceCommand, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
 import { formPlots } from './plot';
 import { policeReport } from './police';
 import { afterVictory, eligibleAllies, fightRevolution, findRevolution, flee, throughMountains } from './revolution';
@@ -96,6 +97,13 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
   const events: GameEvent[] = [];
   const phase = s.phase;
   const invalid = () => new Error(`command ${cmd.type} not valid in phase ${phase.kind}`);
+
+  if (s.palace && (phase.kind === 'audience' || phase.kind === 'day') && PALACE_COMMANDS.has(cmd.type)) {
+    applyPalaceCommand(sc, s, cmd, dice, events);
+    if (s.phase.kind === 'day' && s.palace.done.zogu && s.palace.done.velitel) evening(sc, s, dice, events);
+    return { state: s, events };
+  }
+  if (!s.palace && PALACE_ONLY.has(cmd.type)) throw invalid();
 
   switch (phase.kind) {
     case 'audience': {
