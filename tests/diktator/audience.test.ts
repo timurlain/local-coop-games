@@ -14,6 +14,9 @@ describe('drawPetition (L630–648)', () => {
 
   it('steps forward cyclically past used petitions', () => {
     const s = initialState(1);
+    // Mark every non-original petition used too, so the wrap from p24 (index 23) lands on p01, p02, …
+    // as before the 36 remake/new petitions were appended after the original 24 (more-petitions plan).
+    for (const p of albania.petitions) if (p.origin !== 'original') s.used[p.id] = true;
     s.used.p24 = true;
     s.used.p01 = true;
     expect(drawPetition(albania, s, scriptedDice([23]))).toBe('p02');

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GROUPS, STRENGTH_GROUPS } from '../../src/games/diktator/logic/groups';
 import type { Effects } from '../../src/games/diktator/logic/records';
 import { albania } from '../../src/games/diktator/scenario/albania';
+import { moneyText } from '../../src/games/diktator/ui/effects-text';
 
 function checkEffects(e: Effects, where: string) {
   for (const [g, d] of Object.entries(e.pop ?? {})) {
@@ -15,13 +16,19 @@ function checkEffects(e: Effects, where: string) {
 }
 
 describe('albania scenario data', () => {
-  it('has the original counts: 24 petitions (8 per faction), 19 decisions, 6 news', () => {
-    expect(albania.petitions).toHaveLength(24);
-    expect(albania.petitions.filter((p) => p.from === 'armada')).toHaveLength(8);
-    expect(albania.petitions.filter((p) => p.from === 'rolnici')).toHaveLength(8);
-    expect(albania.petitions.filter((p) => p.from === 'statkari')).toHaveLength(8);
+  it('has 60 petitions (20/21/19 per faction), 19 decisions, 6 news', () => {
+    expect(albania.petitions).toHaveLength(60);
+    expect(albania.petitions.filter((p) => p.from === 'armada')).toHaveLength(20);
+    expect(albania.petitions.filter((p) => p.from === 'rolnici')).toHaveLength(21);
+    expect(albania.petitions.filter((p) => p.from === 'statkari')).toHaveLength(19);
     expect(albania.decisions).toHaveLength(19);
     expect(albania.news).toHaveLength(6);
+  });
+
+  it('has 24 original, 20 remake and 16 new petitions', () => {
+    expect(albania.petitions.filter((p) => p.origin === 'original')).toHaveLength(24);
+    expect(albania.petitions.filter((p) => p.origin === 'remake')).toHaveLength(20);
+    expect(albania.petitions.filter((p) => p.origin === 'new')).toHaveLength(16);
   });
 
   it('has unique ids and valid effects everywhere', () => {
@@ -29,9 +36,39 @@ describe('albania scenario data', () => {
     expect(new Set(all.map((r) => r.id)).size).toBe(all.length);
     for (const r of all) {
       expect(r.title.length, r.id).toBeGreaterThan(0);
-      expect(r.origin, r.id).toBe('original');
+      expect(['original', 'remake', 'new']).toContain(r.origin);
       checkEffects(r.effects, r.id);
     }
+  });
+
+  it('keeps the decisions and news all-original (only petitions gained remake/new records)', () => {
+    for (const r of [...albania.decisions, ...albania.news]) expect(r.origin, r.id).toBe('original');
+  });
+
+  it('spot-checks the new remake and Albanian petitions', () => {
+    const p = (id: string) => albania.petitions.find((x) => x.id === id)!;
+    expect(p('r08').from).toBe('rolnici');
+    expect(p('r08').origin).toBe('remake');
+    expect(p('r08').effects).toEqual({
+      cost: -80,
+      monthly: 5,
+      pop: { rolnici: 4, statkari: -2, italie: 1 },
+      str: { povstalci: -1 },
+    });
+    expect(p('a14').from).toBe('statkari');
+    expect(p('a14').origin).toBe('new');
+    expect(p('a14').effects).toEqual({
+      cost: -100,
+      income: 4,
+      pop: { statkari: 3, italie: 1 },
+      str: { statkari: 1 },
+    });
+    expect(moneyText(p('a14').effects)).toBe('stojí 100 tis., příjmy +4 tis. každé čtvrtletí');
+    expect(p('a16').from).toBe('statkari');
+    expect(p('a16').origin).toBe('new');
+    expect(p('a16').maxAccepted).toBe(3);
+    expect(p('a16').tariff).toBe(true);
+    expect(p('a16').effects).toEqual({ income: 5, pop: { statkari: 3, italie: -3 }, str: { statkari: 1 } });
   });
 
   it('keeps spot-checked original numbers', () => {

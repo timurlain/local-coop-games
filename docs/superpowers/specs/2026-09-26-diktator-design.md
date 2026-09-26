@@ -384,7 +384,7 @@ interface Petition { id: string; from: 'armada' | 'rolnici' | 'statkari'; title:
 
 | Pool | Content | Size |
 |---|---|---|
-| Petitions | the original 24, re-themed with **the original numbers**, plus about 20 adapted from the remake (A8–A15, P6–P13, M10–M14) plus a few new Albanian ones | about 50 |
+| Petitions | the original 24, 20 adapted from the remake, 16 new Albanian (60) — moved from plan 3 to this plan after play-test feedback (deck reshuffled too often) | 60 |
 | Decisions | the original 19, in the original 5 sections, with the special effects (Swiss account, loans, plane, bodyguard) | 19 + about 12 dated |
 | News | the original 6, re-themed, plus about 17 remake items, re-themed, plus the 10 Albanian hooks | about 33 |
 | Conditional news | the remake's N43–N48, re-themed | 6 |
