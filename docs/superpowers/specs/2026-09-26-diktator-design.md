@@ -162,6 +162,17 @@ continuous scene. The consequence is that a decision taken during the day (for e
 counts in the same quarter's checks. Plots are re-formed at the original re-plot points, which are after the
 audience and after the decision.
 
+**Costs are always visible (play-test feedback, and faithful to the original's cash advice, L1980).** Every
+petition and decision shows its money: the one-off cost or income and the change of the quarterly costs; choices
+the treasury cannot pay are marked. The quarterly costs are the running of the state (officials, army pay);
+other income is abstracted away, as in the original.
+
+**Mother's advice says where a choice leads** (play-test feedback). `logic/forecast.ts` applies the choice to a
+copy of the state and reports what crosses the rules' thresholds: a faction turning hostile or reconciling, a
+revolution becoming possible (and with whom), the police no longer protecting the ruler, war with Yugoslavia
+becoming possible, the money running out. `ui/effects-text.ts` turns it into Sadije's words. In the text mode
+the advice is free; in the palace it is what Mother says in her room (1 hour).
+
 ### 4.2 Plots
 
 Plot formation, `low`, `str`, cooldown, statuses and allies all run exactly as in `original-rules.md` §2, once per quarter

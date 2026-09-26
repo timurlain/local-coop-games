@@ -8,6 +8,8 @@ import { score } from './logic/score';
 import type { Command, GameEvent, GameState, PoliceSnapshot } from './logic/state';
 import { advance, newGame, quarterLabel, validCommands } from './logic/turn';
 import { albania } from './scenario/albania';
+import { forecast } from './logic/forecast';
+import { motherAdvice, moneyText } from './ui/effects-text';
 
 const T = cs.diktator;
 const SAVE_KEY = 'diktator/save';
@@ -72,7 +74,11 @@ function commandLabel(cmd: Command): string {
     case 'answer': return T[cmd.answer];
     case 'policeReport': return T.policeReport;
     case 'endDay': return T.endDay;
-    case 'decide': return decisionById(sc, cmd.decision).title;
+    case 'decide': {
+      const d = decisionById(sc, cmd.decision);
+      if (d.special?.kind === 'swiss' || d.special?.kind === 'aid' || !file) return d.title;
+      return `${d.title} (${moneyText(d.effects)}) — Matka: ${motherAdvice(forecast(file.current, d.effects), sc.groupNames)}`;
+    }
     case 'flee': return T.flee;
     case 'fight': return T.fight;
     case 'ally': return name(cmd.group);
@@ -153,7 +159,11 @@ function render(): void {
 
   if (s.phase.kind === 'audience') {
     const p = sc.petitions.find((x) => x.id === (s.phase as { petition: string }).petition)!;
-    prompt.textContent = `${T.audienceFrom(name(p.from))} — ${T.audienceAsk(T.address(s.quarter >= CORONATION_QUARTER))} ${p.title}?`;
+    const self = p.effects.pop?.[p.from] ?? 0;
+    prompt.textContent =
+      `${T.audienceFrom(name(p.from))} — ${T.audienceAsk(T.address(s.quarter >= CORONATION_QUARTER))} ${p.title}? ` +
+      `(Peníze: ${moneyText(p.effects)}.) Matka o „ano“: ${motherAdvice(forecast(s, p.effects), sc.groupNames)} ` +
+      `Matka o „ne“: ${motherAdvice(forecast(s, { pop: { [p.from]: -self } }), sc.groupNames)}`;
   } else if (s.phase.kind === 'chooseAlly') {
     prompt.textContent = T.chooseAlly;
   } else {
