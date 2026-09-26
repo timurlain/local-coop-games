@@ -132,7 +132,7 @@ export const cs = {
     goAway: 'Odejděte',
     suggestOther: 'Navrhněte něco jiného',
     policeReport: 'Hlášení tajné policie (1 tis.)',
-    endDay: 'Ukončit den',
+    endDay: 'Ukončit čtvrtletí',
     decisionSections: ['', 'Potěšit skupinu', 'Potěšit všechny', 'Zlepšit své šance', 'Získat peníze', 'Posílit skupinu'],
     swissShare: (share: number) => (share === 1 ? 'vše' : `1/${share}`),
     flee: 'Utéct',

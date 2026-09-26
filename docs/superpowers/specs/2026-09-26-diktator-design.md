@@ -252,7 +252,7 @@ same time without covering each other.
 **Solo play.** Tab / the gamepad's Back button switches which character you control. The screen stays split, and the
 character you are not controlling stays in his room.
 
-The evening starts when both players have spent all their hours, or when both press "Konec dne" (end the day).
+The evening starts when both players have spent all their hours, or when both press "Konec čtvrtletí" (end the quarter).
 
 ### 5.4 The playroom (Herna)
 
