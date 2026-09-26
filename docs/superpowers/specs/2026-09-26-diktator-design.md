@@ -175,7 +175,10 @@ treasury is already negative) — a deficit now only comes from the players' own
 by playing. No original record number changes: five records whose money was really revenue are re-booked from
 `monthly` (expenses) to `income` with the opposite sign, so each choice's net effect on the balance matches the
 original exactly. `affordable` and Mother's money warnings use the same net change (`monthly − income`) in place
-of the original's `monthly` alone.
+of the original's `monthly` alone. Tariffs are capped at 3 accepted and cost the economy over time (play-test
+change, our addition): a tariff petition (`p20`) can be answered "yes" at most `maxAccepted` times over the whole
+game, and every January from 1926 income drops permanently by 1 tis. per tariff accepted so far, piling up year
+after year.
 
 **Mother's advice says where a choice leads** (play-test feedback). `logic/forecast.ts` applies the choice to a
 copy of the state and reports what crosses the rules' thresholds: a faction turning hostile or reconciling, a

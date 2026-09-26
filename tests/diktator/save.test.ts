@@ -27,6 +27,8 @@ describe('save file', () => {
     expect(deserialize(null)).toBeNull();
     expect(deserialize('not json')).toBeNull();
     expect(deserialize(JSON.stringify({ version: 99 }))).toBeNull();
+    // version 3 (pre-tariffs, no `accepted`) is now a foreign version too (our addition, play-test change).
+    expect(deserialize(JSON.stringify({ version: 3 }))).toBeNull();
   });
 
   it('keeps a checkpoint at the start of each year (Q1 audience)', () => {

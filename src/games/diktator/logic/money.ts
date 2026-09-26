@@ -1,5 +1,24 @@
 import { formPlots } from './plot';
+import { RULES } from './rules';
+import type { Scenario } from './scenario';
 import type { GameEvent, GameState } from './state';
+
+/**
+ * Yearly, permanent tariff penalty (our addition, play-test change; tariffs plan): every January from 1926
+ * (`quarter % 4 === 1`, skipping the game's very first quarter), income drops by `RULES.tariffPenaltyPerYear`
+ * for every tariff petition ever accepted ("yes") and never refused since — the decrease piles up year after
+ * year and is never undone. Must run before `settleTreasury` books the quarter's budget.
+ */
+export function applyTariffPenalty(sc: Scenario, s: GameState, events: GameEvent[]): void {
+  if (s.quarter <= 1 || s.quarter % 4 !== 1) return;
+  const tariffsInForce = sc.petitions
+    .filter((p) => p.tariff)
+    .reduce((sum, p) => sum + (s.accepted[p.id] ?? 0), 0);
+  if (tariffsInForce === 0) return;
+  const amount = RULES.tariffPenaltyPerYear * tariffsInForce;
+  s.income = Math.max(0, s.income - amount);
+  events.push({ type: 'tariffPenalty', tariffs: tariffsInForce, amount });
+}
 
 /**
  * Start-of-turn money (L618–620): a negative treasury is bankrupt (army and police popularity, police

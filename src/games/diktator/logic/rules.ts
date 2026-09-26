@@ -51,4 +51,6 @@ export const RULES = {
   palace: { hours: { zogu: 3, velitel: 3 } },
   /** Guarded by the commander, the last-chance coin becomes rnd(0..3) ≠ 0, i.e. 75 % (spec §5.3, our addition). */
   guardedCoin: 4,
+  /** Yearly, permanent income penalty per tariff in force (our addition, play-test change; tariffs plan). */
+  tariffPenaltyPerYear: 1,
 } as const;

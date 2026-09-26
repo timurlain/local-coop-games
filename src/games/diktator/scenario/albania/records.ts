@@ -46,7 +46,9 @@ export const PETITIONS: readonly Petition[] = [
   { id: 'p19', from: 'statkari', origin: 'original', title: 'Znárodnit britské podniky',
     effects: { cost: 100, monthly: 5, pop: { statkari: 3, jugoslavie: 1, italie: 2, britanie: -4 }, str: { statkari: 1 } } },
   { id: 'p20', from: 'statkari', origin: 'original', title: 'Uvalit clo na všechno zboží z Jugoslávie',
-    effects: { income: 5, pop: { statkari: 3, jugoslavie: -3, italie: -1 }, str: { rolnici: 1, statkari: 2, jugoslavie: -1 } } },
+    effects: { income: 5, pop: { statkari: 3, jugoslavie: -3, italie: -1 }, str: { rolnici: 1, statkari: 2, jugoslavie: -1 } },
+    // Capped at 3 accepted, and feeds the yearly tariff penalty (our addition, play-test change; tariffs plan).
+    maxAccepted: 3, tariff: true },
   { id: 'p21', from: 'statkari', origin: 'original', title: 'Snížit výdaje na tajnou policii',
     effects: { monthly: -4, pop: { armada: 1, rolnici: 1, statkari: 3, policie: -4 }, str: { armada: 1, statkari: 1, povstalci: 1, policie: -2 } } },
   { id: 'p22', from: 'statkari', origin: 'original', title: 'Snížit vysoké pozemkové daně',

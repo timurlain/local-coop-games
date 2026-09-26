@@ -23,6 +23,10 @@ export interface Petition {
   readonly title: string;
   readonly effects: Effects;
   readonly origin: Origin;
+  /** How many times "yes" may be answered over the whole game (our addition, play-test change); unset = unlimited. */
+  readonly maxAccepted?: number;
+  /** Marks a petition whose accepted count feeds the yearly tariff penalty (our addition, play-test change). */
+  readonly tariff?: boolean;
 }
 
 export type DecisionSpecial =

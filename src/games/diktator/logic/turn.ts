@@ -9,7 +9,7 @@ import { applyPalaceCommand, palaceCommands, refreshSeen, PALACE_COMMANDS, PALAC
 import { formPlots } from './plot';
 import { policeReport } from './police';
 import { afterVictory, eligibleAllies, fightRevolution, findRevolution, flee, throughMountains } from './revolution';
-import { settleTreasury } from './money';
+import { applyTariffPenalty, settleTreasury } from './money';
 import { RULES } from './rules';
 import type { Scenario } from './scenario';
 import { initialState, type Command, type Ending, type GameEvent, type GameState, type StartingRegime } from './state';
@@ -40,6 +40,7 @@ function startQuarter(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[
   }
   events.push({ type: 'quarterStarted', quarter: s.quarter });
   formPlots(s);
+  applyTariffPenalty(sc, s, events);
   settleTreasury(s, events);
   const id = drawPetition(sc, s, dice);
   s.phase = { kind: 'audience', petition: id, suggested: false };

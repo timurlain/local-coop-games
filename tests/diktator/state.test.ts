@@ -4,7 +4,7 @@ import { initialState } from '../../src/games/diktator/logic/state';
 describe('initialState (L140–L244)', () => {
   it('uses the original starting values', () => {
     const s = initialState(42);
-    expect(s.version).toBe(3);
+    expect(s.version).toBe(4); // bumped for `accepted` (tariffs plan, our addition, play-test change)
     expect(s.palace).toBeNull();
     expect(s.quarter).toBe(0);
     expect(s.treasury).toBe(300); // starting reserve 300, not the original 1000 (our addition, play-test change)
@@ -17,6 +17,7 @@ describe('initialState (L140–L244)', () => {
     expect(s.plots).toEqual({ armada: { kind: 'none' }, rolnici: { kind: 'none' }, statkari: { kind: 'none' } });
     expect(s.hasPlane).toBe(false);
     expect(s.used).toEqual({});
+    expect(s.accepted).toEqual({}); // tariffs plan (our addition, play-test change)
   });
 
   it('applies a starting regime over the defaults', () => {

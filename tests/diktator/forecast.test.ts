@@ -59,4 +59,14 @@ describe('forecast (Mother’s advice)', () => {
     s.pop.armada = 2;
     expect(forecast(s, { pop: { armada: 3 } })).toEqual([{ kind: 'reconciles', group: 'armada' }]);
   });
+
+  // Tariffs plan (our addition, play-test change): a tariff petition's "yes" always warns of the yearly drain.
+  it('warns of the yearly tariff drain when the caller marks the effects as a tariff', () => {
+    expect(forecast(state(), { income: 5 }, { tariff: true })).toEqual([{ kind: 'tariffDrain' }]);
+  });
+
+  it('does not warn of the tariff drain for an ordinary choice, or when tariff is explicitly false', () => {
+    expect(forecast(state(), { income: 5 })).toEqual([]);
+    expect(forecast(state(), { income: 5 }, { tariff: false })).toEqual([]);
+  });
 });

@@ -13,7 +13,9 @@ export type Warning =
   | { readonly kind: 'policeLost' }
   | { readonly kind: 'warRisk' }
   | { readonly kind: 'broke' }
-  | { readonly kind: 'moneyRunsOut'; readonly quarters: number };
+  | { readonly kind: 'moneyRunsOut'; readonly quarters: number }
+  /** Accepting a tariff petition (our addition, play-test change; tariffs plan): a permanent yearly income drain. */
+  | { readonly kind: 'tariffDrain' };
 
 /** Money lasting this many quarters or fewer after the choice is worth a warning. */
 const MONEY_WARNING_QUARTERS = 3;
@@ -26,13 +28,16 @@ function revolutionAlly(t: Stats, f: FactionId, low: number, threshold: number):
   return STRENGTH_GROUPS.find((p) => p !== f && t.pop[p] <= low && t.str[p] + t.str[f] >= threshold) ?? null;
 }
 
-/** What `effects` would change that matters for survival, worst first. */
-export function forecast(s: GameState, effects: Effects): Warning[] {
+/** What `effects` would change that matters for survival, worst first. `opts.tariff` (our addition,
+ * play-test change) marks a petition whose "yes" would add to the yearly tariff penalty. */
+export function forecast(s: GameState, effects: Effects, opts: { readonly tariff?: boolean } = {}): Warning[] {
   const before = copyStats(s);
   const after = copyStats(s);
   applyEffects(after, effects);
   const { low, threshold } = s;
   const out: Warning[] = [];
+
+  if (opts.tariff) out.push({ kind: 'tariffDrain' });
 
   // Money warnings (our addition, play-test change): use the per-quarter balance `income − costs`. A
   // balanced or surplus budget never runs out, since the treasury no longer melts by `costs` alone.

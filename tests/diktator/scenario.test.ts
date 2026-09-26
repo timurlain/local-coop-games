@@ -55,6 +55,9 @@ describe('albania scenario data', () => {
     expect(p('p16').effects.income).toBe(6);
     expect(p('p20').effects.monthly).toBeUndefined();
     expect(p('p20').effects.income).toBe(5);
+    // Capped at 3 accepted, and feeds the yearly tariff penalty (tariffs plan, our addition, play-test change).
+    expect(p('p20').maxAccepted).toBe(3);
+    expect(p('p20').tariff).toBe(true);
     expect(p('p22').effects.monthly).toBeUndefined();
     expect(p('p22').effects.income).toBe(-5);
     expect(d('d30').effects.monthly).toBeUndefined();

@@ -48,6 +48,7 @@ function describe(e: GameEvent): string | null {
     case 'joking': return E.joking;
     case 'revolutionFight': return E.fight(e.rebels, e.ours, e.won);
     case 'punished': return E.punished;
+    case 'tariffPenalty': return E.tariffPenalty(e.amount, e.tariffs);
     default: return null;
   }
 }
@@ -169,7 +170,7 @@ function render(): void {
     const self = p.effects.pop?.[p.from] ?? 0;
     prompt.textContent =
       `${T.audienceFrom(name(p.from))} — ${T.audienceAsk(T.address(s.quarter >= CORONATION_QUARTER))} ${p.title}? ` +
-      `(Peníze: ${moneyText(p.effects)}.) Matka o „ano“: ${motherAdvice(forecast(s, p.effects), sc.groupNames)} ` +
+      `(Peníze: ${moneyText(p.effects, { tariff: p.tariff })}.) Matka o „ano“: ${motherAdvice(forecast(s, p.effects, { tariff: p.tariff }), sc.groupNames)} ` +
       `Matka o „ne“: ${motherAdvice(forecast(s, { pop: { [p.from]: -self } }), sc.groupNames)}`;
   } else if (s.phase.kind === 'chooseAlly') {
     prompt.textContent = T.chooseAlly;

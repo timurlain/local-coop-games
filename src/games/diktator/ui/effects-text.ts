@@ -4,6 +4,7 @@
 import { GROUPS, STRENGTH_GROUPS, type GroupId } from '../logic/groups';
 import type { Warning } from '../logic/forecast';
 import type { Effects } from '../logic/records';
+import { RULES } from '../logic/rules';
 
 /** Money in the original units (1 = 1 000 gold francs), Czech formatting. */
 export function money(n: number): string {
@@ -12,9 +13,10 @@ export function money(n: number): string {
 
 /**
  * The money line of a choice: one-off change to the treasury and the change of the quarterly costs.
- * Empty effects give "bez peněz" (the original's "NO MONEY INVOLVED").
+ * Empty effects give "bez peněz" (the original's "NO MONEY INVOLVED"). `opts.tariff` (our addition,
+ * play-test change) adds the yearly, permanent income penalty a tariff petition's "yes" would add.
  */
-export function moneyText(e: Effects): string {
+export function moneyText(e: Effects, opts: { readonly tariff?: boolean } = {}): string {
   const parts: string[] = [];
   const cost = e.cost ?? 0;
   const monthly = e.monthly ?? 0;
@@ -25,6 +27,7 @@ export function moneyText(e: Effects): string {
   if (monthly < 0) parts.push(`výdaje −${money(monthly)} každé čtvrtletí`);
   if (income > 0) parts.push(`příjmy +${money(income)} každé čtvrtletí`);
   if (income < 0) parts.push(`příjmy −${money(income)} každé čtvrtletí`);
+  if (opts.tariff) parts.push(`každý rok −${money(RULES.tariffPenaltyPerYear)} příjmů za každé clo`);
   return parts.length ? parts.join(', ') : 'bez peněz';
 }
 
@@ -68,6 +71,8 @@ export function motherSays(w: Warning, names: Readonly<Record<GroupId, string>>)
       return '„Jugoslávie by pak mohla vpadnout do země.“';
     case 'reconciles':
       return `„${names[w.group]} se s vámi usmíří.“`;
+    case 'tariffDrain':
+      return '„Cla dusí obchod, synu. Každý rok pak přijdeme o kus příjmů.“';
   }
 }
 

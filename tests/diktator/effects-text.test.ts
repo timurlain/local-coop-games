@@ -15,6 +15,12 @@ describe('moneyText (the original cash advice)', () => {
     expect(moneyText(p('p16'))).toBe('příjmy +6 tis. každé čtvrtletí');
     expect(moneyText(d('d31'))).toBe('příjmy −8 tis. každé čtvrtletí');
   });
+
+  // Tariffs plan (our addition, play-test change): the money line names the yearly, permanent penalty.
+  it('adds the yearly tariff penalty when the caller marks it as a tariff', () => {
+    expect(moneyText(p('p20'), { tariff: true })).toBe('příjmy +5 tis. každé čtvrtletí, každý rok −1 tis. příjmů za každé clo');
+    expect(moneyText(p('p20'))).toBe('příjmy +5 tis. každé čtvrtletí'); // no opts: unchanged
+  });
 });
 
 describe('groupText', () => {
@@ -38,5 +44,6 @@ describe("Mother's words", () => {
       '„Pozor, synu: Armáda a Povstalci by spolu měli sílu na převrat.“',
     );
     expect(motherAdvice([{ kind: 'moneyRunsOut', quarters: 0 }], names)).toBe('„Na výdaje příští čtvrtletí už nezbude.“');
+    expect(motherAdvice([{ kind: 'tariffDrain' }], names)).toBe('„Cla dusí obchod, synu. Každý rok pak přijdeme o kus příjmů.“');
   });
 });

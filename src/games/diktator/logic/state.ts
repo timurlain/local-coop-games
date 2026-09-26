@@ -29,7 +29,7 @@ export interface StartingRegime {
 }
 
 export interface GameState {
-  readonly version: 3;
+  readonly version: 4;
   readonly seed: number;
   rng: RngState;
   /** 0 before the first turn; 1 = 1925-Q1 … 57 = 1939-Q1. The original's `mth`. */
@@ -53,6 +53,9 @@ export interface GameState {
   hasPlane: boolean;
   /** Ids of used records (petitions, decisions, news). */
   used: Record<string, true>;
+  /** How many times each petition was answered "yes" over the whole game (our addition, play-test change);
+   * a forced "no" does not count. Feeds `maxAccepted` (cap) and the tariff petitions' yearly penalty. */
+  accepted: Record<string, number>;
   decisionTaken: boolean;
   phase: Phase;
   /** The palace day (plan 2); null in the classic text mode. */
@@ -75,6 +78,8 @@ export type GameEvent =
   | { readonly type: 'bankrupt' }
   /** Replaces `costsPaid` (our addition, play-test change): the balance is always booked now, income and costs both shown. */
   | { readonly type: 'budget'; readonly income: number; readonly costs: number }
+  /** Yearly, permanent income penalty for tariffs in force (our addition, play-test change): §"tariffs" plan. */
+  | { readonly type: 'tariffPenalty'; readonly tariffs: number; readonly amount: number }
   | { readonly type: 'petition'; readonly id: string }
   | { readonly type: 'answered'; readonly id: string; readonly answer: 'yes' | 'no' | 'goAway' }
   | { readonly type: 'forcedNo'; readonly id: string }
@@ -140,7 +145,7 @@ function record<K extends string>(keys: readonly K[], v: (k: K) => number): Reco
 export function initialState(seed: number, regime: StartingRegime = {}): GameState {
   const st = RULES.start;
   return {
-    version: 3,
+    version: 4,
     seed,
     rng: makeRng(seed),
     quarter: 0,
@@ -157,6 +162,7 @@ export function initialState(seed: number, regime: StartingRegime = {}): GameSta
     plotPauseUntil: 0,
     hasPlane: false,
     used: {},
+    accepted: {},
     decisionTaken: false,
     phase: { kind: 'day' },
     palace: null,

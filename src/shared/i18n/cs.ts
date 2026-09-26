@@ -172,6 +172,8 @@ export const cs = {
       fight: (rebels: number, ours: number, won: boolean) =>
         won ? `Vzpoura potlačena (${ours} proti ${rebels}).` : `Byl jsi svržen (${ours} proti ${rebels}).`,
       punished: 'Vzbouřenci byli potrestáni.',
+      /** Yearly, permanent tariff penalty (our addition, play-test change; tariffs plan). */
+      tariffPenalty: (amount: number, tariffs: number) => `Cla dusí obchod: příjmy −${amount} tis. (cel v platnosti: ${tariffs}).`,
     },
     endings: {
       assassination: 'Atentát se podařil. Tvá vláda skončila.',
