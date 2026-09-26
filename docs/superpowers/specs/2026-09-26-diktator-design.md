@@ -84,6 +84,7 @@ src/games/diktator/
 │  └─ march/                      the opening mini-game (pure): state, step, result → StartingRegime
 ├─ scenario/albania/              ALL country-specific content
 │  ├─ groups.ts  fiction.ts       names, flavour, characters
+│  ├─ palace.ts                   the room grid: cells, neighbours, who is where
 │  ├─ petitions.ts  decisions.ts  news.ts
 │  ├─ history.ts                  dated events: newspaper articles, big moments, dated decisions
 │  └─ march-map.ts                the hand-authored march map
@@ -168,18 +169,22 @@ Plot formation, `low`, `str`, cooldown, statuses and allies all run exactly as i
 
 ## 5. The palace
 
-The royal palace in Tirana is a set of **rooms connected by doors**, played in **split screen** like the embassy in
-Spy vs Spy. Each player's half shows **the room his character is in**, as a full scene. Walking through a door moves
-you to the next room, and the room transitions and door logic of Spy vs Spy are reused where they fit. A small
-**palace strip** at the top centre is a miniature dollhouse map: it shows where both characters are and every
-room's crowd, so the players can direct each other ("the landowners' room is full, go and look!").
+The royal palace in Tirana is a **grid of rooms you jump between**, in the style of *Dune* (Cryo, 1992). There is no
+free walking, no doors and no collisions:
+
+- **Arrows (or the D-pad) move you one room** in that direction across the room grid. The move plays a short transition of about 0.4 s: the old room slides away, footsteps and a door sound play, and your figure steps in from the left edge.
+- **Each room is a stage.** Your character stands on the **left**, and the room's people stand on the **right**, facing him. The right side carries the crowd (strength) and its mood, so both are big and readable.
+- **Action opens that room's menu:** talk, investigate, seal a decision, and so on. Nothing happens just by entering, except that you see the room.
+- **An arrow toward a missing neighbour does nothing.** A short bump sound plays and the palace strip flashes the available exits.
+- **The screen is split**, one half per player, as in Spy vs Spy. Each half shows the room its character is in. If both are in the same room, both halves show that room, with both characters on the left.
+- **The palace strip** at the top centre is a miniature of the room grid. It is the navigation map: it shows both characters, every room's crowd, and the moods seen this quarter.
 
 The newspaper, the evening crises, the posters, the mini-games and the endings use the **shared full screen**. Only
 the palace day is split. The rhythm is together → apart → together.
 
 ### 5.1 Rooms
 
-About 11 rooms on 2 floors plus a courtyard. Every room is its own full generated background.
+11 rooms in a grid (defined in `scenario/albania/palace.ts` as cells with their neighbours). Every room is its own full generated background, composed as a stage with the right-hand side left free for its people.
 
 | Room | Who is there | Purpose |
 |---|---|---|
@@ -193,7 +198,7 @@ About 11 rooms on 2 floors plus a courtyard. Every room is its own full generate
 | Salonek vyslanců (envoys' salon) | **envoys of Italy, Britain and Yugoslavia** | receive envoys; loans and foreign decisions |
 | Pokladna (treasury) | treasurer | Swiss account; the visible gold pile |
 | Knihovna (library) | — | the chronicle (free) |
-| Nádvoří (courtyard) | guards, the plane once bought | the connecting hub between the wings |
+| Nádvoří (courtyard) | guards, the plane once bought | the central cell of the grid |
 
 - **Povstalci (the rebels) are not in the palace.** They appear on **the mountain map** in the guardroom: the number of campfires is their strength, and the smoke and banners show their mood.
 - **The foreign powers** are one envoy each in the envoys' salon. Each envoy shows his own country's mood.
@@ -221,13 +226,13 @@ About 11 rooms on 2 floors plus a courtyard. Every room is its own full generate
 | 1 | zuřiví (furious) | fists shaking, a chair knocked over |
 | 0 | vzbouření (rebellious) | the portrait defaced, weapons on the table, the door barricaded |
 
-- **Entering a room shows its mood.** Walking costs time but no hour. The palace strip remembers the mood you last saw in each room this quarter; rooms nobody has entered this quarter show "?".
+- **Entering a room shows its mood.** Moving is free and costs no hour. The palace strip remembers the mood you last saw in each room this quarter; rooms nobody has entered this quarter show "?".
 - **The visuals update live.** When a decision changes the numbers during the day, the people in the room react on the spot.
 - **Plots are never visible just by looking.** They need the commander's check (§5.3). A revealed plot shows as whispering figures in a corner, plus a marker naming the ally.
 
 ### 5.3 Hours and actions
 
-Zog has 3 hours and the commander has 3. The audience is free and comes first for Zog. Walking is free.
+Zog has 3 hours and the commander has 3. The audience is free and comes first for Zog. Moving between rooms is free.
 
 | Who | Action | Effect |
 |---|---|---|
@@ -244,7 +249,7 @@ Zog has 3 hours and the commander has 3. The audience is free and comes first fo
 same time without covering each other.
 
 **Solo play.** Tab / the gamepad's Back button switches which character you control. The screen stays split, and the
-character you are not controlling waits where he is.
+character you are not controlling stays in his room.
 
 The evening starts when both players have spent all their hours, or when both press "Konec dne" (end the day).
 
@@ -369,7 +374,7 @@ labelled **our addition** and its constants live in `rules.ts`.
 - **Our addition:** the defender is picked without visible numbers. This matters only if rooms are misted: an unrevealed group can still be picked.
 
 **Revolution.** Escape by plane, or into the mountains, or fight.
-- The ally is picked by walking to that faction's room. The ally screen lists every group with its revealed or unrevealed mood.
+- The ally is picked on a shared screen showing the palace strip. The ally screen lists every group with its revealed or unrevealed mood.
 - Picking a hostile group gives the original "Děláte si legraci!" ("You must be joking!"), and Zog goes to the mountains.
 - The original bug is fixed: with no eligible ally, the player's own strength is used alone.
 
@@ -401,7 +406,7 @@ in `rules.ts`). The number of retries used is shown next to the score.
 **Everything is generated imagery**, made by the user from the prompt sheet. The code never blocks on missing art.
 
 **Characters are puppets first, look second** (lessons from Spy vs Spy):
-1. **Rig first.** Each character is a skeleton rig with human-cartoon proportions (big head, small body). Poses are data: stand, walk cycle, talk, bow, point, shocked, salute, fall, plus **ten mood poses** (§5.2) for faction members and envoys.
+1. **Rig first.** Each character is a skeleton rig with human-cartoon proportions (big head, small body). Poses are data: stand, step-in (for room transitions), talk, bow, point, shocked, salute, fall (the march still needs a walk cycle), plus **ten mood poses** (§5.2) for faction members and envoys.
 2. **Grey puppets.** The palace and the march are fully playable with plain grey puppets. Motion, size and readability are tuned at game scale before any skin exists.
 3. **Skin.** One generated **part sheet** per character: head front and side, **five expression heads** (ecstatic, happy, neutral, grumpy, furious), torso, upper and lower arms, legs, hat. Each part is a transparent cut-out from one reference. The parts are mounted on the bones, so the generator never has to draw the same person twice in different poses.
 4. **Final look.** Smooth cut-out with a light outline, matching the painted illustrations. It is not pixelated.
@@ -433,14 +438,15 @@ and march props.
 
 | Context | Keyboard | Gamepad |
 |---|---|---|
-| Palace / march movement | P1 WASD, P2 arrows | left stick / D-pad |
+| Palace: jump to the neighbouring room | P1 WASD, P2 arrows | D-pad / left stick (one flick = one room) |
+| March: movement | P1 WASD, P2 arrows | left stick / D-pad |
 | Action (interact, confirm) | F / Enter | A |
 | Seal: pick up / hand over | G / right Ctrl | X |
 | Switch character (solo) | Tab | Back |
 | Pause / menu | Esc | Start |
 | Dialogs | 1–5, A / N (ano / ne) + mouse | D-pad focus, A confirm |
 
-A dialog belongs to the player who opened it. The other player keeps walking.
+A dialog belongs to the player who opened it and stays in his half. The other player keeps moving between rooms.
 
 ## 13. Testing
 
