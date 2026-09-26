@@ -332,7 +332,7 @@ export const PALACE: PalaceLayout = {
     d33: 'straznice',
     d34: 'straznice',
     d35: 'straznice',
-    d36: 'nadvori',
+    d36: 'straznice',
     d37: 'pokladna',
     d38: 'vyslanci',
     d39: 'vyslanci',
@@ -1082,7 +1082,7 @@ describe('palaceCommands', () => {
     );
     const cmds = palaceCommands(albania, s, 'zogu');
     const decisions = cmds.filter((c) => c.type === 'decide').map((c) => (c as { decision: string }).decision);
-    expect(decisions).toEqual(['d33', 'd34', 'd35']);
+    expect(decisions).toEqual(['d33', 'd34', 'd35', 'd36']);
     expect(cmds).toContainEqual({ type: 'talk' });
     expect(cmds).toContainEqual({ type: 'giveSeal', hero: 'zogu' });
     expect(cmds[cmds.length - 1]).toEqual({ type: 'endDay', hero: 'zogu' });
