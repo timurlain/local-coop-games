@@ -26,7 +26,8 @@ export function kill(state: GameState, spy: Spy, cause: DeathCause, events: Game
   const furniture = dropHand(state, spy);
   events.push({ type: 'died', spy: spy.id, cause, killer });
   // Round 5: show where the hand item landed (spec §7 scoring is untouched — `dropped` carries no
-  // score delta — and the sound stays a plain 'clatter', same as entering the opponent's room).
+  // score delta — and the sound stays a plain 'clatter'). Death is now the only way a `dropped`
+  // event fires (round 6 play test: entering the opponent's room no longer drops anything).
   if (thing !== null) events.push({ type: 'dropped', spy: spy.id, thing, furniture });
 }
 
@@ -110,6 +111,7 @@ export function updateDead(state: GameState, spy: Spy, dt: number, events: GameE
   spy.visited[spy.room] = true;
   spy.x = RULES.roomW / 2;
   spy.z = RULES.spawnZ;
+  spy.pushingDoor = null;
   spy.enteredAt = state.tick;
   events.push({ type: 'respawn', spy: spy.id });
 }

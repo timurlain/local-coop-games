@@ -1,4 +1,4 @@
-import { Sfx, getAudioContext, type SfxName } from '../../shared/audio';
+import { Sfx, audioLocked, getAudioContext, type SfxName } from '../../shared/audio';
 import { cs } from '../../shared/i18n/cs';
 import type { PlayerActions } from '../../shared/input/actions';
 import { InputManager, type DeviceId } from '../../shared/input/manager';
@@ -8,7 +8,7 @@ import { randomSeed } from '../../shared/rng';
 import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
 import { createGame } from './logic/generator';
-import { LEVELS, levelRules } from './logic/rules';
+import { GAME_LENGTH_MULTIPLIERS, LEVELS, levelRules } from './logic/rules';
 import { rankFor } from './logic/score';
 import type { GameEvent, GameState, PlayerId, RemedyKind, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
@@ -78,10 +78,12 @@ function setupMenu(): void {
   document.fonts?.load('14px "Limelight"').catch(() => undefined);
   document.fonts?.load('8px "Poiret One"').catch(() => undefined);
   $('level-label').textContent = T.levelLabel;
+  $('game-length-label').textContent = T.gameLengthLabel;
   $('hide-airport-label').textContent = T.hideAirport;
   $('mute-label').textContent = T.mute;
   $('music-label').textContent = T.music;
   $('controls').textContent = T.controls;
+  $('sound-hint').textContent = T.soundLocked;
   $('back').textContent = T.back;
   $('toosmall-title').textContent = T.tooSmall;
 
@@ -91,10 +93,23 @@ function setupMenu(): void {
     const { cols, rows } = levelRules(n);
     level.add(new Option(T.levelOption(n, cols, rows), String(n), false, n === settings.level));
   }
-  readout.textContent = levelReadout(settings.level);
+  const updateReadout = () => {
+    readout.textContent = levelReadout(settings.level, settings.gameLength);
+  };
+  updateReadout();
   level.onchange = () => {
     settings.level = Number(level.value);
-    readout.textContent = levelReadout(settings.level);
+    updateReadout();
+    saveJson(SETTINGS_KEY, settings);
+  };
+
+  const gameLength = $<HTMLSelectElement>('game-length');
+  for (const m of GAME_LENGTH_MULTIPLIERS) {
+    gameLength.add(new Option(T.gameLengthOption(m), String(m), false, m === settings.gameLength));
+  }
+  gameLength.onchange = () => {
+    settings.gameLength = Number(gameLength.value) as typeof GAME_LENGTH_MULTIPLIERS[number];
+    updateReadout();
     saveJson(SETTINGS_KEY, settings);
   };
 
@@ -146,7 +161,7 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
-  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport });
+  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport, gameLength: settings.gameLength });
   state.spies.forEach((spy, i) => {
     spy.prev = toSpyInput(input.get(slots[i]!));
   });
@@ -259,6 +274,7 @@ function update(dt: number): void {
 }
 
 function updateMenu(): void {
+  $('sound-hint').hidden = !audioLocked();
   slots.forEach((d, i) => {
     if (d && !input.isConnected(d)) {
       slots[i as 0 | 1] = null;
@@ -464,7 +480,11 @@ window.addEventListener('blur', () => {
     pause(T.paused);
   }
 });
-window.addEventListener('pointerdown', () => sfx.unlock());
+// Unlock sound inside a real user gesture (autoplay policy): a click, touch or any key. Gamepad buttons are not
+// gestures, so the menu shows a hint until the sound runs.
+for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
+  window.addEventListener(type, () => sfx.unlock(), { capture: true });
+}
 
 setupMenu();
 resize();

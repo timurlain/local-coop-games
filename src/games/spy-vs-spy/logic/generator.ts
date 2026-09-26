@@ -1,5 +1,5 @@
 import { makeRng, pick, rand, randInt, shuffle } from '../../../shared/rng';
-import { RULES, levelRules } from './rules';
+import { DEFAULT_GAME_LENGTH, RULES, levelRules, scaledClock, type GameLengthMultiplier } from './rules';
 import { THEME_FURNITURE, assignThemes, decorate, pickHost } from './themes';
 import {
   ARMOURY_KIND, DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, FREE_STANDING_KINDS, NO_INPUT, OPPOSITE, SECRETS, canHold, neighbor,
@@ -20,6 +20,7 @@ export function createSpy(
     selected: null, trapPress: null, mapOpen: false, placing: null, refuseTimer: 0, stock: { ...stock },
     armouryTimer: 0, stockFlash: null,
     swingCooldown: 0, swingAnim: 0, attack: null, strikeIn: 0, blocking: false, ducking: false, kickTimer: 0, doorOpening: null,
+    pushingDoor: null,
     enteredAt: 0, visited, trail: [], prev: { ...NO_INPUT },
   };
 }
@@ -27,11 +28,15 @@ export function createSpy(
 export interface GameOptions {
   /** „Skrýt letiště" (spec §4), default off */
   hideAirport?: boolean;
+  /** „Délka hry": multiplies the level's clock (default 1, normální). */
+  gameLength?: GameLengthMultiplier;
 }
 
-/** A new match on `level` (1-8, spec §4): grid, clock and trap stock come from `RULES.levels`. */
+/** A new match on `level` (1-8, spec §4): grid, clock and trap stock come from `RULES.levels`; the clock is scaled
+ *  by `opts.gameLength` („Délka hry", default 1). */
 export function createGame(seed: number, level: number, opts: GameOptions = {}): GameState {
-  const { cols, rows, clockSeconds, trapStockPerSpy } = levelRules(level);
+  const { cols, rows, clockSeconds: levelClockSeconds, trapStockPerSpy } = levelRules(level);
+  const clockSeconds = scaledClock(levelClockSeconds, opts.gameLength ?? DEFAULT_GAME_LENGTH);
   // Looks come from their own stream so the gameplay stream (doors, slots, hidden things) is untouched.
   const looks = makeRng((seed ^ LOOKS_SALT) >>> 0);
   const themes = assignThemes({ cols, rows }, looks);

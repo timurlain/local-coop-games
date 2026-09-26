@@ -105,7 +105,7 @@ export function drawSpy(ctx: Ctx, state: GameState, spy: Spy, now: number, pose:
   const opponent = spy.blocking ? sameRoomOpponent(state, spy) : null;
   const flip = opponent !== null ? opponent.x < spy.x : spy.facing < 0;
   drawSpySprite(ctx, spyImage(baseColor(spy), frame), sx, sy, flip);
-  const { front, back } = handItems(spy, frame);
+  const { front, back } = handItems(spy, frame, fighting);
   const outline = handOutline(baseColor(spy));
   if (back !== null) drawInHand(ctx, back, frame, sx, sy, flip, 'back', outline);
   if (front !== null) drawInHand(ctx, front, frame, sx, sy, flip, 'front', outline);
@@ -121,12 +121,15 @@ export const UMBRELLA_FRAMES: readonly SpyFrame[] = [
 /**
  * What each hand shows in `frame` (round 4 §2): a selected trap goes in the front hand and the carried thing
  * (kufřík, satchel, remedy) then hangs from the back hand; with no trap selected the carried thing is in front.
- * The fight frames hold the umbrella in front, so no trap is drawn and the carried thing hangs at the back; while
- * placing, the trap is drawn flying into its target instead (`drawPlacing`).
+ * While `fighting` (round 6 play test: carried things stay with the spy through a fight, but aren't drawn for
+ * its duration — the umbrella fills both hands), neither the trap nor the carried thing is shown; while
+ * placing, the trap is drawn flying into its target instead (`drawPlacing`), which can't happen mid-fight.
  */
-export function handItems(spy: Spy, frame: SpyFrame): { front: HandIcon | null; back: HandIcon | null } {
+export function handItems(
+  spy: Spy, frame: SpyFrame, fighting: boolean,
+): { front: HandIcon | null; back: HandIcon | null } {
+  if (fighting) return { front: null, back: null };
   const carried = heldIcon(spy.hand);
-  if (UMBRELLA_FRAMES.includes(frame)) return { front: null, back: carried };
   if (spy.selected === null) return { front: carried, back: null };
   return { front: spy.placing === null ? spy.selected : null, back: carried };
 }

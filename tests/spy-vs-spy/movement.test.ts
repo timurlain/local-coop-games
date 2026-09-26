@@ -70,7 +70,6 @@ describe('doors', () => {
     const spy = place(s, 0, 4, 100, 0);
     const ev: GameEvent[] = [];
     updateMovement(s, spy, input({ moveY: -1 }), TICK, ev);
-    spy.prev = input({ moveY: -1 });
     updateMovement(s, spy, input({ moveY: -1 }), TICK, ev); // still held: no repeat
     expect(spy.room).toBe(4);
     expect(ev).toEqual([{ type: 'bump', spy: 0 }]);
@@ -81,9 +80,26 @@ describe('doors', () => {
     const spy = place(s, 0, 4, 100, 0);
     const ev: GameEvent[] = [];
     updateMovement(s, spy, input({ moveY: -1 }), TICK, ev);
-    spy.prev = input(); // released
+    updateMovement(s, spy, input(), TICK, ev); // released: no bump
     updateMovement(s, spy, input({ moveY: -1 }), TICK, ev); // pressed again: a fresh push
     expect(ev).toEqual([{ type: 'bump', spy: 0 }, { type: 'bump', spy: 0 }]);
+  });
+
+  it('holding the direction while walking up to a closed door bumps exactly once on arrival, not before', () => {
+    const s = openGame();
+    // Far enough from the door (z=0) that several ticks of holding moveY=-1 are needed to reach it,
+    // simulating a player who pressed the key long before arriving (spy.prev already equals the
+    // held input the whole way, so a fix based only on `spy.prev` would never see a "fresh" press).
+    const spy = place(s, 0, 4, 100, 50);
+    const ev: GameEvent[] = [];
+    const held = input({ moveY: -1 });
+    for (let i = 0; i < 200 && spy.z > 0; i++) updateMovement(s, spy, held, TICK, ev);
+    expect(spy.z).toBe(0);
+    expect(spy.room).toBe(4);
+    expect(ev).toEqual([{ type: 'bump', spy: 0 }]);
+    // keeps holding into the door: still silent
+    for (let i = 0; i < 30; i++) updateMovement(s, spy, held, TICK, ev);
+    expect(ev).toEqual([{ type: 'bump', spy: 0 }]);
   });
 
   it('a door trap does not trigger when passing an already-open door (spec §5: opening only)', () => {

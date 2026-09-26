@@ -122,3 +122,18 @@ export function levelRules(n: number): LevelRules {
   if (!isLevel(n)) throw new Error(`no level ${n}`);
   return RULES.levels[n - 1];
 }
+
+/** „Délka hry" (game length): multiplies every spy's clock. `1` (normální) is the default. */
+export const GAME_LENGTH_MULTIPLIERS = [1, 1.5, 2, 3] as const;
+export type GameLengthMultiplier = (typeof GAME_LENGTH_MULTIPLIERS)[number];
+export const DEFAULT_GAME_LENGTH: GameLengthMultiplier = 1;
+
+export function isGameLengthMultiplier(n: unknown): n is GameLengthMultiplier {
+  return typeof n === 'number' && (GAME_LENGTH_MULTIPLIERS as readonly number[]).includes(n);
+}
+
+/** A level's clock, scaled by „Délka hry"; rounded to a whole second (levels' clocks are whole minutes and the
+ *  multipliers are halves, so this never actually rounds — the guard is only for float safety). */
+export function scaledClock(clockSeconds: number, gameLength: GameLengthMultiplier): number {
+  return Math.round(clockSeconds * gameLength);
+}

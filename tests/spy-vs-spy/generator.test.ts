@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, minFurniturePerRoom, outwardDirs } from '../../src/games/spy-vs-spy/logic/generator';
-import { LEVELS, RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
+import { GAME_LENGTH_MULTIPLIERS, LEVELS, RULES, levelRules } from '../../src/games/spy-vs-spy/logic/rules';
 import {
   DIRS, FIXTURE_KINDS, FIXTURE_REMEDY, OPPOSITE, neighbor, type GameState,
 } from '../../src/games/spy-vs-spy/logic/state';
@@ -136,6 +136,39 @@ describe('createGame', () => {
     expect(() => createGame(1, 0)).toThrow();
     expect(() => createGame(1, 9)).toThrow();
     expect(() => createGame(1, 2.5)).toThrow();
+  });
+});
+
+describe('„Délka hry" (game length)', () => {
+  it('defaults to the level clock unscaled, with no option and with gameLength omitted', () => {
+    for (const level of LEVELS) {
+      expect(createGame(1, level).spies[0].clock).toBe(levelRules(level).clockSeconds);
+      expect(createGame(1, level, {}).spies[0].clock).toBe(levelRules(level).clockSeconds);
+    }
+  });
+
+  it('multiplies every spy\'s clock by the chosen level, for each allowed multiplier', () => {
+    for (const level of LEVELS) {
+      for (const gameLength of GAME_LENGTH_MULTIPLIERS) {
+        const s = createGame(1, level, { gameLength });
+        const expected = levelRules(level).clockSeconds * gameLength;
+        expect(s.spies[0].clock).toBe(expected);
+        expect(s.spies[1].clock).toBe(expected);
+      }
+    }
+  });
+
+  it('level 1 (5 min): ×1 = 5 min, ×1.5 = 7.5 min, ×2 = 10 min, ×3 = 15 min', () => {
+    expect(createGame(1, 1, { gameLength: 1 }).spies[0].clock).toBe(5 * 60);
+    expect(createGame(1, 1, { gameLength: 1.5 }).spies[0].clock).toBe(7.5 * 60);
+    expect(createGame(1, 1, { gameLength: 2 }).spies[0].clock).toBe(10 * 60);
+    expect(createGame(1, 1, { gameLength: 3 }).spies[0].clock).toBe(15 * 60);
+  });
+
+  it('does not otherwise change the match (gameplay fingerprint stays put)', () => {
+    const withDefault = JSON.stringify({ ...createGame(55, 3), spies: null });
+    const withMultiplier = JSON.stringify({ ...createGame(55, 3, { gameLength: 2 }), spies: null });
+    expect(withMultiplier).toBe(withDefault);
   });
 });
 

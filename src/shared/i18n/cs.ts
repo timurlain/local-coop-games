@@ -5,7 +5,10 @@ export const cs = {
     black: 'Černý',
     levelLabel: 'Úroveň',
     levelOption: (level: number, cols: number, rows: number) => `${level} (${cols}×${rows})`,
-    levelReadout: (rooms: number, traps: number, minutes: number) => `${rooms} místností · ${traps} pastí · ${minutes} min`,
+    levelReadout: (rooms: number, traps: number, minutesLabel: string) => `${rooms} místností · ${traps} pastí · ${minutesLabel} min`,
+    gameLengthLabel: 'Délka hry',
+    /** `1` → „normální ×1"; otherwise „×1,5" etc. (Czech decimal comma). */
+    gameLengthOption: (multiplier: number) => (multiplier === 1 ? 'normální ×1' : `×${String(multiplier).replace('.', ',')}`),
     hideAirport: 'Skrýt letiště',
     mute: 'Ztlumit zvuk',
     music: 'Hudba',
@@ -17,6 +20,7 @@ export const cs = {
       kbRight: 'klávesnice vpravo',
       pad: (n: number) => `gamepad ${n}`,
     },
+    soundLocked: '🔇 Zvuk se zapne po kliknutí do okna nebo stisku klávesy (tlačítko ovladače prohlížeč nepočítá).',
     controls:
       'Bílý: WASD, F akce, G pasti · Černý: šipky, Enter akce, pravý Ctrl pasti · ' +
       'Gamepad: A akce, X pasti, Start pauza · Akce u nábytku: hledat, s věcí v ruce ji tam schováš · Esc pauza · F1 ladění' +

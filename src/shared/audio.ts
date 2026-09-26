@@ -204,6 +204,14 @@ export function unlockAudio(): AudioContext | null {
   return shared;
 }
 
+/**
+ * True while the browser still blocks sound: no context yet, or it is suspended. Browsers start audio only after a
+ * click or key press on the page; a gamepad button does not count, so gamepad-only players need a hint.
+ */
+export function audioLocked(): boolean {
+  return shared === null || shared.state !== 'running';
+}
+
 /** Synthesized sound effects. Call `unlock()` from a user gesture (browser autoplay policy). */
 export class Sfx {
   muted = false;
