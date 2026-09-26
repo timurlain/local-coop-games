@@ -1,0 +1,52 @@
+import type { GameState } from './state';
+
+export const SAVE_VERSION = 1;
+
+export interface SaveFile {
+  readonly version: typeof SAVE_VERSION;
+  readonly scenario: string;
+  readonly current: GameState;
+  /** The state at the start of each year (Q1, audience phase), oldest first. */
+  readonly checkpoints: readonly GameState[];
+  readonly retries: number;
+}
+
+function isYearStart(s: GameState): boolean {
+  return s.phase.kind === 'audience' && s.quarter % 4 === 1;
+}
+
+export function newSave(scenario: string, state: GameState): SaveFile {
+  return { version: SAVE_VERSION, scenario, current: state, checkpoints: isYearStart(state) ? [state] : [], retries: 0 };
+}
+
+/** Stores the latest state; at the start of a year also stores (or replaces) that year's checkpoint. */
+export function recordTurn(f: SaveFile, state: GameState): SaveFile {
+  const checkpoints = isYearStart(state)
+    ? [...f.checkpoints.filter((c) => c.quarter !== state.quarter), state]
+    : f.checkpoints;
+  return { ...f, current: state, checkpoints };
+}
+
+/** Back to the latest yearly checkpoint not after the current turn; null when there is none. */
+export function retryFromYear(f: SaveFile): { file: SaveFile; state: GameState } | null {
+  const cp = [...f.checkpoints].reverse().find((c) => c.quarter <= f.current.quarter);
+  if (!cp) return null;
+  const state = structuredClone(cp);
+  return { state, file: { ...f, current: state, retries: f.retries + 1 } };
+}
+
+export function serialize(f: SaveFile): string {
+  return JSON.stringify(f);
+}
+
+/** Null for missing, broken or foreign-version data (the menu then hides "Pokračovat"). */
+export function deserialize(raw: string | null): SaveFile | null {
+  if (!raw) return null;
+  try {
+    const f = JSON.parse(raw) as Partial<SaveFile>;
+    if (f.version !== SAVE_VERSION || !f.current || !Array.isArray(f.checkpoints)) return null;
+    return f as SaveFile;
+  } catch {
+    return null;
+  }
+}
