@@ -2614,7 +2614,7 @@ In `src/shared/i18n/cs.ts`, before the final `};` of the `cs` object (after the 
   diktator: {
     title: 'Diktátor',
     subtitle: 'Tirana, 1925–1939',
-    quarter: (year: number, q: number) => `${['', 'Jaro', 'Léto', 'Podzim', 'Zima'][q]} ${year}`,
+    quarter: (year: number, q: number) => `${['', 'Zima', 'Jaro', 'Léto', 'Podzim'][q]} ${year}`,
     address: (isKing: boolean) => (isKing ? 'Veličenstvo' : 'Excelence'),
     treasury: (amount: number) => `Pokladna: ${amount.toLocaleString('cs-CZ')} tis. franků`,
     costs: (amount: number) => `Čtvrtletní výdaje: ${amount} tis.`,
@@ -2983,7 +2983,7 @@ Expected: no errors; `dist/src/games/diktator/index.html` exists.
 
 Run: `npm run dev` and open `http://localhost:5173/src/games/diktator/index.html`.
 Check by hand:
-1. "Nová hra" starts in "Jaro 1925" with an audience and the treasury at 940.
+1. "Nová hra" starts in "Zima 1925" with an audience and the treasury at 940.
 2. Number keys press the matching buttons.
 3. Buying a police report shows the table with bars and plots.
 4. The Swiss account offers four shares.
