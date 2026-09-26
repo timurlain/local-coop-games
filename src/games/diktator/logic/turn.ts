@@ -5,7 +5,7 @@ import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
 import { maybeNews } from './news';
 import { newPalaceDay } from './palace';
-import { applyPalaceCommand, palaceCommands, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
+import { applyPalaceCommand, palaceCommands, refreshSeen, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
 import { formPlots } from './plot';
 import { policeReport } from './police';
 import { afterVictory, eligibleAllies, fightRevolution, findRevolution, flee, throughMountains } from './revolution';
@@ -34,7 +34,10 @@ function startQuarter(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[
   s.threshold = RULES.thresholdBase + dice.int(RULES.thresholdSpread);
   s.quarter += 1;
   s.decisionTaken = false;
-  if (s.palace) s.palace = newPalaceDay(sc.palace!);
+  if (s.palace) {
+    s.palace = newPalaceDay(sc.palace!);
+    refreshSeen(sc, s);
+  }
   events.push({ type: 'quarterStarted', quarter: s.quarter });
   formPlots(s);
   settleTreasury(s, events);
@@ -100,6 +103,7 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
 
   if (s.palace && (phase.kind === 'audience' || phase.kind === 'day') && PALACE_COMMANDS.has(cmd.type)) {
     applyPalaceCommand(sc, s, cmd, dice, events);
+    refreshSeen(sc, s);
     if (s.phase.kind === 'day' && s.palace.done.zogu && s.palace.done.velitel) evening(sc, s, dice, events);
     return { state: s, events };
   }
@@ -152,7 +156,23 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
     case 'ended':
       throw invalid();
   }
+  if (cmd.type === 'answer' && s.palace) refreshSeen(sc, s);
   return { state: s, events };
+}
+
+/** The answers offered during an audience: yes/no/goAway, plus suggestOther while it is still available. */
+function audienceAnswers(sc: Scenario, s: GameState): Command[] {
+  if (s.phase.kind !== 'audience') return [];
+  const phase = s.phase;
+  const cmds: Command[] = [
+    { type: 'answer', answer: 'yes' },
+    { type: 'answer', answer: 'no' },
+    { type: 'answer', answer: 'goAway' },
+  ];
+  const from = sc.petitions.find((p) => p.id === phase.petition)?.from;
+  const canSuggest = !phase.suggested && sc.petitions.some((p) => p.from === from && !s.used[p.id]);
+  if (canSuggest) cmds.push({ type: 'answer', answer: 'suggestOther' });
+  return cmds;
 }
 
 /**
@@ -163,30 +183,11 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
  */
 export function validCommands(sc: Scenario, s: GameState): Command[] {
   if (s.palace && (s.phase.kind === 'audience' || s.phase.kind === 'day')) {
-    const answers: Command[] = [];
-    if (s.phase.kind === 'audience') {
-      answers.push({ type: 'answer', answer: 'yes' }, { type: 'answer', answer: 'no' }, { type: 'answer', answer: 'goAway' });
-      const phase = s.phase;
-      const from = sc.petitions.find((p) => p.id === phase.petition)?.from;
-      if (!phase.suggested && sc.petitions.some((p) => p.from === from && !s.used[p.id])) {
-        answers.push({ type: 'answer', answer: 'suggestOther' });
-      }
-    }
-    return [...answers, ...palaceCommands(sc, s, 'zogu'), ...palaceCommands(sc, s, 'velitel')];
+    return [...audienceAnswers(sc, s), ...palaceCommands(sc, s, 'zogu'), ...palaceCommands(sc, s, 'velitel')];
   }
   switch (s.phase.kind) {
-    case 'audience': {
-      const cmds: Command[] = [
-        { type: 'answer', answer: 'yes' },
-        { type: 'answer', answer: 'no' },
-        { type: 'answer', answer: 'goAway' },
-      ];
-      const phase = s.phase;
-      const from = sc.petitions.find((p) => p.id === phase.petition)?.from;
-      const canSuggest = !phase.suggested && sc.petitions.some((p) => p.from === from && !s.used[p.id]);
-      if (canSuggest) cmds.push({ type: 'answer', answer: 'suggestOther' });
-      return cmds;
-    }
+    case 'audience':
+      return audienceAnswers(sc, s);
     case 'day': {
       const cmds: Command[] = [{ type: 'endDay' }, { type: 'policeReport' }];
       if (!s.decisionTaken) for (const d of availableDecisions(sc, s)) cmds.push({ type: 'decide', decision: d.id });

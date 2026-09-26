@@ -70,7 +70,11 @@ describe('newPalaceDay', () => {
     expect(p.hours).toEqual({ zogu: 3, velitel: 3 });
     expect(p.seal).toBeNull();
     expect(p.seen).toEqual({ trunni: true, straznice: true });
+    expect(p.seenPop).toEqual({});
     expect(p.investigated).toEqual({});
+    expect(p.report).toBeNull();
+    expect(p.offers).toBeNull();
+    expect(p.wishes).toEqual({});
     expect(p.guarded).toBe(false);
     expect(p.done).toEqual({ zogu: false, velitel: false });
     expect(other('zogu')).toBe('velitel');

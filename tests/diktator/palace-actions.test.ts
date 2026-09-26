@@ -4,6 +4,7 @@ import { advance, newGame, validCommands } from '../../src/games/diktator/logic/
 import { albania } from '../../src/games/diktator/scenario/albania';
 import type { Command, GameState } from '../../src/games/diktator/logic/state';
 import { palaceCommands } from '../../src/games/diktator/logic/palace-actions';
+import { formPlots } from '../../src/games/diktator/logic/plot';
 
 describe('palace mode', () => {
   it('newGame with palace starts a palace day; classic mode has none', () => {
@@ -59,10 +60,17 @@ describe('audience in the palace', () => {
     expect(r.events).toEqual([{ type: 'advised', subject: 'petition', id: (s.phase as { petition: string }).petition }]);
   });
 
-  it('the day cannot end and nothing can be sealed during the audience', () => {
+  it('Zogu cannot end the day during the audience, nor can anything be sealed then', () => {
     const s = newGame(albania, 4, undefined, { palace: true }).state;
-    expect(() => advance(albania, s, { type: 'endDay', hero: 'velitel' })).toThrow();
+    expect(() => advance(albania, s, { type: 'endDay', hero: 'zogu' })).toThrow();
     expect(() => advance(albania, s, { type: 'decide', decision: 'd31', hero: 'zogu' })).toThrow();
+  });
+
+  it('the commander may end his day during the audience', () => {
+    const s = newGame(albania, 4, undefined, { palace: true }).state;
+    const r = advance(albania, s, { type: 'endDay', hero: 'velitel' });
+    expect(r.state.palace!.done.velitel).toBe(true);
+    expect(r.state.phase.kind).toBe('audience');
   });
 });
 
@@ -131,6 +139,54 @@ describe('the seal', () => {
     t = play(t, { type: 'endDay', hero: 'velitel' });
     expect(() => advance(albania, t, { type: 'takeSeal', hero: 'velitel' })).toThrow();
   });
+
+  it('cannot be given to a hero who has ended the day', () => {
+    let s = day();
+    // velitel walks to the study and ends his day there
+    s = play(
+      s,
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'left' },
+      { type: 'endDay', hero: 'velitel' },
+    );
+    expect(s.palace!.at.velitel).toBe('pracovna');
+    expect(s.palace!.done.velitel).toBe(true);
+    // Zogu walks to the study too and takes the seal
+    s = play(s, { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'takeSeal', hero: 'zogu' });
+    expect(s.palace!.seal).toBe('zogu');
+    expect(s.palace!.at.zogu).toBe('pracovna');
+    expect(palaceCommands(albania, s, 'zogu')).not.toContainEqual({ type: 'giveSeal', hero: 'zogu' });
+    expect(() => advance(albania, s, { type: 'giveSeal', hero: 'zogu' })).toThrow();
+  });
+
+  it("endDay drops a held seal back to the study", () => {
+    let s = day();
+    s = play(s, { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'takeSeal', hero: 'zogu' });
+    expect(s.palace!.seal).toBe('zogu');
+    const r = advance(albania, s, { type: 'endDay', hero: 'zogu' });
+    expect(r.state.palace!.seal).toBeNull();
+    expect(r.events).toEqual([{ type: 'seal', holder: null }, { type: 'heroDone', hero: 'zogu' }]);
+  });
+
+  it("guard drops a held seal back to the study", () => {
+    let s = day();
+    s = play(
+      s,
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'left' },
+      { type: 'takeSeal', hero: 'velitel' },
+    );
+    expect(s.palace!.seal).toBe('velitel');
+    s = play(s, { type: 'move', hero: 'velitel', dir: 'right' });
+    expect(s.palace!.at.velitel).toBe('trunni');
+    expect(s.palace!.at.zogu).toBe('trunni');
+    const r = advance(albania, s, { type: 'guard' });
+    expect(r.state.palace!.guarded).toBe(true);
+    expect(r.state.palace!.seal).toBeNull();
+    expect(r.events).toEqual([{ type: 'guarding' }, { type: 'seal', holder: null }, { type: 'heroDone', hero: 'velitel' }]);
+  });
 });
 
 describe("Zogu's actions", () => {
@@ -181,7 +237,7 @@ describe("the commander's actions", () => {
     expect(s.palace!.at.velitel).toBe('rolnici');
     const r = advance(albania, s, { type: 'investigate' });
     expect(r.events).toEqual([{ type: 'investigated', faction: 'rolnici', plot: { kind: 'none' } }]);
-    expect(r.state.palace!.investigated.rolnici).toBe(true);
+    expect(r.state.palace!.investigated.rolnici).toEqual({ kind: 'none' });
     expect(r.state.palace!.hours.velitel).toBe(2);
   });
 
@@ -247,6 +303,7 @@ describe('palaceCommands', () => {
       { type: 'move', hero: 'velitel', dir: 'left' },
       { type: 'move', hero: 'velitel', dir: 'right' },
       { type: 'policeReport', hero: 'velitel' },
+      { type: 'endDay', hero: 'velitel' },
     ]);
   });
 
@@ -274,7 +331,8 @@ describe('palaceCommands', () => {
     expect(cmds.filter((c) => c.type === 'answer').length).toBeGreaterThanOrEqual(3);
     expect(cmds).toContainEqual({ type: 'advice' });
     expect(cmds).toContainEqual({ type: 'move', hero: 'velitel', dir: 'up' });
-    expect(cmds.some((c) => c.type === 'endDay')).toBe(false);
+    expect(cmds).toContainEqual({ type: 'endDay', hero: 'velitel' });
+    expect(cmds).not.toContainEqual({ type: 'endDay', hero: 'zogu' });
   });
 
   it('every command palaceCommands offers is accepted by advance', () => {
@@ -287,5 +345,76 @@ describe('palaceCommands', () => {
       if (moves.length === 0) break;
       s = advance(albania, s, moves[i % moves.length]).state;
     }
+  });
+});
+
+describe('palace knowledge (seenPop, investigated, report, offers, wishes)', () => {
+  it('entering a room updates seenPop for the groups seen there', () => {
+    const s = day();
+    expect(s.palace!.seenPop.armada).toBeUndefined();
+    expect(s.palace!.seenPop.policie).toBe(s.pop.policie);
+    const r = play(
+      s,
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+    );
+    expect(r.palace!.at.zogu).toBe('armada');
+    expect(r.palace!.seenPop.armada).toBe(r.pop.armada);
+  });
+
+  it("a sealed decision that changes a group's pop updates seenPop while a hero stands in its room", () => {
+    let s = day();
+    s = play(
+      s,
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'takeSeal', hero: 'zogu' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+      { type: 'move', hero: 'zogu', dir: 'right' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+    );
+    expect(s.palace!.at.zogu).toBe('straznice');
+    expect(s.palace!.at.velitel).toBe('straznice');
+    const before = s.pop.policie;
+    const r = advance(albania, s, { type: 'decide', decision: 'd35', hero: 'zogu' });
+    expect(r.state.pop.policie).not.toBe(before);
+    expect(r.state.palace!.seenPop.policie).toBe(r.state.pop.policie);
+  });
+
+  it('investigated keeps the old plot snapshot even after plots re-form', () => {
+    let s = day();
+    s = play(s, { type: 'move', hero: 'velitel', dir: 'left' }, { type: 'move', hero: 'velitel', dir: 'left' });
+    expect(s.palace!.at.velitel).toBe('rolnici');
+    const r = advance(albania, s, { type: 'investigate' });
+    expect(r.state.palace!.investigated.rolnici).toEqual({ kind: 'none' });
+    const mutated: GameState = structuredClone(r.state);
+    mutated.quarter = 5;
+    mutated.pop.rolnici = 1;
+    mutated.low = 3;
+    mutated.plotPauseUntil = 0;
+    formPlots(mutated);
+    expect(mutated.plots.rolnici.kind).not.toBe('none');
+    expect(mutated.palace!.investigated.rolnici).toEqual({ kind: 'none' });
+  });
+
+  it('report, offers and wishes are stored and survive a serialize/deserialize round trip', () => {
+    let s = day();
+    s = play(
+      s,
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+      { type: 'talk' },
+      { type: 'move', hero: 'zogu', dir: 'right' },
+      { type: 'move', hero: 'zogu', dir: 'right' },
+      { type: 'envoys' },
+      { type: 'policeReport', hero: 'velitel' },
+    );
+    expect(s.palace!.wishes.armada).toBe('d25');
+    expect(s.palace!.offers).toEqual({ italie: 210, britanie: 210 });
+    expect(s.palace!.report).not.toBeNull();
+    expect(s.palace!.report!.pop).toEqual(s.pop);
+    const f = newSave('albania', s);
+    expect(deserialize(serialize(f))).toEqual(f);
   });
 });

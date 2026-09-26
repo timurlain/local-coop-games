@@ -1,7 +1,7 @@
 import { availableDecisions, takeDecision } from './decision';
 import type { Dice } from './dice';
-import { FACTIONS, LENDERS, type FactionId, type LenderId, type StrengthGroupId } from './groups';
-import { decisionRoom, exits, groupsInRoom, neighbour, other, type Hero, type PalaceState } from './palace';
+import { FACTIONS, GROUPS, LENDERS, type FactionId, type LenderId, type StrengthGroupId } from './groups';
+import { decisionRoom, exits, groupsInRoom, HEROES, neighbour, other, roomOfGroup, type Hero, type PalaceState } from './palace';
 import { policeReport } from './police';
 import { RULES } from './rules';
 import type { Scenario } from './scenario';
@@ -26,6 +26,22 @@ export function wishFor(sc: Scenario, s: GameState, group: StrengthGroupId): str
     if (gain > 0 && (!best || gain > best.gain)) best = { id: d.id, gain };
   }
   return best?.id ?? null;
+}
+
+/**
+ * Refreshes `seenPop` for every group whose room each hero currently stands in, so the players'
+ * knowledge of a group's popularity survives a save even after it changes off-screen.
+ * Called after every palace command, after every audience answer in palace mode, and once a
+ * palace day is created.
+ */
+export function refreshSeen(sc: Scenario, s: GameState): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L) return;
+  for (const hero of HEROES) {
+    const room = p.at[hero];
+    for (const g of GROUPS) if (roomOfGroup(L, g) === room) p.seenPop[g] = s.pop[g];
+  }
 }
 
 function factionsIn(sc: Scenario, room: string): FactionId[] {
@@ -85,6 +101,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
       if (p.seal !== cmd.hero) fail(cmd, `${cmd.hero} does not carry the seal`);
       const to = other(cmd.hero);
+      if (p.done[to]) fail(cmd, `${to} has ended the day`);
       if (p.at[to] !== p.at[cmd.hero]) fail(cmd, 'both must stand in the same room');
       p.seal = to;
       events.push({ type: 'seal', holder: to });
@@ -95,7 +112,10 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       const groups = groupsInRoom(L, p.at.zogu);
       if (groups.length === 0) fail(cmd, 'nobody to talk to here');
       spendHour(p, 'zogu', cmd);
-      events.push({ type: 'wish', group: groups[0], decision: wishFor(sc, s, groups[0]) });
+      const group = groups[0];
+      const decision = wishFor(sc, s, group);
+      p.wishes[group] = decision;
+      events.push({ type: 'wish', group, decision });
       return;
     }
     case 'advice': {
@@ -122,6 +142,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
         const id = aidDecisionOf(sc, lender);
         offers[lender] = id && s.used[id] ? null : s.pop[lender] <= s.low ? 0 : s.pop[lender] * RULES.aidPerPop;
       }
+      p.offers = offers;
       events.push({ type: 'envoys', offers });
       return;
     }
@@ -130,8 +151,9 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       if (factions.length === 0) fail(cmd, 'no faction in this room');
       spendHour(p, 'velitel', cmd);
       const faction = factions[0];
-      p.investigated[faction] = true;
-      events.push({ type: 'investigated', faction, plot: s.plots[faction] });
+      const plot = s.plots[faction];
+      p.investigated[faction] = plot;
+      events.push({ type: 'investigated', faction, plot });
       return;
     }
     case 'policeReport': {
@@ -139,6 +161,8 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       if (p.at.velitel !== L.guardroom) fail(cmd, 'the police report is read in the guardroom');
       spendHour(p, 'velitel', cmd);
       policeReport(s, events);
+      const reported = events.find((e) => e.type === 'policeReport');
+      if (reported && reported.type === 'policeReport') p.report = reported.report;
       return;
     }
     case 'guard': {
@@ -148,7 +172,12 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       p.guarded = true;
       p.hours.velitel = 0;
       p.done.velitel = true;
-      events.push({ type: 'guarding' }, { type: 'heroDone', hero: 'velitel' });
+      events.push({ type: 'guarding' });
+      if (p.seal === 'velitel') {
+        p.seal = null;
+        events.push({ type: 'seal', holder: null });
+      }
+      events.push({ type: 'heroDone', hero: 'velitel' });
       return;
     }
     case 'decide': {
@@ -161,10 +190,14 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       return;
     }
     case 'endDay': {
-      if (inAudience) fail(cmd, 'the audience comes first');
       const hero = requireHero(cmd, cmd.hero);
+      if (inAudience && hero !== 'velitel') fail(cmd, 'the audience comes first');
       if (p.done[hero]) fail(cmd, `${hero} has already ended the day`);
       p.done[hero] = true;
+      if (p.seal === hero) {
+        p.seal = null;
+        events.push({ type: 'seal', holder: null });
+      }
       events.push({ type: 'heroDone', hero });
       return;
     }
@@ -184,7 +217,7 @@ export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[
   const out: Command[] = [];
   if (!(audience && hero === 'zogu')) for (const dir of exits(L, room)) out.push({ type: 'move', hero, dir });
   if (p.seal === null && room === L.study) out.push({ type: 'takeSeal', hero });
-  if (p.seal === hero && p.at[other(hero)] === room) out.push({ type: 'giveSeal', hero });
+  if (p.seal === hero && p.at[other(hero)] === room && !p.done[other(hero)]) out.push({ type: 'giveSeal', hero });
   if (hero === 'zogu') {
     if (audience) {
       if (hasHour) out.push({ type: 'advice' });
@@ -202,6 +235,8 @@ export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[
     if (p.seal === hero && !s.decisionTaken) {
       for (const d of availableDecisions(sc, s)) if (decisionRoom(L, d.id) === room) out.push({ type: 'decide', hero, decision: d.id });
     }
+    out.push({ type: 'endDay', hero });
+  } else if (hero === 'velitel') {
     out.push({ type: 'endDay', hero });
   }
   return out;

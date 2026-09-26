@@ -218,7 +218,11 @@ describe('palace bot playthrough', () => {
       const s = playRandomPalace(seed);
       expect(s.phase.kind).toBe('ended');
       expect(s.quarter).toBeLessThanOrEqual(57);
-      if (s.phase.kind === 'ended' && s.phase.ending.kind === 'survived') expect(s.quarter).toBe(57);
+      if (s.phase.kind === 'ended') {
+        const kind = s.phase.ending.kind;
+        expect(['killed', 'escaped', 'survived']).toContain(kind);
+        if (kind === 'survived') expect(s.quarter).toBe(57);
+      }
     }
   });
 

@@ -1,5 +1,6 @@
-import type { FactionId, GroupId, StrengthGroupId } from './groups';
+import type { FactionId, GroupId, LenderId, StrengthGroupId } from './groups';
 import { RULES } from './rules';
+import type { Plot, PoliceSnapshot } from './state';
 
 /** The two playable characters: Zogu (politics, money) and velitel Kovář (security). */
 export const HEROES = ['zogu', 'velitel'] as const;
@@ -39,8 +40,16 @@ export interface PalaceState {
   seal: Hero | null;
   /** Rooms entered this quarter (their mood is known). */
   seen: Record<RoomId, true>;
-  /** Factions whose plot the commander revealed this quarter. */
-  investigated: Partial<Record<FactionId, true>>;
+  /** Popularity of each group as last seen (its room was visited or a decision changed it while a hero stood there). */
+  seenPop: Partial<Record<GroupId, number>>;
+  /** Factions whose plot the commander revealed this quarter, as it stood at that moment. */
+  investigated: Partial<Record<FactionId, Plot>>;
+  /** The last police report read this quarter, if any. */
+  report: PoliceSnapshot | null;
+  /** The envoys' last-stated offers, if Zogu has visited them this quarter. */
+  offers: Readonly<Record<LenderId, number | null>> | null;
+  /** What each group wished for, as last told to Zogu. */
+  wishes: Partial<Record<StrengthGroupId, string | null>>;
   /** The commander guards the king tonight. */
   guarded: boolean;
   /** Pressed "Konec dne". The evening starts when both have. */
@@ -100,7 +109,11 @@ export function newPalaceDay(L: PalaceLayout): PalaceState {
     hours: { zogu: RULES.palace.hours.zogu, velitel: RULES.palace.hours.velitel },
     seal: null,
     seen: { [L.start.zogu]: true, [L.start.velitel]: true },
+    seenPop: {},
     investigated: {},
+    report: null,
+    offers: null,
+    wishes: {},
     guarded: false,
     done: { zogu: false, velitel: false },
   };
