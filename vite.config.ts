@@ -7,6 +7,7 @@ export default defineConfig({
       input: {
         main: 'index.html',
         spy: 'src/games/spy-vs-spy/index.html',
+        diktator: 'src/games/diktator/index.html',
       },
     },
   },
