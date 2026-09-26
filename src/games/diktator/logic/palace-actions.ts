@@ -1,4 +1,4 @@
-import { availableDecisions, decisionById, takeDecision } from './decision';
+import { availableDecisions, takeDecision } from './decision';
 import type { Dice } from './dice';
 import { FACTIONS, LENDERS, type FactionId, type LenderId, type StrengthGroupId } from './groups';
 import { decisionRoom, exits, groupsInRoom, neighbour, other, type Hero, type PalaceState } from './palace';
@@ -74,6 +74,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       return;
     }
     case 'takeSeal': {
+      if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
       if (p.seal !== null) fail(cmd, 'the seal is already carried');
       if (p.at[cmd.hero] !== L.study) fail(cmd, 'the seal lies in the study');
       p.seal = cmd.hero;
@@ -81,6 +82,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       return;
     }
     case 'giveSeal': {
+      if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
       if (p.seal !== cmd.hero) fail(cmd, `${cmd.hero} does not carry the seal`);
       const to = other(cmd.hero);
       if (p.at[to] !== p.at[cmd.hero]) fail(cmd, 'both must stand in the same room');
@@ -106,7 +108,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       }
       if (inAudience) fail(cmd, 'the audience comes first');
       if (p.at.zogu !== L.mother) fail(cmd, "advice is given in Mother's room");
-      decisionById(sc, cmd.decision);
+      if (!availableDecisions(sc, s).some((d) => d.id === cmd.decision)) fail(cmd, 'no such decision on the menu');
       spendHour(p, 'zogu', cmd);
       events.push({ type: 'advised', subject: 'decision', id: cmd.decision });
       return;
@@ -152,6 +154,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
     case 'decide': {
       if (inAudience) fail(cmd, 'the audience comes first');
       const hero = requireHero(cmd, cmd.hero);
+      if (p.done[hero]) fail(cmd, `${hero} has ended the day`);
       if (p.seal !== hero) fail(cmd, `${hero} does not carry the seal`);
       if (p.at[hero] !== decisionRoom(L, cmd.decision)) fail(cmd, `${cmd.decision} is sealed in ${decisionRoom(L, cmd.decision)}`);
       takeDecision(sc, s, cmd.decision, cmd.share ?? 2, dice, events);

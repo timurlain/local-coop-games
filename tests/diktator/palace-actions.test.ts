@@ -61,6 +61,7 @@ describe('audience in the palace', () => {
   it('the day cannot end and nothing can be sealed during the audience', () => {
     const s = newGame(albania, 4, undefined, { palace: true }).state;
     expect(() => advance(albania, s, { type: 'endDay', hero: 'velitel' })).toThrow();
+    expect(() => advance(albania, s, { type: 'decide', decision: 'd31', hero: 'zogu' })).toThrow();
   });
 });
 
@@ -102,6 +103,33 @@ describe('the seal', () => {
     expect(r.state.palace!.hours.zogu).toBe(3);
     expect(r.state.decisionTaken).toBe(true);
   });
+
+  it('a hero who ended the day cannot take, give, or use the seal', () => {
+    let s = day();
+    s = play(
+      s,
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'takeSeal', hero: 'zogu' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+      { type: 'move', hero: 'zogu', dir: 'right' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+    );
+    expect(s.palace!.at.zogu).toBe('straznice');
+    s = play(s, { type: 'endDay', hero: 'zogu' });
+    expect(() => advance(albania, s, { type: 'decide', decision: 'd35', hero: 'zogu' })).toThrow();
+    expect(() => advance(albania, s, { type: 'giveSeal', hero: 'zogu' })).toThrow();
+
+    let t = day();
+    t = play(
+      t,
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'up' },
+      { type: 'move', hero: 'velitel', dir: 'left' },
+    );
+    expect(t.palace!.at.velitel).toBe('pracovna');
+    t = play(t, { type: 'endDay', hero: 'velitel' });
+    expect(() => advance(albania, t, { type: 'takeSeal', hero: 'velitel' })).toThrow();
+  });
 });
 
 describe("Zogu's actions", () => {
@@ -119,6 +147,22 @@ describe("Zogu's actions", () => {
     s = play(s, { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'move', hero: 'zogu', dir: 'left' });
     const r = advance(albania, s, { type: 'advice', decision: 'd41' });
     expect(r.events).toEqual([{ type: 'advised', subject: 'decision', id: 'd41' }]);
+  });
+
+  it('advice on an already-sealed, non-reusable decision is refused', () => {
+    let s = day();
+    s = play(
+      s,
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'takeSeal', hero: 'zogu' },
+      { type: 'move', hero: 'zogu', dir: 'down' },
+      { type: 'move', hero: 'zogu', dir: 'left' },
+    );
+    expect(s.palace!.at.zogu).toBe('armada');
+    s = play(s, { type: 'decide', decision: 'd41', hero: 'zogu' });
+    s = play(s, { type: 'move', hero: 'zogu', dir: 'up' });
+    expect(s.palace!.at.zogu).toBe('matka');
+    expect(() => advance(albania, s, { type: 'advice', decision: 'd41' })).toThrow();
   });
 
   it('the envoys state their base offers', () => {
