@@ -43,7 +43,7 @@ export const PALACE: PalaceLayout = {
     d33: 'straznice',
     d34: 'straznice',
     d35: 'straznice',
-    d36: 'nadvori',
+    d36: 'straznice',
     d37: 'pokladna',
     d38: 'vyslanci',
     d39: 'vyslanci',
