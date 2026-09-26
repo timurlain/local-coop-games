@@ -1,0 +1,73 @@
+import type { Dice } from './dice';
+import { affordable, applyEffects, clamp, type Petition } from './records';
+import type { Scenario } from './scenario';
+import type { GameEvent, GameState } from './state';
+import type { GroupId } from './groups';
+
+export function petitionById(sc: Scenario, id: string): Petition {
+  const p = sc.petitions.find((x) => x.id === id);
+  if (!p) throw new Error(`unknown petition ${id}`);
+  return p;
+}
+
+/** L630–648: random start, cyclic scan for an unused petition; when all are used, reset them and draw again. */
+export function drawPetition(sc: Scenario, s: GameState, dice: Dice): string {
+  const ps = sc.petitions;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const start = dice.int(ps.length);
+    for (let k = 0; k < ps.length; k++) {
+      const p = ps[(start + k) % ps.length];
+      if (!s.used[p.id]) {
+        s.used[p.id] = true;
+        return p.id;
+      }
+    }
+    for (const p of ps) delete s.used[p.id];
+  }
+  throw new Error('scenario has no petitions');
+}
+
+/** Our addition: put the petition back and draw another unused one from the same faction. */
+export function suggestOther(sc: Scenario, s: GameState, currentId: string, dice: Dice): string {
+  const current = petitionById(sc, currentId);
+  const options = sc.petitions.filter((p) => p.from === current.from && p.id !== currentId && !s.used[p.id]);
+  if (options.length === 0) throw new Error(`no other petition from ${current.from}`);
+  delete s.used[currentId];
+  const next = options[dice.int(options.length)];
+  s.used[next.id] = true;
+  return next.id;
+}
+
+function refuse(s: GameState, p: Petition): void {
+  if (p.effects.pop) {
+    for (const [faction, change] of Object.entries(p.effects.pop)) {
+      const g = faction as GroupId;
+      s.pop[g] = clamp(s.pop[g] - change);
+    }
+  }
+}
+
+/** L694–766. `goAway` is our addition: −1 popularity and the petition goes back into the deck. */
+export function answerPetition(
+  sc: Scenario,
+  s: GameState,
+  id: string,
+  answer: 'yes' | 'no' | 'goAway',
+  events: GameEvent[],
+): void {
+  const p = petitionById(sc, id);
+  if (answer === 'goAway') {
+    s.pop[p.from] = clamp(s.pop[p.from] - 1);
+    delete s.used[id];
+    events.push({ type: 'answered', id, answer });
+    return;
+  }
+  if (answer === 'yes' && !affordable(s.treasury, p.effects)) {
+    refuse(s, p);
+    events.push({ type: 'forcedNo', id });
+    return;
+  }
+  if (answer === 'yes') applyEffects(s, p.effects);
+  else refuse(s, p);
+  events.push({ type: 'answered', id, answer });
+}
