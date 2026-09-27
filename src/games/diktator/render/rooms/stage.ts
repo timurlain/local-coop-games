@@ -1,4 +1,4 @@
-// One half of the split screen (spec §5): the room its hero stands in, the 0.4 s slide when he changes rooms
+// One half of the split screen (spec §5): the room its hero stands in, the 0.6 s slide when he changes rooms
 // (the old room slides away, the new one comes in, his figure steps in from the left edge) and a short nudge
 // when he walks into a wall. Owns its canvas state.
 
