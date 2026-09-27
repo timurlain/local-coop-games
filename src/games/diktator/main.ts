@@ -10,21 +10,31 @@ import { randomSeed } from '../../shared/rng';
 import { saveJson } from '../../shared/storage';
 import { Ambient } from './audio/ambient';
 import { Samples } from './audio/samples';
+import { FACTIONS } from './logic/groups';
+import { regimeFromMarch } from './logic/march-regime';
 import { exits, HEROES, neighbour, other, type Hero, type RoomId } from './logic/palace';
 import { palaceCommands } from './logic/palace-actions';
 import { deserialize, newSave, recordTurn, retryFromYear, type SaveFile } from './logic/save';
-import type { Command, GameEvent, GameState } from './logic/state';
+import type { Command, GameEvent, GameState, Phase, StartingRegime } from './logic/state';
 import { advance, newGame, quarterLabel } from './logic/turn';
 import { loadSettings, nextEffects, saveSettings } from './settings';
 import { STAGE_H, STAGE_W } from './render/rooms/crowd';
 import { drawHalf, type StageAnim } from './render/rooms/stage';
 import { albania } from './scenario/albania';
+import { ARENA_W, ARENA_H, type ArenaInput } from './minigames/arena';
+import { SpotGame, tipText } from './minigames/spot/game';
+import { MarchGame } from './minigames/march/game';
+import type { MarchOptions } from './minigames/march/logic';
+import { terrainAt } from './minigames/march/map';
+import type { MarchResult } from './minigames/march/state';
+import { marchCardLines } from './minigames/march/text';
+import { ALBANIA_MARCH } from './scenario/albania/march-map';
 import { bubblesFor, stageView } from './ui/bubbles';
-import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
+import { actionKeyOf, CLOSED, clampFocus, heroOf, isSolo, join, keysFor, marchKeysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
 import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
 import {
-  fitStage, renderBubbles, renderDossier, renderHalf, renderHourglasses, renderOverlay, renderStrip, renderTop, stageCanvas,
-  type OverlayModel,
+  arenaCanvas, fitArena, fitStage, renderArenaCard, renderBubbles, renderDossier, renderHalf, renderHourglasses, renderOverlay,
+  renderStrip, renderTop, showArena, stageCanvas, type ArenaCardModel, type OverlayModel,
 } from './ui/dom';
 import { dossierModel, type DossierModel } from './ui/dossier';
 import { Flick } from './ui/flick';
@@ -32,17 +42,49 @@ import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
 import { roomView, stripView, type RoomView } from './ui/palace-view';
 import { cardsFor, phaseScreen, type Card, type PhaseScreen } from './ui/screens';
-import { bumpHits, bumpSound, moveHits, moveSounds, unrestLevel, voiceOf } from './ui/sounds';
+import { bellTimes, bumpHits, bumpSound, MARCH_STEP_SECONDS, marchCues, marchStepHits, moveHits, moveSounds, shotsHits, unrestLevel, voiceOf } from './ui/sounds';
 import { heroLine, replyLines, type Line } from './ui/speech';
 
 const T = cs.diktator;
 const P = T.palace;
+const A = T.atentat;
+const M = T.pochod;
 const sc = albania;
 const SAVE_KEY = 'diktator/palace';
 const FLASH_SEC = 0.5;
 const CAPTION_SEC = 4;
+/** The unrest ambience level while "Najdi střelce" runs (task 5, spec §5.3). */
+const ARENA_AMBIENT = 0.6;
+/** The palace ambience as a low wind bed under the march (spec 2026-09-27-diktator-pochod-design §9). */
+const MARCH_AMBIENT = 0.25;
 
-type Screen = 'title' | 'palace' | 'pause';
+type Screen = 'title' | 'palace' | 'pause' | 'arena' | 'march';
+
+type AttemptPhase = Extract<Phase, { kind: 'attempt' }>;
+
+interface ArenaSession {
+  readonly game: SpotGame;
+  stage: 'intro' | 'playing' | 'result';
+  result: 'found' | 'missed' | null;
+  /** Scene times (`SpotState.t`) still due to play a "missed" gunshot, oldest first (task fix wave, item 2). */
+  shotsDue: number[];
+  /** Scene time still due to play the "found" bump-plus-page, landing with the tackle, or null once played. */
+  foundDue: number | null;
+}
+
+/** Pochod na Tiranu on the arena screen (spec 2026-09-27-diktator-pochod-design §3, §11). */
+interface MarchSession {
+  readonly game: MarchGame;
+  /** The game seed: the palace game starts from it; the march runs on `seed ^ 0x1924`. */
+  readonly seed: number;
+  stage: 'intro' | 'playing' | 'result' | 'poster';
+  result: MarchResult | null;
+  /** Scene times (`state.now`) still due to ring the Tirana bells, oldest first. */
+  bellsDue: number[];
+  /** Per hero: the scene time of his next footstep. */
+  stepAt: Record<Hero, number>;
+  steps: number;
+}
 
 interface Half {
   dialogue: Dialogue;
@@ -84,12 +126,15 @@ function effectsVolumeOption(): { label: string; run: () => void } {
 
 let screen: Screen = 'title';
 let pauseReason = '';
+let pausedFrom: Screen = 'palace';
 let seats: Seats = NO_SEATS;
 let active: Hero = 'zogu';
 let file: SaveFile | null = null;
 let cards: Card[] = [];
 let overlayUi: MenuUi = CLOSED;
 let halves: Record<Hero, Half> | null = null;
+let arena: ArenaSession | null = null;
+let march: MarchSession | null = null;
 let flash: { rooms: Set<RoomId>; until: number } = { rooms: new Set(), until: 0 };
 let t = 0;
 let dirty = true;
@@ -152,6 +197,14 @@ function holdAll(): void {
 
 // ---------- starting and leaving ----------
 
+/** Drops whatever palace `GameState` exists, without touching the title's seats (fix wave, item 6): shared by
+ * `toTitle` and `startMarch`, so a march started from the end screen leaves no dead game behind. */
+function leaveGame(): void {
+  file = null;
+  halves = null;
+  cards = [];
+}
+
 function begin(f: SaveFile, first: readonly GameEvent[]): void {
   file = f;
   saveJson(SAVE_KEY, file);
@@ -163,11 +216,139 @@ function begin(f: SaveFile, first: readonly GameEvent[]): void {
   holdAll();
   ambient.setLevel(unrestLevel(state()));
   dirty = true;
+  // A save whose phase is 'attempt' (or a new game forced into one, dev hook below): start the scene at once.
+  maybeStartArena();
 }
 
-function startNew(): void {
-  const { state: s, events } = newGame(sc, randomSeed(), undefined, { palace: true });
+/** A fresh game seed; `?seed=<n>` replays the same game and march (spec 2026-09-27-diktator-pochod-design §3). */
+function gameSeed(): number {
+  const q = new URLSearchParams(window.location.search).get('seed');
+  return q !== null && /^\d+$/.test(q) ? Number(q) >>> 0 : randomSeed();
+}
+
+/** Starts the palace game: "Rychlý start" (the original start, no regime), or after the march with its regime. */
+function startNew(seed = gameSeed(), regime?: StartingRegime): void {
+  const { state: s, events } = newGame(sc, seed, regime, { palace: true });
+  // Dev-only test hook (task 5, brief step 5): `?attempt=1` forces every faction to plot an assassination so the
+  // very next evening triggers "Najdi střelce", without playing through years of rounds first.
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('attempt') === '1') {
+    for (const f of FACTIONS) s.plots[f] = { kind: 'assassination' };
+  }
   begin(newSave(sc.id, s), events);
+}
+
+// ---------- Pochod na Tiranu ----------
+
+/** "Nová hra": the march in the arena, faded in over the title. DEV `?march=short` starts near Krujë on 22 December. */
+function startMarch(): void {
+  leaveGame();
+  const seed = gameSeed();
+  const dev = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('march') : null;
+  const opts: MarchOptions = dev === 'short' ? { startAt: [22, 26], startT: 9 * 22 } : {};
+  const game = new MarchGame(ALBANIA_MARCH, (seed ^ 0x1924) >>> 0, isSolo(seats), opts);
+  game.actionKey = actionKeyOf(seats.zogu ?? seats.velitel);
+  march = { game, seed, stage: 'intro', result: null, bellsDue: [], stepAt: { zogu: 0, velitel: 0 }, steps: 0 };
+  active = 'zogu';
+  screen = 'march';
+  overlayUi = CLOSED;
+  showArena(true, 'fade');
+  ambient.setLevel(MARCH_AMBIENT);
+  holdAll();
+  dirty = true;
+}
+
+/** The march session's Action (or card click): intro → march, result → poster, poster → the palace. */
+function advanceMarch(): void {
+  if (!march) return;
+  if (march.stage === 'intro') {
+    march.stage = 'playing';
+    march.game.view = 'play';
+  } else if (march.stage === 'result') {
+    march.stage = 'poster';
+    march.game.view = 'poster';
+  } else if (march.stage === 'poster' && march.result) {
+    const { seed, result } = march;
+    march = null;
+    showArena(false, 'fade');
+    startNew(seed, regimeFromMarch(result));
+    return;
+  }
+  holdAll();
+  dirty = true;
+}
+
+function updateMarch(dt: number): void {
+  if (!march) return;
+  if (seatedDevices(seats).some((d) => !input.isConnected(d))) return pause(P.pause.padLost);
+  if (seatedDevices(seats).some((d) => input.pressed(d, 'pause'))) return pause(P.pause.title);
+  if (march.stage !== 'playing') {
+    if (seatedDevices(seats).some((d) => input.pressed(d, 'action'))) advanceMarch();
+    return;
+  }
+  const switchPressed = input.keyPressed('Tab') || seatedDevices(seats).some((d) => input.pressed(d, 'back'));
+  if (switchPressed && isSolo(seats)) {
+    active = other(active);
+    march.game.active = active;
+  }
+  march.game.update(dt, arenaInputs(null));
+  playMarchSounds(march);
+  const result = march.game.result();
+  if (result) {
+    march.result = result;
+    march.stage = 'result';
+    march.game.view = 'result';
+    holdAll();
+  }
+  dirty = true;
+}
+
+function playMarchSounds(m: MarchSession): void {
+  const s = m.game.state;
+  for (const e of m.game.drainEvents()) {
+    for (const cue of marchCues(e)) if (!(cue.hits && samples.play(cue.hits))) sfx.play(cue.sfx);
+    if (e.type === 'arrived') m.bellsDue = bellTimes().map((d) => s.now + d);
+  }
+  while (m.bellsDue.length > 0 && s.now >= m.bellsDue[0]) {
+    m.bellsDue.shift();
+    sfx.play('win');
+  }
+  for (const h of HEROES) {
+    const f = s.heroes[h];
+    if (!f.moving || s.ending) m.stepAt[h] = s.now;
+    else if (s.now >= m.stepAt[h]) {
+      m.stepAt[h] = s.now + MARCH_STEP_SECONDS;
+      samples.play(marchStepHits(h, m.steps++, terrainAt(s.map, f.x, f.y) === 's'));
+    }
+  }
+}
+
+function marchCardModel(m: MarchSession): ArenaCardModel | null {
+  switch (m.stage) {
+    case 'intro':
+      return {
+        title: M.title,
+        lines: [
+          M.intro,
+          M.howTo,
+          ...(isSolo(seats)
+            ? [marchKeysFor(seats.zogu ?? seats.velitel), M.keys.solo]
+            : HEROES.map((h) => `${T.heroes[h]}: ${marchKeysFor(seats[h])}`)),
+        ],
+        note: { title: M.historyTitle, text: M.historyStart },
+        button: M.start,
+      };
+    case 'result':
+      return {
+        title: M.resultTitle,
+        lines: marchCardLines(m.result!, sc.groupNames, ALBANIA_MARCH.caches.length),
+        note: { title: M.historyTitle, text: M.historyEnd },
+        button: M.next,
+      };
+    case 'poster':
+      return { title: M.posterTitle, lines: [M.posterCaption], button: M.toPalace };
+    case 'playing':
+      return null;
+  }
 }
 
 function continueSaved(): void {
@@ -183,13 +364,20 @@ function retry(): void {
 
 function toTitle(): void {
   if (file) saveJson(SAVE_KEY, file);
-  file = null;
-  halves = null;
-  cards = [];
+  leaveGame();
   seats = NO_SEATS;
   overlayUi = CLOSED;
   screen = 'title';
   ambient.setLevel(0);
+  if (arena) {
+    arena = null;
+    showArena(false);
+  }
+  if (march) {
+    // The march is not saved mid-way (spec §3): back to the title; no GameState exists yet.
+    march = null;
+    showArena(false, 'fade');
+  }
   dirty = true;
 }
 
@@ -256,6 +444,132 @@ function play(cmd: Command, actor: Hero | null = null): void {
   }
   ambient.setLevel(unrestLevel(after));
   dirty = true;
+  maybeStartArena();
+}
+
+/**
+ * After any command that lands the rules in the 'attempt' phase — once no bubble line is waiting and no cards are
+ * pending — creates the scene and switches to it (task 5, spec §3). Also runs right after `begin()`, so continuing
+ * a save whose phase is 'attempt' starts the scene from the phase's own seed.
+ */
+function maybeStartArena(): void {
+  if (!file || screen !== 'palace') return;
+  const phase = state().phase;
+  if (phase.kind !== 'attempt') return;
+  if (someoneTalking() || cards.length > 0) return;
+  startArena(phase);
+}
+
+function startArena(phase: AttemptPhase): void {
+  arena = { game: new SpotGame(phase.difficulty, phase.place, phase.seed), stage: 'intro', result: null, shotsDue: [], foundDue: null };
+  screen = 'arena';
+  showArena(true);
+  ambient.setLevel(ARENA_AMBIENT);
+  dirty = true;
+}
+
+function startPlaying(): void {
+  if (!arena) return;
+  arena.stage = 'playing';
+  holdAll();
+  dirty = true;
+}
+
+/** The seated heroes' inputs for this tick (task 5): held movement, an Action edge and Action held. `soloHero`: in
+ * solo play the device always steers that hero ("Najdi střelce" is Vlček's alone); null = the active hero (the march). */
+function arenaInputs(soloHero: Hero | null): Partial<Record<Hero, ArenaInput>> {
+  const out: Partial<Record<Hero, ArenaInput>> = {};
+  for (const d of seatedDevices(seats)) {
+    const hero = isSolo(seats) ? (soloHero ?? active) : heroOf(seats, d, active);
+    if (!hero) continue;
+    const axes = input.get(d);
+    out[hero] = { moveX: axes.moveX, moveY: axes.moveY, action: input.pressed(d, 'action'), held: axes.action };
+  }
+  return out;
+}
+
+function updateArena(dt: number): void {
+  if (!arena) return;
+  if (seatedDevices(seats).some((d) => !input.isConnected(d))) return pause(P.pause.padLost);
+  if (seatedDevices(seats).some((d) => input.pressed(d, 'pause'))) {
+    pause(P.pause.title);
+    return;
+  }
+  if (arena.stage === 'intro') {
+    if (seatedDevices(seats).some((d) => input.pressed(d, 'action'))) startPlaying();
+    return;
+  }
+  if (arena.stage === 'result') {
+    if (seatedDevices(seats).some((d) => input.pressed(d, 'action'))) finishArena();
+    return;
+  }
+  const before = arena.game.state;
+  const wrongBefore = before.wrong;
+  const outcomeBefore = before.outcome;
+  arena.game.update(dt, arenaInputs('velitel'));
+  const after = arena.game.state;
+  if (after.wrong > wrongBefore) {
+    // A wrong accusation (task 5, spec §5.3): the wood-knock protest sound, reused from a hero's wall bump.
+    if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
+  }
+  if (outcomeBefore === null && after.outcome === 'found') {
+    // Lands with the tackle (render.ts's RUSH_SECONDS), not the instant the accusation is made.
+    arena.foundDue = after.endAt + 0.6;
+  }
+  if (outcomeBefore === null && after.outcome === 'missed') {
+    // Scene-time scheduling, not wall time: a paused/resumed scene must not fire shots while paused.
+    arena.shotsDue = shotsHits().map((d) => after.endAt + d);
+  }
+  while (arena.shotsDue.length > 0 && after.t >= arena.shotsDue[0]) {
+    arena.shotsDue.shift();
+    sfx.play('shot');
+  }
+  if (arena.foundDue !== null && after.t >= arena.foundDue) {
+    arena.foundDue = null;
+    if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
+    if (!samples.play([{ sample: 'page', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('paper');
+  }
+  const result = arena.game.result();
+  if (result) {
+    arena.stage = 'result';
+    arena.result = result;
+  }
+  if (after.wrong > wrongBefore || after.outcome !== outcomeBefore || result) dirty = true;
+}
+
+/** The result card's Action / click: plays `attemptResult`, plays the reverse transition and returns to the palace. */
+function finishArena(): void {
+  if (!arena || !file) return;
+  const found = arena.result === 'found';
+  arena = null;
+  showArena(false);
+  screen = 'palace';
+  holdAll(); // a direction held at the scene's end must not fire straight into a palace move
+  play({ type: 'attemptResult', found });
+  dirty = true;
+}
+
+function arenaCardModel(): ArenaCardModel | null {
+  if (march) return marchCardModel(march);
+  if (!arena) return null;
+  if (arena.stage === 'intro') {
+    const s = arena.game.state;
+    const tip = s.clues.length > 0 ? A.tip(tipText(s.clues)) : A.noTip;
+    const keys = keysFor(isSolo(seats) ? (seats.zogu ?? seats.velitel) : seats.velitel);
+    return { title: A.title, lines: [A.places[s.place], tip, A.howTo(keys)], button: A.start };
+  }
+  if (arena.stage === 'result') {
+    const line = arena.result === 'found' ? A.foundCard[arena.game.state.weapon] : A.missedCard;
+    return { title: A.title, lines: [line], button: P.next };
+  }
+  return null;
+}
+
+function onArenaCardChoose(): void {
+  if (march) return advanceMarch();
+  if (!arena) return;
+  if (arena.stage === 'intro') startPlaying();
+  else if (arena.stage === 'result') finishArena();
 }
 
 function dirOf(from: RoomId, to: RoomId): 'up' | 'down' | 'left' | 'right' {
@@ -290,7 +604,10 @@ function intentsOf(d: DeviceId): Intent[] {
 
 /** Title: an unseated device joins with Action; seated devices steer the title menu. */
 function titleOptions(): { label: string; run: () => void }[] {
-  const opts = [{ label: P.join.newGame, run: startNew }];
+  const opts = [
+    { label: P.join.newGame, run: startMarch },
+    { label: P.join.quickStart, run: () => startNew() },
+  ];
   if (savedGame()) opts.push({ label: P.join.continueGame, run: continueSaved });
   opts.push({ label: P.join.textMode, run: () => { window.location.href = './text.html'; } });
   opts.push(effectsVolumeOption());
@@ -374,7 +691,7 @@ function chooseShared(i: number): void {
   switch (opt.choice.kind) {
     case 'command': play(opt.choice.command); break;
     case 'retry': retry(); break;
-    case 'newGame': startNew(); break;
+    case 'newGame': startMarch(); break;
     case 'menu': toTitle(); break;
   }
   dirty = true;
@@ -397,6 +714,10 @@ function choosePalace(hero: Hero, i: number): void {
 }
 
 function updatePalace(): void {
+  // A command that landed the rules in 'attempt' may have queued a bubble line first (the actor's own reply);
+  // check again on every tick, so the scene starts the moment that line is dismissed, not only right after play().
+  maybeStartArena();
+  if (screen !== 'palace') return;
   if (seatedDevices(seats).some((d) => !input.isConnected(d))) return pause(P.pause.padLost);
   const switchPressed = input.keyPressed('Tab') || seatedDevices(seats).some((d) => input.pressed(d, 'back'));
   if (switchPressed && isSolo(seats)) {
@@ -472,6 +793,7 @@ function updatePalace(): void {
 
 function pause(reason: string): void {
   pauseReason = reason;
+  pausedFrom = screen === 'pause' ? pausedFrom : screen;
   screen = 'pause';
   overlayUi = CLOSED;
   pausedAt = t;
@@ -487,13 +809,15 @@ function pauseOptions(): { label: string; run: () => void }[] {
         if (seatedDevices(seats).every((d) => input.isConnected(d))) {
           const paused = t - pausedAt;
           if (halves) for (const h of HEROES) halves[h].captions = halves[h].captions.map((c) => ({ ...c, until: c.until + paused }));
-          screen = 'palace';
+          screen = pausedFrom;
           holdAll();
-          if (file) ambient.setLevel(unrestLevel(state()));
+          if (pausedFrom === 'arena') ambient.setLevel(ARENA_AMBIENT);
+          else if (pausedFrom === 'march') ambient.setLevel(MARCH_AMBIENT);
+          else if (file) ambient.setLevel(unrestLevel(state()));
         }
       },
     },
-    { label: P.pause.menu, run: toTitle },
+    { label: pausedFrom === 'march' || march !== null ? M.pauseMenu : P.pause.menu, run: toTitle },
     effectsVolumeOption(),
   ];
 }
@@ -544,6 +868,8 @@ function update(dt: number): void {
   }
   if (screen === 'title') updateTitle();
   else if (screen === 'palace') updatePalace();
+  else if (screen === 'arena') updateArena(dt);
+  else if (screen === 'march') updateMarch(dt);
   else updatePause();
 }
 
@@ -567,11 +893,14 @@ function overlayModel(): OverlayModel | null {
     };
   }
   if (screen === 'pause') {
+    const fromMarch = pausedFrom === 'march' || march !== null;
+    const keysForSeat = fromMarch ? marchKeysFor : keysFor;
     const pauseLines = isSolo(seats)
-      ? HEROES.map((h) => `${T.heroes[h]}: ${keysFor(seats.zogu ?? seats.velitel)}`)
-      : HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`);
+      ? [...HEROES.map((h) => `${T.heroes[h]}: ${keysForSeat(seats.zogu ?? seats.velitel)}`), ...(fromMarch ? [M.keys.solo] : [])]
+      : HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysForSeat(seats[h])}`);
     return { title: pauseReason, lines: pauseLines, options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
   }
+  if (screen === 'arena' || screen === 'march') return null;
   if (someoneTalking()) return null;
   const card = cards[0];
   if (card) {
@@ -603,6 +932,7 @@ function onOverlayClick(i: number): void {
 
 function renderDom(): void {
   renderOverlay(overlayModel(), onOverlayClick);
+  renderArenaCard(arenaCardModel(), onArenaCardChoose);
   if (!file || !halves) return;
   const s = state();
   renderTop(topHud(s));
@@ -631,6 +961,20 @@ function render(): void {
   if (dirty) {
     dirty = false;
     renderDom();
+  }
+  const mini = screen === 'march' && march ? march.game : screen === 'arena' && arena ? arena.game : null;
+  if (mini) {
+    const canvas = arenaCanvas();
+    const before = canvas.width;
+    const k = fitArena(canvas);
+    if (canvas.width !== before) dirty = true;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      ctx.clearRect(0, 0, ARENA_W, ARENA_H);
+      mini.render(ctx, t);
+    }
+    return;
   }
   if (!halves) return;
   for (const h of HEROES) {

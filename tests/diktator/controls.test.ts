@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cs } from '../../src/shared/i18n/cs';
 import type { Command } from '../../src/games/diktator/logic/state';
-import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices } from '../../src/games/diktator/ui/controls';
+import { actionKeyOf, CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices } from '../../src/games/diktator/ui/controls';
 
 const P = cs.diktator.palace;
 
@@ -131,5 +131,11 @@ describe('seats', () => {
     expect(isSolo(duo)).toBe(false);
     expect(heroOf(duo, 'kb-left', 'velitel')).toBe('zogu');
     expect(heroOf(duo, 'kb-right', 'zogu')).toBe('velitel');
+  });
+});
+
+describe('actionKeyOf (the march bubble)', () => {
+  it('names F, Enter or A', () => {
+    expect([actionKeyOf('kb-left'), actionKeyOf('kb-right'), actionKeyOf('pad-0'), actionKeyOf(null)]).toEqual(['F', 'Enter', 'A', 'F']);
   });
 });

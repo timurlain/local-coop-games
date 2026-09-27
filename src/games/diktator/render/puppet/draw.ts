@@ -79,6 +79,7 @@ function drawHat(ctx: CanvasRenderingContext2D, J: PuppetJoints, L: Look): void 
       case 'tophat': path.rect(-r * 0.7, r * 0.6, r * 1.4, r * 1.3); path.rect(-r * 1.1, r * 0.55, r * 2.2, r * 0.18); break;
       case 'sajkaca': path.moveTo(-r * 0.95, r * 0.55); path.quadraticCurveTo(0, r * 1.5, r * 0.95, r * 0.55); path.closePath(); break;
       case 'bun': path.ellipse(-r * 0.05, r * 0.45, r * 0.95, r * 0.6, 0, 0, Math.PI); path.ellipse(-r * 0.85, r * 0.35, r * 0.42, r * 0.42, 0, 0, Math.PI * 2); break;
+      case 'papakha': path.moveTo(-r * 0.8, r * 0.5); path.lineTo(-r * 0.72, r * 1.55); path.lineTo(r * 0.72, r * 1.55); path.lineTo(r * 0.8, r * 0.5); path.closePath(); break;
     }
     ctx.fill(path);
     ctx.stroke(path);
@@ -87,6 +88,14 @@ function drawHat(ctx: CanvasRenderingContext2D, J: PuppetJoints, L: Look): void 
       ctx.fillRect(r * 0.1, r * 0.42, r * 1.05, r * 0.16);
       ctx.fillStyle = L.trim;
       ctx.fillRect(-r * 0.7, r * 0.6, r * 1.4, r * 0.12);
+    }
+    if (L.hat === 'papakha') {
+      // Fur: short vertical strokes across the cylinder.
+      ctx.strokeStyle = LINE;
+      ctx.lineWidth = 0.8;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath(); ctx.moveTo(i * r * 0.2, r * 0.62); ctx.lineTo(i * r * 0.2 + r * 0.06, r * 1.45); ctx.stroke();
+      }
     }
     if (L.hat === 'fez') {
       ctx.strokeStyle = '#1a140d';
@@ -137,6 +146,11 @@ function drawFace(ctx: CanvasRenderingContext2D, J: PuppetJoints, L: Look, face:
       ctx.beginPath(); ctx.arc(r * 0.55, r * 0.22, 4.2, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(r * 0.55, r * 0.22 - 4.2); ctx.quadraticCurveTo(r * 0.2, -r * 0.8, -r * 0.1, -r * 1.05); ctx.stroke();
     }
+    if (L.glasses) {
+      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(r * 0.55, r * 0.22, 4.6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(r * 0.55 - 4.6, r * 0.22); ctx.lineTo(r * 0.05, r * 0.22); ctx.stroke();
+    }
     if (face === 'furious') { ctx.fillStyle = 'rgba(200,40,30,0.18)'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); }
   });
 }
@@ -178,9 +192,70 @@ function drawProp(ctx: CanvasRenderingContext2D, J: PuppetJoints): void {
       limb(ctx, h, [h[0] + Math.sin(a) * 18, h[1] + Math.cos(a) * 18], 2.4, '#6b4a2a');
       break;
     }
+    case 'newspaper': {
+      ctx.save();
+      ctx.translate(h[0], h[1] + 4);
+      ctx.rotate(-0.25);
+      ctx.fillStyle = '#e9e4d2'; ctx.strokeStyle = LINE; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.rect(-7, -9, 14, 9); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#b9b39e'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(5, -6); ctx.moveTo(-5, -3); ctx.lineTo(5, -3); ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'basket': {
+      const bx = h[0], by = h[1] - 8;
+      ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(h[0] - 1, h[1] + 1); ctx.lineTo(bx - 5, by + 6); ctx.moveTo(h[0] + 1, h[1] + 1); ctx.lineTo(bx + 5, by + 6); ctx.stroke();
+      ctx.fillStyle = '#a9764a'; ctx.strokeStyle = LINE; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(bx, by + 9, 6.5, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c8102e';
+      for (const [ax, ay] of [[-2.5, 5.5], [1.5, 5.5], [-0.5, 3]] as const) {
+        circle(ctx, [bx + ax, by + 9 + ay], 1.8, '#c8102e');
+      }
+      break;
+    }
+    case 'bouquet': {
+      const bx = h[0], by = h[1] + 8;
+      ctx.fillStyle = '#e9e4d2'; ctx.strokeStyle = LINE; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(bx - 4, h[1] + 1); ctx.lineTo(bx + 4, h[1] + 1); ctx.lineTo(bx + 2, by); ctx.lineTo(bx - 2, by); ctx.closePath(); ctx.fill(); ctx.stroke();
+      const petals = ['#c8102e', '#f4f1e8', '#e6c94a'] as const;
+      for (let i = 0; i < petals.length; i++) circle(ctx, [bx - 4 + i * 4, by + 4], 3, petals[i]);
+      break;
+    }
     case null:
       break;
   }
+}
+
+function drawScarf(ctx: CanvasRenderingContext2D, J: PuppetJoints, color: string): void {
+  const n = J.neck;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(n[0], n[1], 5.5, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(n[0] - 1.8, n[1] - 2); ctx.lineTo(n[0] + 1.8, n[1] - 2); ctx.lineTo(n[0] + 2.6, n[1] - 13); ctx.lineTo(n[0] - 2.6, n[1] - 13);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+
+function drawBagBody(ctx: CanvasRenderingContext2D, J: PuppetJoints, color: string): void {
+  const x = J.hip[0] - 8, y = J.hip[1] + 7;
+  ctx.fillStyle = color; ctx.strokeStyle = LINE; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(x, y, 5.2, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+
+function drawBagStrap(ctx: CanvasRenderingContext2D, J: PuppetJoints, color: string): void {
+  const s = J.shoulder;
+  const x = J.hip[0] - 8, y = J.hip[1] + 7;
+  ctx.strokeStyle = color; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(s[0], s[1]); ctx.lineTo(x, y); ctx.stroke();
+}
+
+function drawHandFlap(ctx: CanvasRenderingContext2D, J: PuppetJoints, color: string): void {
+  const h = J.armF.hand;
+  ctx.fillStyle = color; ctx.strokeStyle = LINE; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(h[0], h[1], 4.4, 3.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 }
 
 /** Draws one puppet. `face` is the mood's face; a pose's own `face` (e.g. startled) wins. */
@@ -189,11 +264,14 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, joints: PuppetJoints, 
   const J: PuppetJoints = !joints.prop && look.prop ? { ...joints, prop: look.prop } : joints;
   const skin = opts.grey ? '#c9c9c9' : SKIN;
   const back = (c: string) => shade(c, 0.78);
+  const scarfColor = opts.grey ? '#a6a6a6' : L.scarf;
+  const bagColor = opts.grey ? '#7a7a7a' : L.bag;
 
   if (!L.dress) {
     limb(ctx, J.hip, J.legB.kn, 4.6, back(L.legs)); limb(ctx, J.legB.kn, J.legB.foot, 4.2, back(L.legs));
     ctx.fillStyle = back(L.boots); ctx.beginPath(); ctx.ellipse(J.legB.foot[0] + 2.5, J.legB.foot[1] + 1.5, 5.5, 3, 0, 0, Math.PI * 2); ctx.fill();
   }
+  if (L.bag) drawBagBody(ctx, J, bagColor!);
   limb(ctx, J.shoulder, J.armB.el, 3.8, back(L.coat)); limb(ctx, J.armB.el, J.armB.hand, 3.4, back(L.coat));
   circle(ctx, J.armB.hand, 3.6, back(opts.grey ? '#bdbdbd' : SKIN));
 
@@ -220,6 +298,9 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, joints: PuppetJoints, 
   if (L.hat === 'kepi' || L.hat === 'cap') { ctx.fillStyle = L.trim; ctx.fillRect(w - 5, T * 0.86, 4, 2); ctx.fillRect(-w + 1, T * 0.86, 4, 2); }
   ctx.restore();
 
+  if (L.bag) drawBagStrap(ctx, J, bagColor!);
+  if (L.scarf) drawScarf(ctx, J, scarfColor!);
+
   if (L.dress) {
     const g = Math.min(J.legF.foot[1], J.legB.foot[1]);
     const x = J.hip[0], y = J.hip[1];
@@ -241,6 +322,10 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, joints: PuppetJoints, 
   drawHat(ctx, J, L);
 
   limb(ctx, J.shoulder, J.armF.el, 4, L.coat); limb(ctx, J.armF.el, J.armF.hand, 3.6, L.coat);
-  drawProp(ctx, J);
-  circle(ctx, J.armF.hand, 3.8, skin);
+  if (J.hideHandF) {
+    drawHandFlap(ctx, J, L.coat);
+  } else {
+    drawProp(ctx, J);
+    circle(ctx, J.armF.hand, 3.8, skin);
+  }
 }

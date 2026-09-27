@@ -1,10 +1,11 @@
 // Which sound belongs to whom (spec §5.3, "Sounds tell the heroes apart"). Pure.
 
 import type { SfxName } from '../../../shared/audio';
-import type { SampleHit } from '../audio/samples';
+import type { SampleHit, SampleName } from '../audio/samples';
 import { FACTIONS } from '../logic/groups';
 import type { Hero } from '../logic/palace';
 import type { GameState } from '../logic/state';
+import type { MarchEvent } from '../minigames/march/state';
 import type { Speaker } from './speech';
 
 const ENVOYS: ReadonlySet<string> = new Set(['italie', 'britanie', 'jugoslavie']);
@@ -42,6 +43,12 @@ export function bumpHits(h: Hero): SampleHit[] {
   return [{ sample: h === 'zogu' ? 'zogu-bump' : 'vlcek-bump', delay: 0, rate: 1, gain: 0.5 }];
 }
 
+/** Delays (scene seconds) for the two "missed" gunshots of the Atentát mini-game (task 5, spec §5.3):
+ * one at 0 s and one at 0.25 s. */
+export function shotsHits(): readonly number[] {
+  return [0, 0.25];
+}
+
 /**
  * How restless the crowd is (play-test round 6b §3, "a rebel noise when some of the factions are super unhappy"):
  * 0 while every faction is above rozzlobení (popularity > 2); 0.5 once the worst is exactly at 2 (rozzlobení);
@@ -62,4 +69,42 @@ export function voiceOf(sp: Speaker): SfxName {
     case 'group': return ENVOYS.has(sp.group) ? 'voiceEnvoy' : 'voiceCrowd';
     case 'caption': return 'paper';
   }
+}
+
+/** One sound of the march: recorded hits when they are decoded, else the synth `sfx`. */
+export interface Cue {
+  readonly sfx: SfxName;
+  readonly hits?: readonly SampleHit[];
+}
+
+/** The sounds of a march event (spec 2026-09-27-diktator-pochod-design §9; only existing sounds). */
+export function marchCues(e: MarchEvent): Cue[] {
+  switch (e.type) {
+    case 'tick': return [{ sfx: 'tick' }];
+    case 'won': return [{ sfx: 'win' }];
+    case 'refused': return [{ sfx: 'nothing' }];
+    case 'coins': return [{ sfx: 'coins', hits: [{ sample: 'coins', delay: 0, rate: 1, gain: 0.8 }] }];
+    case 'swing': return [{ sfx: 'swing' }];
+    case 'hit': return e.down ? [{ sfx: 'hit' }, { sfx: 'boing' }] : [{ sfx: 'hit' }];
+    case 'surrendered': return [{ sfx: 'join' }];
+    case 'caught': return [{ sfx: 'fail' }];
+    case 'day': return e.date === 24 ? [{ sfx: 'lowtime' }] : [];
+    case 'arrived': return [{ sfx: 'door', hits: [{ sample: 'zogu-door', delay: 0, rate: 0.8, gain: 0.6 }] }];
+    case 'timeout': return [{ sfx: 'fail' }];
+    case 'spawned': case 'cache': return [];
+  }
+}
+
+/** Seconds between a walking hero's footsteps on the march. */
+export const MARCH_STEP_SECONDS = 0.45;
+
+/** One footstep of a hero on the march: his own samples in turn, quieter on snow. */
+export function marchStepHits(h: Hero, n: number, snow: boolean): SampleHit[] {
+  const sample = `${h === 'zogu' ? 'zogu' : 'vlcek'}-step-${(n % 3) + 1}` as SampleName;
+  return [{ sample, delay: 0, rate: h === 'zogu' ? 0.85 : 1.12, gain: snow ? 0.15 : 0.3 }];
+}
+
+/** Scene-time delays of the Tirana bells (a `win` flourish) after the arrival. */
+export function bellTimes(): readonly number[] {
+  return [0.3, 0.8, 1.3];
 }

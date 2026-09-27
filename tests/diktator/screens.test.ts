@@ -113,6 +113,21 @@ describe('cardsFor', () => {
     expect(cards[0].lines).toEqual([T.events.warThreat]);
   });
 
+  it('shows the foiled line in the evening card when the attempt phase resolves', () => {
+    const before = day();
+    before.phase = { kind: 'attempt', faction: 'armada', place: 'dustojnici', difficulty: { seconds: 40, clues: 1, crowd: 12, maxWrong: 3 }, seed: 1 };
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'audience', petition: albania.petitions[0].id, suggested: false };
+    after.quarter = before.quarter + 1;
+    const events: GameEvent[] = [
+      { type: 'assassination', faction: 'armada', survived: true, foiled: true },
+      { type: 'quarterStarted', quarter: before.quarter + 1 },
+    ];
+    const cards = cardsFor(albania, before, events, after);
+    expect(cards[0].title).toBe(P.evening(T.quarter(1925, 1)));
+    expect(cards[0].lines).toContain(T.atentat.foiled('Armáda'));
+  });
+
   it('titles the crisis outcome card "victory" after a punish decision, then shows the next quarter', () => {
     const before = day();
     before.phase = { kind: 'punish', faction: 'armada', chosen: 'policie' };
@@ -133,6 +148,12 @@ describe('cardsFor', () => {
 describe('phaseScreen', () => {
   it('shows nothing during the palace day', () => {
     expect(phaseScreen(albania, day(), null)).toBeNull();
+  });
+
+  it('shows nothing during the attempt phase', () => {
+    const s = day();
+    s.phase = { kind: 'attempt', faction: 'armada', place: 'dustojnici', difficulty: { seconds: 40, clues: 1, crowd: 12, maxWrong: 3 }, seed: 1 };
+    expect(phaseScreen(albania, s, null)).toBeNull();
   });
 
   it('offers flight and fight in a revolution, and mentions the plane', () => {

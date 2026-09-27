@@ -2,6 +2,7 @@
 // overlay. Thin: it draws the pure models from menus/hud/notes/screens and reports clicks; no game logic here.
 
 import { cs } from '../../../shared/i18n/cs';
+import { ARENA_H, ARENA_W } from '../minigames/arena';
 import type { Hero, RoomId } from '../logic/palace';
 import { STAGE_H, STAGE_W } from '../render/rooms/crowd';
 import type { Bubble } from './bubbles';
@@ -384,4 +385,109 @@ export function fitStage(canvas: HTMLCanvasElement): number {
 
 export function stageCanvas(hero: Hero): HTMLCanvasElement {
   return $<HTMLCanvasElement>(`#half-${hero} .stage`);
+}
+
+export function arenaCanvas(): HTMLCanvasElement {
+  return $<HTMLCanvasElement>('#arena .arena-stage');
+}
+
+/** Sizes the arena canvas to the largest 16:9 box that fits 90 % of `#arena` (spec §3: "covers 90 % of the
+ * viewport"); returns the scale for the 960-wide logical space. */
+export function fitArena(canvas: HTMLCanvasElement): number {
+  const box = canvas.parentElement!;
+  const maxW = box.clientWidth * 0.9;
+  const maxH = box.clientHeight * 0.9;
+  const w = Math.max(1, Math.min(maxW, (maxH * ARENA_W) / ARENA_H));
+  const h = (w * ARENA_H) / ARENA_W;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = `${Math.floor(w)}px`;
+  canvas.style.height = `${Math.floor(h)}px`;
+  const bw = Math.round(w * dpr);
+  if (canvas.width !== bw) {
+    canvas.width = bw;
+    canvas.height = Math.round(h * dpr);
+  }
+  return canvas.width / ARENA_W;
+}
+
+/** How long the halves take to merge into the arena (and the arena to fade in), or the reverse. */
+const ARENA_MERGE_MS = 500;
+
+/**
+ * Runs the merge/split transition (task 5, index.html/palace.css): `#app` gets `.merging` for
+ * `ARENA_MERGE_MS` (the two halves slide toward the centre and fade), then `#app` is hidden and `#arena` fades
+ * in; `on: false` plays the same thing in reverse. `mode`: 'merge' (default, the palace ⇄ arena split-screen
+ * transition) or 'fade' (Pochod na Tiranu, no halves to merge).
+ */
+export function showArena(on: boolean, mode: 'merge' | 'fade' = 'merge'): void {
+  const app = $('#app');
+  const arena = $('#arena');
+  if (mode === 'fade') {
+    // Pochod na Tiranu (spec 2026-09-27-diktator-pochod-design §3): no halves to merge — the arena fades in over the
+    // title and fades out into the palace. `#app` (still empty) is hidden underneath so nothing shows through.
+    if (on) {
+      app.hidden = true;
+      arena.hidden = false;
+      arena.classList.remove('shown');
+      requestAnimationFrame(() => requestAnimationFrame(() => arena.classList.add('shown')));
+    } else {
+      app.hidden = false;
+      arena.classList.remove('shown');
+      window.setTimeout(() => { arena.hidden = true; }, ARENA_MERGE_MS);
+    }
+    return;
+  }
+  if (on) {
+    app.classList.add('merging');
+    window.setTimeout(() => {
+      app.hidden = true;
+      app.classList.remove('merging');
+      arena.hidden = false;
+      arena.classList.remove('shown');
+      requestAnimationFrame(() => requestAnimationFrame(() => arena.classList.add('shown')));
+    }, ARENA_MERGE_MS);
+  } else {
+    arena.classList.remove('shown');
+    window.setTimeout(() => {
+      arena.hidden = true;
+      app.hidden = false;
+      app.classList.add('merging');
+      requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('merging')));
+    }, ARENA_MERGE_MS);
+  }
+}
+
+export interface ArenaCardModel {
+  readonly title: string;
+  readonly lines: readonly string[];
+  /** A small boxed note under the lines (the march's „Jak to bylo doopravdy“). */
+  readonly note?: { readonly title: string; readonly text: string };
+  readonly button: string;
+}
+
+/** The arena's intro/result card: a centred card inside `#arena`, styled like the shared `.card`. */
+export function renderArenaCard(model: ArenaCardModel | null, onChoose: () => void): void {
+  const el = $('#arena-card');
+  if (!model) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  el.hidden = false;
+  const h = document.createElement('h2');
+  h.textContent = model.title;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = model.button;
+  btn.addEventListener('click', onChoose);
+  const note: HTMLElement[] = [];
+  if (model.note) {
+    const aside = document.createElement('aside');
+    aside.className = 'arena-note';
+    const b = document.createElement('strong');
+    b.textContent = model.note.title;
+    aside.append(b, para(model.note.text));
+    note.push(aside);
+  }
+  el.replaceChildren(h, ...model.lines.map(para), ...note, btn);
 }

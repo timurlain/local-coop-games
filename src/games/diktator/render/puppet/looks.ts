@@ -3,7 +3,7 @@
 import type { GroupId } from '../../logic/groups';
 import type { PropKind } from './skeleton';
 
-export type HatKind = 'kepi' | 'cap' | 'plis' | 'fez' | 'borsalino' | 'tophat' | 'sajkaca' | 'bun' | 'none';
+export type HatKind = 'kepi' | 'cap' | 'plis' | 'fez' | 'borsalino' | 'tophat' | 'sajkaca' | 'bun' | 'papakha' | 'none';
 
 export interface Look {
   readonly coat: string;
@@ -23,6 +23,12 @@ export interface Look {
   readonly sash?: readonly string[];
   /** Carried when the pose has no prop of its own. */
   readonly prop?: PropKind;
+  /** A colour: a knotted scarf around the neck, with a short tail hanging on the chest. */
+  readonly scarf?: string;
+  /** Round wire-rim glasses over the eye. */
+  readonly glasses?: boolean;
+  /** A colour: a shoulder bag hanging at the back hip, with its strap across the chest. */
+  readonly bag?: string;
 }
 
 export const LOOKS = {
@@ -43,6 +49,8 @@ export const LOOKS = {
     moustache: true, sash: ['#1d3f8f', '#f4f1e8', '#c8102e'], prop: 'flagYU',
   },
   treasurer: { coat: '#3a3228', trim: '#c9a44a', legs: '#2f281f', boots: '#16110c', hat: 'none', hatColor: '#000000' },
+  /** Pochod na Tiranu: a White Russian officer of Zogu's column — grey greatcoat, fur papakha. */
+  russian: { coat: '#6f6d63', trim: '#a08a52', legs: '#4b4a42', boots: '#1c1712', hat: 'papakha', hatColor: '#3b332c', moustache: true },
 } as const satisfies Record<string, Look>;
 
 export type LookId = keyof typeof LOOKS;

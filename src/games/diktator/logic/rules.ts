@@ -54,4 +54,23 @@ export const RULES = {
   guardedCoin: 4,
   /** Yearly, permanent income penalty per tariff in force (our addition, play-test change; tariffs plan). */
   tariffPenaltyPerYear: 1,
+  /** Atentát difficulty (spec 2026-09-27-diktator-atentat-design §4; our addition). */
+  attempt: {
+    baseSeconds: 40, guardedBonus: 15, strengthStep: 2, strongFrom: 5, minSeconds: 25, maxSeconds: 60,
+    baseCrowd: 10, maxCrowd: 20, maxWrong: 3, wrongPenalty: 6, loyalPolice: 7,
+  },
+  /** Pochod na Tiranu → the starting regime (spec 2026-09-27-diktator-pochod-design §8; our addition). */
+  march: {
+    /** Popularity 5 + tally, strength 4 + tally, both at most 8. */
+    popBase: 5, strBase: 4, max: 8,
+    /** Rebel strength: 8 − ⌊captured / 4⌋, within 4–8. */
+    rebelsFrom: 8, rebelsMin: 4, capturedPerRebel: 4,
+    /** Treasury: 100 + gold left, within 200–400. */
+    treasuryBase: 100, treasuryMin: 200, treasuryMax: 400,
+    /** Police [popularity, strength] by the days to spare before Christmas Eve (24 − arrival day). */
+    christmasEve: 24, earlyFrom: 7, onTimeFrom: 4,
+    policeEarly: [8, 8], policeOnTime: [8, 7], policeLate: [7, 6], policeAfterChristmas: [5, 4],
+    /** Optional benefits (§4.5): the Italian messenger +1 Itálie popularity; the Martanesh volunteers +1 bodyguard. */
+    messengerItaly: 1, volunteersGuard: 1,
+  },
 } as const;

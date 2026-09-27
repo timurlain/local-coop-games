@@ -66,7 +66,7 @@ export function cardsFor(sc: Scenario, before: GameState | null, events: readonl
   const head = qi < 0 ? events : events.slice(0, qi);
   const cards: Card[] = [];
   if (before) {
-    const eveningRan = before.phase.kind === 'day' && (qi >= 0 || !PALACE_PHASES.has(after.phase.kind));
+    const eveningRan = (before.phase.kind === 'day' || before.phase.kind === 'attempt') && (qi >= 0 || !PALACE_PHASES.has(after.phase.kind));
     const crisis = before.phase.kind === 'revolution' || before.phase.kind === 'chooseAlly' || before.phase.kind === 'punish';
     if (eveningRan) {
       // The revolution itself is announced by the phase screen, not the evening card.
@@ -113,6 +113,7 @@ export function phaseScreen(sc: Scenario, s: GameState, retryYear: number | null
   switch (s.phase.kind) {
     case 'audience':
     case 'day':
+    case 'attempt':
       return null;
     case 'revolution': {
       const { faction } = s.phase;

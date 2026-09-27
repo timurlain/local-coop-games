@@ -200,6 +200,122 @@ export const cs = {
     /** The ten mood levels 0–9 (spec §5.2), lowest first. */
     moods: ['vzbouření', 'zuřiví', 'rozzlobení', 'reptají', 'nejistí', 'vlažní', 'klidní', 'spokojení', 'oddaní', 'nadšení'] as readonly string[],
     heroes: { zogu: 'Zogu', velitel: 'Vlček' },
+    /** Atentát: find the gunman (spec 2026-09-27-diktator-atentat-design). */
+    atentat: {
+      foiled: (group: string) => `Vlček zadržel střelce (${group}). Král je v bezpečí!`,
+      title: 'Atentát!',
+      places: { trziste: 'Tržiště v Tiraně', dustojnici: 'Důstojnická jídelna' },
+      tip: (clues: string) => `Tajná policie hlásí: střelec nosí ${clues}.`,
+      noTip: 'Tajná policie nic neví. Hledej toho, kdo se chová divně.',
+      clueWords: {
+        hat: { fez: 'fez', cap: 'čepici', plis: 'bílou plstěnou čapku', borsalino: 'klobouk', none: '' },
+        scarf: { red: 'červený šátek', blue: 'modrý šátek', green: 'zelený šátek', yellow: 'žlutý šátek', none: '' },
+        glasses: 'brýle',
+        bag: 'brašnu přes rameno',
+      },
+      and: ' a ',
+      howTo: (keys: string) => `Vlček hledá lupou (${keys}). Akce: „To je on!“ — ale pozor, každý omyl zkrátí doutnák.`,
+      start: 'Hledat!',
+      thatsHim: 'To je on!',
+      protests: {
+        trziste: [
+          'Já? Já jen prodávám fíky!',
+          'Pane, já jsem tu s babičkou!',
+          'Nechte mě, nesu chleba!',
+          'To je omyl, Excelence!',
+          'Já jsem jen zvědavý!',
+        ] as readonly string[],
+        dustojnici: [
+          'Pane plukovníku, já jen nesu hlášení!',
+          'To je omyl, jsem tu na službě!',
+          'Já? Já jsem jen kuchař!',
+          'Nesu noviny pro důstojníky!',
+        ] as readonly string[],
+      },
+      foundCard: {
+        newspaperPistol: 'Mám ho! V novinách měl schovanou pistoli.',
+        appleGrenade: 'Mám ho! Jedno jablko v košíku byl granát.',
+        bouquetBomb: 'Mám ho! V kytici byla bomba s doutnákem.',
+        coatRevolver: 'Mám ho! Pod kabátem měl revolver.',
+      },
+      missedCard: 'Výstřely! Střelec zmizel v davu…',
+      fuse: 'doutnák',
+    },
+    /** Pochod na Tiranu, the opening march (spec 2026-09-27-diktator-pochod-design). */
+    pochod: {
+      title: 'Pochod na Tiranu',
+      intro:
+        '13. prosince 1924. Zogu se vrací z Jugoslávie. Jdou s ním muži z Matu, ruští důstojníci a plk. Vlček. ' +
+        'Noliho vláda sedí v Tiraně. Do Štědrého dne tam musíte být.',
+      howTo: 'Zogu drží Akci v místě a vyjednává. Vlček Akcí omráčí četníka. Provaz je drží u sebe.',
+      start: 'Na pochod!',
+      historyTitle: 'Jak to bylo doopravdy',
+      historyStart:
+        'Zogu překročil hranici 13. prosince 1924 s asi tisícovkou mužů z Dibry a Matu a se stovkou ruských dobrovolníků. ' +
+        'Na Štědrý den obsadil Tiranu a Noli uprchl do Itálie.',
+      historyEnd: 'Doopravdy vstoupil Zogu do Tirany na Štědrý den 1924. Plk. Vlček a jeho provaz jsou vymyšlení.',
+      date: (day: number) => `${day}. prosince`,
+      places: {
+        maqellare: 'Maqellarë', peshkopi: 'Peshkopi', zerqan: 'Zerqan', bulqize: 'Bulqizë', kukes: 'Kukës', lume: 'Lumë',
+        burgajet: 'Burgajet', burrel: 'Burrel', selite: 'Selitë', klos: 'Klos', kruje: 'Krujë', preze: 'Prezë',
+        homesh: 'Stáje v Homeshi', martanesh: 'Martanesh', posel: 'Italský posel',
+      },
+      border: 'Hranice u Dibry',
+      tirana: 'Tirana',
+      holdToNegotiate: (key: string) => `Drž ${key} — vyjednávat`,
+      won: {
+        maqellare: 'Sedláci z Maqellarë se přidávají!',
+        peshkopi: 'Posádka Peshkopi salutuje! +20 zlata z pokladny kasáren.',
+        zerqan: 'Zerqan vítá Zogua chlebem a solí!',
+        bulqize: 'Beg z Bulqizë bere zlato a slibuje věrnost.',
+        kukes: 'Kasárna v Kukësu vztyčila Zoguovu vlajku! +20 zlata.',
+        lume: 'Beg z Lumë se klaní.',
+        burgajet: 'Doma na Burgajetu! Rodina dává 40 zlata.',
+        burrel: 'Burrel je Zoguův! +20 zlata.',
+        selite: 'Beg ze Selitë přijal dar.',
+        klos: 'Selé z Klosu se přidávají!',
+        kruje: 'Hrad Krujë otevřel brány! +20 zlata.',
+        preze: 'Beg z Prezë přechází na Zoguovu stranu.',
+        homesh: 'Beg půjčil koně! Dva dny pochodujete rychleji.',
+        martanesh: 'Dobrovolníci z Martaneshe se přidávají! Tělesná stráž +1.',
+        posel: 'Italský posel slibuje přízeň Říma. Itálie +1.',
+      },
+      noGold: 'Bez zlata ani slovo.',
+      locked: 'Brána je zavřená. Vlčku, na ně!',
+      caught: 'Zogu strávil noc v zajetí a ráno se vykoupil.',
+      cache: 'Skrýš se zlatem! +15',
+      arrived: 'Zvony! Zogu vstupuje do Tirany.',
+      timeout: 'Noli prchá do Itálie. Zogu vstupuje do Tirany až po Vánocích.',
+      resultTitle: 'Zogu je v Tiraně',
+      lines: {
+        villages: (n: number, group: string, pop: number) => `Vesnice ${n}/4 → ${group}: oblíbenost ${pop}`,
+        towers: (n: number, group: string, pop: number, str: number) => `Věže begů ${n}/4 → ${group}: oblíbenost ${pop}, síla ${str}`,
+        barracks: (n: number, group: string, pop: number, str: number) => `Kasárna ${n}/4 → ${group}: oblíbenost ${pop}, síla ${str}`,
+        captured: (n: number, group: string, str: number) => `Zajatí četníci ${n} → ${group}: síla ${str}`,
+        arrival: (when: string, group: string, pop: number, str: number) => `Příchod ${when} → ${group}: oblíbenost ${pop}, síla ${str}`,
+        afterChristmas: 'po Vánocích',
+        gold: (n: number, treasury: number) => `Zlato ${n} → pokladna ${treasury}`,
+        caught: (n: number) => `Zogu byl zajat ${n}× (pokaždé den a 20 zlata)`,
+        caches: (n: number, of: number) => `Skrýše ${n}/${of} (každá +15 zlata)`,
+        volunteers: (guard: number) => `Dobrovolníci z Martaneshe → tělesná stráž ${guard}`,
+        messenger: (group: string, pop: number) => `Italský posel → ${group}: oblíbenost ${pop}`,
+        horses: 'Koně z Homeshe → rychlejší pochod',
+      },
+      posterTitle: 'Zogu vstupuje do Tirany',
+      posterCaption: 'Tirana, prosinec 1924',
+      toPalace: 'Do paláce',
+      next: 'Dál',
+      /** The pause menu's second option while paused from the march (fix wave, item 1): no save exists yet. */
+      pauseMenu: 'Zpět do menu (pochod se neukládá)',
+      /** Control reminders on the march's intro and pause cards (fix wave, item 1): F holds to negotiate (Zogu),
+       * Enter strikes (Vlček) — different from the palace's keys, which mention the seal. */
+      keys: {
+        'kb-left': 'W A S D pohyb · F držet = vyjednávat · Esc pauza',
+        'kb-right': 'šipky pohyb · Enter úder · Esc pauza',
+        pad: 'páčka pohyb · A akce · Start pauza',
+        solo: 'Tab / Back přepíná postavu',
+      },
+    },
     /** The library's historical map, 1921 (play-test wish, 2026-09-27). */
     map: {
       italy: 'ITÁLIE',
@@ -308,6 +424,8 @@ export const cs = {
         /** Play-test wish: keyboard input needs a window click first (browser focus). */
         clickFirst: 'Nejdřív klikni myší do okna hry, pak hraj klávesnicí.',
         newGame: 'Nová hra',
+        /** Skip Pochod na Tiranu: the original start values (spec 2026-09-27-diktator-pochod-design §11). */
+        quickStart: 'Rychlý start',
         continueGame: 'Pokračovat',
         textMode: 'Textová verze',
       },
