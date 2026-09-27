@@ -49,9 +49,6 @@ export const MOODS: readonly PoseFn[] = [
   (t) => ({ ...STAND, head: -4, reachF: [21, 20 + Math.sin(t * 8) * 2], bendF: -1, armB: [215, -40], prop: 'thumb', bob: Math.max(0, Math.sin(t * 8)) * 5, mouthOpen: true }),
 ];
 
-/** Czech mood names, index = popularity. */
-export const MOOD_NAMES = ['vzbouření', 'zuřiví', 'rozzlobení', 'reptají', 'nejistí', 'vlažní', 'klidní', 'spokojení', 'oddaní', 'nadšení'] as const;
-
 /** Five faces, each shared by two neighbouring moods. */
 export const MOOD_FACES: readonly Face[] = ['furious', 'furious', 'grumpy', 'grumpy', 'neutral', 'neutral', 'happy', 'happy', 'ecstatic', 'ecstatic'];
 

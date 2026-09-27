@@ -5,11 +5,12 @@ import { decisionById } from './logic/decision';
 import { GROUPS, hasStrength, type GroupId } from './logic/groups';
 import { deserialize, newSave, recordTurn, retryFromYear, type SaveFile } from './logic/save';
 import { score } from './logic/score';
-import type { Command, GameEvent, GameState, PoliceSnapshot } from './logic/state';
+import type { Command, PoliceSnapshot } from './logic/state';
 import { advance, newGame, quarterLabel, validCommands } from './logic/turn';
 import { albania } from './scenario/albania';
 import { forecast } from './logic/forecast';
 import { motherAdvice, moneyText } from './ui/effects-text';
+import { endingText, eventText, plotText } from './ui/event-text';
 
 const T = cs.diktator;
 const SAVE_KEY = 'diktator/save';
@@ -24,41 +25,6 @@ let log: string[] = [];
 
 function name(g: GroupId): string {
   return sc.groupNames[g];
-}
-
-function describe(e: GameEvent): string | null {
-  const E = T.events;
-  switch (e.type) {
-    case 'bankrupt': return E.bankrupt;
-    case 'budget': return E.budget(e.income, e.costs);
-    case 'forcedNo': return E.forcedNo;
-    case 'policeReportRefused': return e.reason === 'noMoney' ? E.policeRefusedMoney : E.policeRefusedHostile;
-    case 'decisionUnaffordable': return E.unaffordable;
-    case 'decided': return `✓ ${decisionById(sc, e.id).title}`;
-    case 'aidGranted': return E.aidGranted(name(e.lender), e.amount);
-    case 'aidRefused':
-      return e.reason === 'tooEarly' ? E.aidTooEarly(name(e.lender)) : e.reason === 'used' ? E.aidUsed(name(e.lender)) : E.aidUnpopular(name(e.lender));
-    case 'swissTransfer': return E.swiss(e.amount);
-    case 'assassination': return e.survived ? E.assassinationSurvived(name(e.faction)) : null;
-    case 'warThreat': return E.warThreat;
-    case 'invasion': return e.won ? E.invasionWon(e.home, e.enemy) : E.invasionLost(e.home, e.enemy);
-    case 'news': return `📰 ${sc.news.find((n) => n.id === e.id)!.title}`;
-    case 'revolution': return E.revolution(name(e.faction), name(e.ally), e.strength);
-    case 'planeFailed': return E.planeFailed;
-    case 'joking': return E.joking;
-    case 'revolutionFight': return E.fight(e.rebels, e.ours, e.won);
-    case 'punished': return E.punished;
-    case 'tariffPenalty': return E.tariffPenalty(e.amount, e.tariffs);
-    default: return null;
-  }
-}
-
-function endingText(s: GameState): string {
-  if (s.phase.kind !== 'ended') return '';
-  const e = s.phase.ending;
-  if (e.kind === 'survived') return T.endings.survived;
-  if (e.kind === 'escaped') return e.via === 'plane' ? T.endings.plane : T.endings.escapedMountains;
-  return T.endings[e.cause];
 }
 
 function button(label: string, key: string, onClick: () => void): HTMLButtonElement {
@@ -94,7 +60,7 @@ function play(cmd: Command): void {
   const { state, events } = advance(sc, file.current, cmd);
   for (const e of events) {
     if (e.type === 'policeReport') lastReport = e.report;
-    const line = describe(e);
+    const line = eventText(sc, e);
     if (line) log.push(line);
   }
   file = recordTurn(file, state);
@@ -110,9 +76,9 @@ function renderReport(): void {
   for (const g of GROUPS) {
     const tr = document.createElement('tr');
     const plot = (g === 'armada' || g === 'rolnici' || g === 'statkari') ? lastReport.plots[g] : null;
-    const plotText = !plot || plot.kind === 'none' ? '' : plot.kind === 'assassination' ? T.plots.assassination : T.plots.revolution(name(plot.ally));
+    const plotLine = plot ? plotText(sc, plot) : '';
     const strCell = hasStrength(g) ? `<span class="bar" style="width:${lastReport.str[g] * 12}px"></span> ${lastReport.str[g]}` : '';
-    tr.innerHTML = `<td>${name(g)}</td><td><span class="bar" style="width:${lastReport.pop[g] * 12}px"></span> ${lastReport.pop[g]}</td><td>${strCell}</td><td class="plot">${plotText}</td>`;
+    tr.innerHTML = `<td>${name(g)}</td><td><span class="bar" style="width:${lastReport.pop[g] * 12}px"></span> ${lastReport.pop[g]}</td><td>${strCell}</td><td class="plot">${plotLine}</td>`;
     table.append(tr);
   }
   const head = document.createElement('tr');
@@ -157,7 +123,7 @@ function render(): void {
   renderReport();
 
   if (s.phase.kind === 'ended') {
-    prompt.textContent = `${endingText(s)} ${T.score(score(s, s.phase.ending).total)}`;
+    prompt.textContent = `${endingText(s.phase.ending)} ${T.score(score(s, s.phase.ending).total)}`;
     let key = 1;
     const retry = retryFromYear(file);
     if (retry) choices.append(button(T.retry(quarterLabel(retry.state.quarter).year), String(key++), () => { file = retry.file; log = []; lastReport = null; render(); }));
@@ -205,7 +171,7 @@ function startNew(): void {
   const { state, events } = newGame(sc, randomSeed());
   file = newSave(sc.id, state);
   lastReport = null;
-  log = events.map(describe).filter((x): x is string => x !== null);
+  log = events.map((e) => eventText(sc, e)).filter((x): x is string => x !== null);
   saveJson(SAVE_KEY, file);
   render();
 }

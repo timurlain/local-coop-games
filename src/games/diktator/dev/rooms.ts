@@ -6,7 +6,7 @@ import type { GameState } from '../logic/state';
 import { roomOfGroup, type Hero } from '../logic/palace';
 import { GROUPS, hasStrength } from '../logic/groups';
 import { albania } from '../scenario/albania';
-import { MOOD_NAMES } from '../render/puppet/poses';
+import { cs } from '../../../shared/i18n/cs';
 import { drawRoom } from '../render/rooms/scene';
 import { STAGE_H, STAGE_W } from '../render/rooms/crowd';
 import { roomView, stripView, type RoomView } from '../ui/palace-view';
@@ -54,7 +54,7 @@ function renderStrip(s: GameState): void {
     for (const cell of row) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = `${cell.name} · ${cell.count} · ${cell.mood === null ? '?' : MOOD_NAMES[cell.mood]}`;
+      b.textContent = `${cell.name} · ${cell.count} · ${cell.mood === null ? '?' : cs.diktator.moods[cell.mood]}`;
       if (cell.room === room) b.classList.add('here');
       b.addEventListener('click', () => { room = cell.room; update(); });
       strip.append(b);
@@ -65,7 +65,7 @@ function renderStrip(s: GameState): void {
 function update(): void {
   const m = Number(mood.value);
   $('strength-out').textContent = strength.value;
-  $('mood-out').textContent = m < 0 ? 'neviděno' : `${m} · ${MOOD_NAMES[m]}`;
+  $('mood-out').textContent = m < 0 ? 'neviděno' : `${m} · ${cs.diktator.moods[m]}`;
   const s = state();
   view = roomView(sc, s, room);
   renderStrip(s);
