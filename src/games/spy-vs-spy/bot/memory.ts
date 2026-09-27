@@ -1,4 +1,5 @@
 import { rand, type RngState } from '../../../shared/rng';
+import { RULES } from '../logic/rules';
 import type { DeathCause, GameEvent, RemedyKind, SecretKind, Thing, TrapKind } from '../logic/state';
 import { type Iq, IQ_PARAMS } from './iq';
 import type { BotView, Glance } from './view';
@@ -51,6 +52,10 @@ export interface Memory {
   lastIn: Map<number, number>;
   /** piece → until when he leaves it alone: a search there kept starting nothing (see `giveUp`). */
   givenUp: Map<number, number>;
+  /** room → when a time bomb there goes off, as far as he knows (his own, or one he hears ticking); gone once over. */
+  ticking: Map<number, number>;
+  /** trap target (`ownTraps`' keys) → until when he leaves it alone: placing there was refused. */
+  noTrap: Map<string, number>;
 }
 
 /** How long a piece he gave up on is left alone before it may be tried again. */
@@ -69,11 +74,15 @@ export function createMemory(): Memory {
     foundSinceMap: 0,
     lastIn: new Map(),
     givenUp: new Map(),
+    ticking: new Map(),
+    noTrap: new Map(),
   };
 }
 
 const FURNITURE_TRAPS: readonly DeathCause[] = ['bomba', 'pruzina'];
 const DOOR_TRAPS: readonly DeathCause[] = ['elektrina', 'pistole'];
+/** A tick heard in his room means a bomb there for at least this long (the next tick comes a second later). */
+const TICK_HEARD = 1.5;
 
 /** The note for a piece that now holds `t`. */
 function holding(t: Thing): PieceNote {
@@ -82,7 +91,8 @@ function holding(t: Thing): PieceNote {
   return { kind: 'item', thing: 'kufrik' };
 }
 
-/** Updates the notebook from this tick's view and the noticed events (search results, own traps set, deaths, disarms). */
+/** Updates the notebook from this tick's view and the noticed events (search results, own traps set or refused, deaths,
+ *  disarms, bombs ticking). */
 export function remember(mem: Memory, view: BotView, events: readonly GameEvent[], ctx: RememberContext): void {
   const time = view.time;
   const room = view.self.room;
@@ -138,15 +148,32 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
         break;
       case 'trapSet':
         if (ctx.pendingTrapTarget !== null) mem.ownTraps.set(ctx.pendingTrapTarget, e.trap);
+        if (e.trap === 'casovana') mem.ticking.set(room, time + RULES.timeBombFuse);
+        break;
+      case 'refused':
+        if (ctx.pendingTrapTarget !== null) mem.noTrap.set(ctx.pendingTrapTarget, time + GIVE_UP_FOR);
+        break;
+      case 'tick':
+        mem.ticking.set(e.room, Math.max(mem.ticking.get(e.room) ?? 0, time + TICK_HEARD));
+        break;
+      case 'explode':
+        mem.ticking.delete(e.room);
         break;
       case 'died':
+        // A trap springs once: if it was his own, it is gone now.
         if (FURNITURE_TRAPS.includes(e.cause) && ctx.searching !== null) {
           mem.dangers.push({ at: { piece: ctx.searching }, cause: e.cause, since: time });
+          mem.ownTraps.delete(`p:${ctx.searching}`);
         } else if (DOOR_TRAPS.includes(e.cause) && ctx.door !== null) {
           mem.dangers.push({ at: { door: ctx.door }, cause: e.cause, since: time });
+          mem.ownTraps.delete(`d:${ctx.door}`);
         } else if (e.cause === 'casovana') {
           mem.dangers.push({ at: { room }, cause: e.cause, since: time });
         }
+        break;
+      case 'disarmed':
+        if (ctx.searching !== null) mem.ownTraps.delete(`p:${ctx.searching}`);
+        if (ctx.door !== null) mem.ownTraps.delete(`d:${ctx.door}`);
         break;
       case 'mapOpened':
         mem.searchedCount = 0;
@@ -156,6 +183,8 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
         break;
     }
   }
+
+  for (const [r, until] of mem.ticking) if (until <= time) mem.ticking.delete(r);
 
   if (view.opponent !== null) mem.lastSeenOpponent = { room, at: time };
   if (view.glance !== null) mem.lastGlance = { ...view.glance, at: time };

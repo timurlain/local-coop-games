@@ -1,10 +1,10 @@
 import { makeRng, rand } from '../../../shared/rng';
 import type { GameEvent, GameState, PlayerId, SpyInput } from '../logic/state';
 import { chooseGoal, exitOf, exploreFor, sameGoal, stillWorth, type ExploreTarget, type Goal } from './decide';
+import { doorTrapKey, floorKey, pathTo, pieceKey } from './decide-tactics';
 import { botRngSeed, type Iq, IQ_PARAMS } from './iq';
 import { createMemory, forget, giveUp, remember, type Memory } from './memory';
 import { createMotor, doorPoint, piecePoint, type Intent } from './motor';
-import { route } from './route';
 import { botView, noticedEvents, type BotView } from './view';
 
 /**
@@ -29,7 +29,7 @@ const sameIntent = (a: Intent, b: Intent) => JSON.stringify(a) === JSON.stringif
 
 /** The first door on the way to `room`, or null when he is there already or knows no way. */
 function towards(view: BotView, mem: Memory, room: number): Intent | null {
-  const hops = route(view.known, view.cols, view.self.room, room, mem.dangers);
+  const hops = pathTo(view, mem, room);
   if (hops === null || hops.length === 0) return null;
   return { kind: 'useDoor', dir: hops[0].dir };
 }
@@ -39,7 +39,8 @@ function towards(view: BotView, mem: Memory, room: number): Intent | null {
 function intentFor(goal: Goal, view: BotView, mem: Memory, target: ExploreTarget | null): Intent | null {
   switch (goal.kind) {
     case 'search':
-    case 'fetch': {
+    case 'fetch':
+    case 'remedy': {
       const here = view.pieces.find((p) => p.id === goal.piece);
       if (here !== undefined) return { kind: 'search', piece: here };
       const room = mem.pieces.get(goal.piece)?.room;
@@ -55,9 +56,38 @@ function intentFor(goal: Goal, view: BotView, mem: Memory, target: ExploreTarget
       return target === null ? null : towards(view, mem, target.room);
     case 'map':
       return { kind: 'openMap' };
+    case 'trap': {
+      const at = goal.at;
+      if (at === 'here') return { kind: 'place', trap: goal.trap, at };
+      if (typeof at === 'number') {
+        const piece = view.pieces.find((p) => p.id === at);
+        return piece === undefined ? null : { kind: 'place', trap: goal.trap, at: piece };
+      }
+      const door = view.doors.find((d) => d.key === at);
+      return door === undefined ? null : { kind: 'place', trap: goal.trap, at: door.dir };
+    }
+    case 'armoury': {
+      const cabinet = view.pieces.find((p) => p.armoury);
+      if (cabinet !== undefined) return { kind: 'search', piece: cabinet };
+      return view.armouryRoom === null ? null : towards(view, mem, view.armouryRoom);
+    }
+    case 'flee':
+      return { kind: 'useDoor', dir: goal.dir };
     default:
       return IDLE;
   }
+}
+
+/** The key (`Memory.ownTraps`) of where a place intent puts its trap, so the notebook can file it on `trapSet`. */
+function placeTarget(intent: Intent, view: BotView): string | null {
+  if (intent.kind !== 'place') return null;
+  const at = intent.at;
+  if (at === 'here') return floorKey(view.self.room);
+  if (typeof at === 'string') {
+    const door = view.doors.find((d) => d.dir === at);
+    return door === undefined ? null : doorTrapKey(door.key);
+  }
+  return pieceKey(at.id);
 }
 
 export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
@@ -94,7 +124,7 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
     // What he was doing (last tick's intent) places a death: the piece he searched, the door he opened.
     const doorDir = intent.kind === 'useDoor' ? intent.dir : null;
     remember(mem, view, noticed, {
-      pendingTrapTarget: null,
+      pendingTrapTarget: placeTarget(intent, view),
       searching: intent.kind === 'search' ? intent.piece.id : null,
       door: view.doors.find((d) => d.dir === doorDir)?.key ?? null,
     });
@@ -109,7 +139,8 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
       let replan = self.room !== intentRoom;
       if (spent || sinceThink >= params.thinkEvery || (done && !wasDone)) {
         const next = chooseGoal(view, mem, iq, goal, rng);
-        if (goal === null || !sameGoal(next, goal)) goalSince = view.time;
+        // Taken up anew: a different goal, or the same one again after it was spent (else it stays spent every tick).
+        if (goal === null || spent || !sameGoal(next, goal)) goalSince = view.time;
         exploreTo = next.kind === 'explore' ? exploreFor(view, mem) : null;
         goal = next;
         sinceThink = 0;

@@ -13,6 +13,8 @@ export interface Hop {
 /** A door or the room it leads to costs this much extra when a known danger sits there. */
 export const DANGER_COST = 6;
 
+const NONE: ReadonlySet<string> = new Set();
+
 /** Large enough that `neighbor`'s row bound never rejects a real neighbour; only known doors are ever followed. */
 const NO_ROW_LIMIT = Number.MAX_SAFE_INTEGER;
 
@@ -53,10 +55,14 @@ function pickNearest(dist: ReadonlyMap<number, number>, visited: ReadonlySet<num
 
 /**
  * Cheapest path over known rooms and their doors (spec §6): each door costs 1, +DANGER_COST when a known danger
- * sits on that door or in the room it leads to. `null` if `to` isn't reachable through known doors. `from` may be
- * unvisited only when it equals `to` (returns `[]`); ties break in `DIRS` order (N, S, E, W).
+ * sits on that door or in the room it leads to; `blocked` door keys are never passed. `null` if `to` isn't reachable
+ * through known doors. `from` may be unvisited only when it equals `to` (returns `[]`); ties break in `DIRS` order
+ * (N, S, E, W).
  */
-export function route(known: readonly KnownRoom[], cols: number, from: number, to: number, dangers: readonly Danger[]): Hop[] | null {
+export function route(
+  known: readonly KnownRoom[], cols: number, from: number, to: number, dangers: readonly Danger[],
+  blocked: ReadonlySet<string> = NONE,
+): Hop[] | null {
   if (from === to) return [];
 
   const byId = new Map(known.map((r) => [r.id, r]));
@@ -79,6 +85,7 @@ export function route(known: readonly KnownRoom[], cols: number, from: number, t
       const nb = neighbor({ cols, rows: NO_ROW_LIMIT }, currentId, dir);
       if (nb === null) continue;
       const key = doorKey(currentId, nb);
+      if (blocked.has(key)) continue;
       const nd = currentDist + hopCost(dangers, key, nb);
       if (!dist.has(nb) || nd < (dist.get(nb) as number)) {
         dist.set(nb, nd);

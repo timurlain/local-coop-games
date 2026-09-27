@@ -127,15 +127,15 @@ describe('re-planning when the target changes under him (review focus 1)', () =>
   });
 });
 
-/** The longest stretch (game seconds) side 0 stood free ('normal', not opening a door, not reading the map) and the bot
- *  pressed nothing. */
+/** The longest stretch (game seconds) side 0 stood free ('normal', not opening a door or putting a trap down) and the
+ *  bot pressed nothing. */
 function idleWatch() {
   let run = 0;
   let worst = 0;
   return {
     see(s: GameState, input: SpyInput) {
       const spy = s.spies[0];
-      const free = spy.mode === 'normal' && spy.doorOpening === null && spy.kickTimer === 0;
+      const free = spy.mode === 'normal' && spy.doorOpening === null && spy.placing === null && spy.kickTimer === 0;
       const none = input.moveX === 0 && input.moveY === 0 && !input.action && !input.trap;
       run = free && none ? run + DT : 0;
       worst = Math.max(worst, run);
