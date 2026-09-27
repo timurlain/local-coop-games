@@ -11,6 +11,7 @@ import { LOOKS } from '../puppet/looks';
 import { POSES, faceForMood, poseForMood } from '../puppet/poses';
 import type { CrowdView, RoomView } from '../../ui/palace-view';
 import { crowdSlots, FLOOR_Y, STAGE_H, STAGE_W } from './crowd';
+import { albaniaMap } from './images';
 import { portraitFor } from './portrait';
 import { ROOM_STYLES, type Furniture, type RoomStyle } from './styles';
 
@@ -300,7 +301,93 @@ function drawTreasury(ctx: CanvasRenderingContext2D, treasury: number, st: RoomS
   textPlate(ctx, 300, topY - 8, `${treasury.toLocaleString('cs-CZ')} tis.`, '#f7e9b0');
 }
 
+const M = cs.diktator.map;
+
+/** The library's framed 1921 map (play-test wish, 2026-09-27): a gilt frame around the historical map image (a
+ * parchment placeholder while it loads), Czech country-name plates so children can name the neighbours, and a
+ * campfire with a tiny tent at each mountain camp the rebels currently hold. */
+function drawBigMap(ctx: CanvasRenderingContext2D, st: RoomStyle, mapCamps: number, map: NonNullable<RoomView['map']>, t: number): void {
+  const img = albaniaMap();
+  const fx = 272, fy = 14, fw = 139, fh = 149;
+  // Outer gold moulding and an inner dark line.
+  ctx.fillStyle = st.accent;
+  ctx.fillRect(fx - 4, fy - 4, fw + 8, fh + 8);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(fx - 1, fy - 1, fw + 2, fh + 2);
+  if (img) {
+    ctx.drawImage(img, fx, fy, fw, fh);
+  } else {
+    ctx.fillStyle = '#e3d3a4';
+    ctx.fillRect(fx, fy, fw, fh);
+    ctx.fillStyle = '#5a4632';
+    ctx.font = '10px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(M.caption, fx + fw / 2, fy + fh / 2);
+    ctx.textAlign = 'left';
+  }
+  // The four country labels, each on a small cream plate.
+  for (const label of map.labels) {
+    const lx = fx + label.at.x * fw;
+    const ly = fy + label.at.y * fh;
+    const text = M[label.key];
+    const bold = label.key === 'albania';
+    ctx.font = `${bold ? 'bold ' : ''}${bold ? 9 : 8}px Georgia, serif`;
+    const w = text.length * (bold ? 5.6 : 4.8);
+    ctx.fillStyle = '#f3ead0';
+    ctx.fillRect(lx - w / 2 - 2, ly - 6, w + 4, 9);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(lx - w / 2 - 2, ly - 6, w + 4, 9);
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, lx, ly + 1);
+    ctx.textAlign = 'left';
+  }
+  // A campfire and tent at each mountain camp the rebels hold; strength past the last camp makes the fires bigger.
+  const lit = Math.min(mapCamps, map.camps.length);
+  const extra = Math.max(0, mapCamps - map.camps.length);
+  const scale = Math.min(0.9, 0.6 + 0.05 * extra);
+  for (let i = 0; i < lit; i++) {
+    const camp = map.camps[i];
+    const cx = fx + camp.x * fw;
+    const cy = fy + camp.y * fh;
+    ctx.fillStyle = '#2a2018';
+    ctx.beginPath();
+    ctx.moveTo(cx - 3 * scale, cy);
+    ctx.lineTo(cx, cy - 6 * scale);
+    ctx.lineTo(cx + 3 * scale, cy);
+    ctx.closePath();
+    ctx.fill();
+    const fireX = cx + 5 * scale;
+    ctx.fillStyle = `rgba(230,90,30,${0.7 + 0.3 * Math.sin(t * 8 + i)})`;
+    ctx.beginPath();
+    ctx.moveTo(fireX - 2.4 * scale, cy);
+    ctx.quadraticCurveTo(fireX, cy - 7.2 * scale - Math.sin(t * 9 + i) * 1.2 * scale, fireX + 2.4 * scale, cy);
+    ctx.fill();
+  }
+  // The camp count, on a small plate at the bottom-right of the frame.
+  const label = M.camps(mapCamps);
+  ctx.font = '9px Georgia, serif';
+  const lw = label.length * 5;
+  ctx.fillStyle = 'rgba(20,15,8,0.75)';
+  ctx.fillRect(fx + fw - lw - 4, fy + fh - 15, lw + 8, 13);
+  ctx.fillStyle = '#efe4c4';
+  ctx.fillText(label, fx + fw - lw, fy + fh - 5);
+  // The caption plaque under the frame.
+  const cap = M.caption;
+  ctx.font = '9px Georgia, serif';
+  const cw = cap.length * 5;
+  ctx.fillStyle = 'rgba(20,15,8,0.75)';
+  ctx.fillRect(fx + fw / 2 - cw / 2 - 4, fy + fh + 6, cw + 8, 13);
+  ctx.fillStyle = '#efe4c4';
+  ctx.textAlign = 'center';
+  ctx.fillText(cap, fx + fw / 2, fy + fh + 16);
+  ctx.textAlign = 'left';
+}
+
 function drawSpecial(ctx: CanvasRenderingContext2D, v: RoomView, st: RoomStyle, t: number): void {
+  if (v.mapCamps !== null && v.map) drawBigMap(ctx, st, v.mapCamps, v.map, t);
   if (v.rebelFires !== null) {
     // the guardroom's wall map of the mountains, one campfire per point of rebel strength
     box(ctx, 300, 28, 150, 84, '#d8c9a0');

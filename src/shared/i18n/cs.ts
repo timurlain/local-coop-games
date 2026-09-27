@@ -189,6 +189,15 @@ export const cs = {
     /** The ten mood levels 0–9 (spec §5.2), lowest first. */
     moods: ['vzbouření', 'zuřiví', 'rozzlobení', 'reptají', 'nejistí', 'vlažní', 'klidní', 'spokojení', 'oddaní', 'nadšení'] as readonly string[],
     heroes: { zogu: 'Zogu', velitel: 'Vlček' },
+    /** The library's historical map, 1921 (play-test wish, 2026-09-27). */
+    map: {
+      italy: 'ITÁLIE',
+      yugoslavia: 'JUGOSLÁVIE',
+      greece: 'ŘECKO',
+      albania: 'ALBÁNIE',
+      caption: 'Mapa Balkánu, 1921',
+      camps: (n: number) => `Tábory povstalců: ${n}`,
+    },
     /** The palace game (plan 2c). */
     palace: {
       audienceTitle: (group: string) => `Audience: ${group}`,

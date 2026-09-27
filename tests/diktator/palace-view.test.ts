@@ -65,6 +65,14 @@ describe('roomView', () => {
     expect(roomView(albania, s, 'armada').rebelFires).toBeNull();
   });
 
+  it('shows the library’s historical map: the rebels’ strength always visible, absent elsewhere', () => {
+    const s = day();
+    expect(roomView(albania, s, 'knihovna').mapCamps).toBe(s.str.povstalci);
+    expect(roomView(albania, s, 'knihovna').map).toBe(albania.map);
+    expect(roomView(albania, s, 'trunni').mapCamps).toBeNull();
+    expect(roomView(albania, s, 'trunni').map).toBeNull();
+  });
+
   it('shows the plane only in the courtyard, and only when it exists', () => {
     const seen = { ...day(), hasPlane: true };
     expect(roomView(albania, seen, 'nadvori').plane).toBe(true);

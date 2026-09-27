@@ -17,7 +17,7 @@ export interface Furniture {
   readonly x: number;
 }
 
-export type RoomShows = 'map' | 'gold' | 'seal' | 'plane' | null;
+export type RoomShows = 'map' | 'bigMap' | 'gold' | 'seal' | 'plane' | null;
 
 export interface RoomStyle {
   readonly wall: string;
@@ -39,7 +39,7 @@ export const ROOM_STYLES: Readonly<Record<RoomId, RoomStyle>> = {
   armada: { wall: '#34422a', wainscot: '#26311f', floor: '#3a2e20', accent: '#b8963f', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'mapTable', x: 250 }] },
   nadvori: { wall: '#8aa0b5', wainscot: '#b9a98a', floor: '#9c8a6c', accent: '#f1e6c8', windows: 0, portrait: false, shows: 'plane', furniture: [{ kind: 'column', x: 40 }, { kind: 'fountain', x: 250 }, { kind: 'column', x: 450 }] },
   vyslanci: { wall: '#2a3440', wainscot: '#1f2730', floor: '#3a2e24', accent: '#c9b27a', windows: 2, portrait: false, shows: null, furniture: [{ kind: 'roundTable', x: 240 }] },
-  knihovna: { wall: '#3b2a1e', wainscot: '#2b1f16', floor: '#3a2a1c', accent: '#c9a44a', windows: 1, portrait: false, shows: null, furniture: [{ kind: 'bookshelf', x: 280 }, { kind: 'bookshelf', x: 380 }, { kind: 'armchair', x: 220 }] },
+  knihovna: { wall: '#3b2a1e', wainscot: '#2b1f16', floor: '#3a2a1c', accent: '#c9a44a', windows: 1, portrait: false, shows: 'bigMap', furniture: [{ kind: 'armchair', x: 212 }, { kind: 'bookshelf', x: 450 }] },
   rolnici: { wall: '#6b5a3e', wainscot: '#4d4030', floor: '#5a4632', accent: '#e6d9b8', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'bench', x: 300 }, { kind: 'stove', x: 440 }] },
   statkari: { wall: '#4a3a1e', wainscot: '#35291a', floor: '#3f2e1e', accent: '#d9b45a', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'sofa', x: 300 }, { kind: 'fireplace', x: 430 }] },
   straznice: { wall: '#2a2a2a', wainscot: '#1d1d1d', floor: '#2f2a24', accent: '#c9a44a', windows: 0, portrait: true, shows: 'map', furniture: [{ kind: 'rifleRack', x: 200 }] },

@@ -135,6 +135,26 @@ describe('drawRoom: the treasury (canvas smoke test)', () => {
   });
 });
 
+describe('drawRoom: the library’s historical map (canvas smoke test)', () => {
+  it('draws the framed map at several rebel strengths — including past the last camp — without throwing, balancing save/restore', () => {
+    const originalPath2D = globalThis.Path2D;
+    (globalThis as { Path2D: unknown }).Path2D = FakePath2D;
+    try {
+      for (const strength of [0, 3, 9, 12]) {
+        const s = newGame(albania, 1, undefined, { palace: true }).state;
+        s.str.povstalci = strength;
+        const view = roomView(albania, s, 'knihovna');
+        expect(view.mapCamps).toBe(strength);
+        const ctx = createFakeCtx();
+        expect(() => drawRoom(ctx, view, 0.5), `strength=${strength}`).not.toThrow();
+        expect(ctx.depth, `strength=${strength}`).toBe(0);
+      }
+    } finally {
+      (globalThis as { Path2D: unknown }).Path2D = originalPath2D;
+    }
+  });
+});
+
 describe('drawHalf and the new room details (canvas smoke test)', () => {
   it('slides, bumps and draws the petitioner and a plot marker without throwing, balancing save/restore', () => {
     const originalPath2D = globalThis.Path2D;

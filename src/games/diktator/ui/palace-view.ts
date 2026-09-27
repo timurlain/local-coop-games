@@ -6,6 +6,7 @@ import { petitionById } from '../logic/audience';
 import { FACTIONS, GROUPS, hasStrength, type GroupId } from '../logic/groups';
 import { HEROES, roomOfGroup, type Hero, type RoomId } from '../logic/palace';
 import type { Scenario } from '../logic/scenario';
+import type { HistoricalMap } from '../scenario/albania/map';
 import type { GameState } from '../logic/state';
 import { plotText } from './event-text';
 import { GROUP_LOOK, type LookId } from '../render/puppet/looks';
@@ -43,6 +44,10 @@ export interface RoomView {
   readonly petitioner: LookId | null;
   /** A plot the commander revealed this quarter for this room's faction (investigation, else police report), as text; null if none known. */
   readonly plotMarker: string | null;
+  /** Library: the rebels' strength, always visible (like the guardroom's campfires); null outside that room. */
+  readonly mapCamps: number | null;
+  /** Library: the scenario's historical map data (points, labels); null if the scenario has none or this isn't the room. */
+  readonly map: HistoricalMap | null;
 }
 
 export interface StripCell {
@@ -100,6 +105,8 @@ export function roomView(sc: Scenario, s: GameState, room: RoomId): RoomView {
     portraitMood: style.portrait && crowds.length > 0 ? crowds[0].mood : null,
     petitioner,
     plotMarker,
+    mapCamps: style.shows === 'bigMap' ? s.str.povstalci : null,
+    map: style.shows === 'bigMap' ? (sc.map ?? null) : null,
   };
 }
 
