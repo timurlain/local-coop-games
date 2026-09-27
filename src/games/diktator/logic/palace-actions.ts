@@ -84,12 +84,18 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
   switch (cmd.type) {
     case 'move': {
       if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
+      if (p.hours[cmd.hero] < 1) fail(cmd, `${cmd.hero} has no hours left to walk`);
       const from = p.at[cmd.hero];
       const to = neighbour(L, from, cmd.dir);
       if (!to) fail(cmd, `no door ${cmd.dir} from ${from}`);
       p.at[cmd.hero] = to;
       p.seen[to] = true;
       events.push({ type: 'moved', hero: cmd.hero, from, to });
+      p.steps[cmd.hero] += 1;
+      if (p.steps[cmd.hero] >= RULES.palace.stepsPerHour) {
+        p.steps[cmd.hero] = 0;
+        p.hours[cmd.hero] -= 1;
+      }
       return;
     }
     case 'takeSeal': {
@@ -207,6 +213,21 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
 }
 
 /**
+ * Zogu without hours cannot walk; if the petitioner still waits elsewhere, the guards bring Zogu to the throne room
+ * (play-test change, our addition) so the quarter can never get stuck without its audience.
+ */
+export function summonToAudience(sc: Scenario, s: GameState, events: GameEvent[]): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L || s.phase.kind !== 'audience' || p.hours.zogu >= 1 || p.at.zogu === L.throne) return;
+  const from = p.at.zogu;
+  p.at.zogu = L.throne;
+  p.seen[L.throne] = true;
+  events.push({ type: 'moved', hero: 'zogu', from, to: L.throne });
+  events.push({ type: 'summoned' });
+}
+
+/**
  * Every palace command `hero` may give now (the UI's menus and the bot use it). During the audience
  * Zogu may move and act exactly as in the day, except he cannot end his quarter until the petitioner
  * is answered (which needs him in the throne room, checked in `turn.ts`); the commander may end his
@@ -220,7 +241,7 @@ export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[
   const room = p.at[hero];
   const hasHour = p.hours[hero] >= 1;
   const out: Command[] = [];
-  for (const dir of exits(L, room)) out.push({ type: 'move', hero, dir });
+  if (hasHour) for (const dir of exits(L, room)) out.push({ type: 'move', hero, dir });
   if (p.seal === null && room === L.study) out.push({ type: 'takeSeal', hero });
   if (p.seal === hero && p.at[other(hero)] === room && !p.done[other(hero)]) out.push({ type: 'giveSeal', hero });
   if (hero === 'zogu') {

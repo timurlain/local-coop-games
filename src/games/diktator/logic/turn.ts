@@ -5,7 +5,7 @@ import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
 import { maybeNews } from './news';
 import { newPalaceDay } from './palace';
-import { applyPalaceCommand, palaceCommands, refreshSeen, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
+import { applyPalaceCommand, palaceCommands, refreshSeen, summonToAudience, PALACE_COMMANDS, PALACE_ONLY } from './palace-actions';
 import { formPlots } from './plot';
 import { policeReport } from './police';
 import { afterVictory, eligibleAllies, fightRevolution, findRevolution, flee, throughMountains } from './revolution';
@@ -104,6 +104,7 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
 
   if (s.palace && (phase.kind === 'audience' || phase.kind === 'day') && PALACE_COMMANDS.has(cmd.type)) {
     applyPalaceCommand(sc, s, cmd, dice, events);
+    summonToAudience(sc, s, events);
     refreshSeen(sc, s);
     if (s.phase.kind === 'day' && s.palace.done.zogu && s.palace.done.velitel) evening(sc, s, dice, events);
     return { state: s, events };

@@ -68,6 +68,7 @@ describe('newPalaceDay', () => {
     const p = newPalaceDay(L);
     expect(p.at).toEqual({ zogu: 'pracovna', velitel: 'straznice' });
     expect(p.hours).toEqual({ zogu: 3, velitel: 3 });
+    expect(p.steps).toEqual({ zogu: 0, velitel: 0 });
     expect(p.seal).toBeNull();
     expect(p.seen).toEqual({ pracovna: true, straznice: true });
     expect(p.seenPop).toEqual({});

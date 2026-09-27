@@ -47,8 +47,9 @@ export const RULES = {
   pointsPerQuarter: 9,
   aliveBonus: 10,
   swissDivisor: 10,
-  /** Palace day (spec §5): hours per hero per quarter. */
-  palace: { hours: { zogu: 3, velitel: 3 } },
+  /** Palace day (spec §5): hours per hero per quarter. `stepsPerHour`: every 10th step between rooms costs an
+   * hour too (play-test change, our addition). */
+  palace: { hours: { zogu: 3, velitel: 3 }, stepsPerHour: 10 },
   /** Guarded by the commander, the last-chance coin becomes rnd(0..3) ≠ 0, i.e. 75 % (spec §5.3, our addition). */
   guardedCoin: 4,
   /** Yearly, permanent income penalty per tariff in force (our addition, play-test change; tariffs plan). */

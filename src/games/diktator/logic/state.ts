@@ -29,7 +29,7 @@ export interface StartingRegime {
 }
 
 export interface GameState {
-  readonly version: 4;
+  readonly version: 5;
   readonly seed: number;
   rng: RngState;
   /** 0 before the first turn; 1 = 1925-Q1 … 57 = 1939-Q1. The original's `mth`. */
@@ -107,6 +107,8 @@ export type GameEvent =
   | { readonly type: 'investigated'; readonly faction: FactionId; readonly plot: Plot }
   | { readonly type: 'guarding' }
   | { readonly type: 'heroDone'; readonly hero: Hero }
+  /** Zogu brought to the waiting petitioner, out of hours (play-test change, our addition). */
+  | { readonly type: 'summoned' }
   | { readonly type: 'ended'; readonly ending: Ending };
 
 export type Command =
@@ -145,7 +147,7 @@ function record<K extends string>(keys: readonly K[], v: (k: K) => number): Reco
 export function initialState(seed: number, regime: StartingRegime = {}): GameState {
   const st = RULES.start;
   return {
-    version: 4,
+    version: 5,
     seed,
     rng: makeRng(seed),
     quarter: 0,

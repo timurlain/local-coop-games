@@ -36,6 +36,8 @@ export interface PalaceLayout {
 export interface PalaceState {
   at: Record<Hero, RoomId>;
   hours: Record<Hero, number>;
+  /** Steps taken since the last hour they cost (0..9, play-test change, our addition; see `RULES.palace.stepsPerHour`). */
+  steps: Record<Hero, number>;
   /** Who carries the royal seal; null = it lies in the study. */
   seal: Hero | null;
   /** Rooms entered this quarter (their mood is known). */
@@ -107,6 +109,7 @@ export function newPalaceDay(L: PalaceLayout): PalaceState {
   return {
     at: { zogu: L.start.zogu, velitel: L.start.velitel },
     hours: { zogu: RULES.palace.hours.zogu, velitel: RULES.palace.hours.velitel },
+    steps: { zogu: 0, velitel: 0 },
     seal: null,
     seen: { [L.start.zogu]: true, [L.start.velitel]: true },
     seenPop: {},

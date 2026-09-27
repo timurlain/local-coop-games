@@ -97,6 +97,58 @@ describe('moving', () => {
   });
 });
 
+describe('steps cost hours', () => {
+  it('10 back-and-forth moves cost exactly one hour and reset steps to 0; 9 moves cost none', () => {
+    let s = day();
+    s.palace!.at.zogu = 'nadvori'; // both a left and a right door
+    s.palace!.steps.zogu = 0; // isolate from the step the walk into the throne room already spent
+    const hoursBefore = s.palace!.hours.zogu;
+    for (let i = 0; i < 9; i++) s = play(s, { type: 'move', hero: 'zogu', dir: i % 2 === 0 ? 'right' : 'left' });
+    expect(s.palace!.hours.zogu).toBe(hoursBefore);
+    expect(s.palace!.steps.zogu).toBe(9);
+    s = play(s, { type: 'move', hero: 'zogu', dir: 9 % 2 === 0 ? 'right' : 'left' });
+    expect(s.palace!.hours.zogu).toBe(hoursBefore - 1);
+    expect(s.palace!.steps.zogu).toBe(0);
+  });
+
+  it('a hero with no hours left cannot move, and palaceCommands lists no move for him', () => {
+    let s = day();
+    for (let i = 0; i < 3; i++) s = play(s, { type: 'policeReport', hero: 'velitel' });
+    expect(s.palace!.hours.velitel).toBe(0);
+    expect(() => advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' })).toThrow();
+    expect(palaceCommands(albania, s, 'velitel').some((c) => c.type === 'move')).toBe(false);
+  });
+
+  it('summons Zogu to the throne room once his hours run out, away from it', () => {
+    let s = newGame(albania, 4, undefined, { palace: true }).state;
+    expect(s.palace!.at.zogu).toBe('pracovna');
+    let r = advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' });
+    for (let i = 1; i < 30; i++) {
+      r = advance(albania, r.state, { type: 'move', hero: 'zogu', dir: i % 2 === 0 ? 'left' : 'right' });
+    }
+    expect(r.state.palace!.hours.zogu).toBe(0);
+    expect(r.state.palace!.at.zogu).toBe('trunni');
+    expect(r.events.slice(-2)).toEqual([
+      { type: 'moved', hero: 'zogu', from: 'pracovna', to: 'trunni' },
+      { type: 'summoned' },
+    ]);
+    expect(validCommands(albania, r.state).some((c) => c.type === 'answer')).toBe(true);
+  });
+
+  it('does not summon outside the audience: Zogu with no hours simply stays where he is', () => {
+    let s = day();
+    expect(s.palace!.at.zogu).toBe('trunni');
+    let sawSummons = false;
+    for (let i = 0; i < 30 && s.palace!.hours.zogu > 0; i++) {
+      const r = advance(albania, s, { type: 'move', hero: 'zogu', dir: i % 2 === 0 ? 'down' : 'up' });
+      if (r.events.some((e) => e.type === 'summoned')) sawSummons = true;
+      s = r.state;
+    }
+    expect(s.palace!.hours.zogu).toBe(0);
+    expect(sawSummons).toBe(false);
+  });
+});
+
 describe('the seal', () => {
   it('is taken in the study and given only in the same room', () => {
     let s = day();
@@ -272,8 +324,9 @@ describe("the commander's actions", () => {
     for (let i = 0; i < 3; i++) s = play(s, { type: 'policeReport', hero: 'velitel' });
     expect(s.palace!.hours.velitel).toBe(0);
     expect(() => advance(albania, s, { type: 'policeReport', hero: 'velitel' })).toThrow();
-    // moving is still free
-    expect(advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' }).state.palace!.at.velitel).toBe('vyslanci');
+    // play-test round 4: walking now costs hours too, so with none left he cannot move either (was "moving is
+    // still free" before this change).
+    expect(() => advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' })).toThrow();
   });
 
   it("guarding needs Zogu's room and ends the commander's day", () => {
