@@ -169,3 +169,16 @@ describe('the scene', () => {
     expect(s.outcome).toBeNull();
   });
 });
+
+describe('the officers’ mess', () => {
+  it('never names the hat in the tip and always has decoys, even with one clue and the smallest crowd', () => {
+    for (let seed = 1; seed <= 300; seed++) {
+      for (const clues of [1, 2, 3]) {
+        const s = createSpot(diff(clues, 10), 'dustojnici', seed);
+        expect(s.clues.some((c) => c.key === 'hat')).toBe(false);
+        expect(s.people.filter((p) => matchesClues(p, s.clues))).toHaveLength(1);
+        expect(redHerrings(s).length).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+});

@@ -228,7 +228,9 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
     };
   };
   let gunman = person(0, true);
-  const keys = shuffle(d, ['hat', 'scarf', 'glasses', 'bag'] as const).slice(0, difficulty.clues);
+  // At the mess everyone wears a cap or nothing, so a hat can't be a clue there: no "similar hat" decoys would exist.
+  const clueKeys = place === 'dustojnici' ? (['scarf', 'glasses', 'bag'] as const) : (['hat', 'scarf', 'glasses', 'bag'] as const);
+  const keys = shuffle(d, clueKeys).slice(0, difficulty.clues);
   // The gunman's clue attributes are always "something to see": a real hat, a coloured scarf, glasses, a bag.
   for (const k of keys) {
     if (k === 'hat' && gunman.hat === 'none') gunman = { ...gunman, hat: pick(d, hats.filter((h) => h !== 'none')) };

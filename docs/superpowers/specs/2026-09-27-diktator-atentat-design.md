@@ -97,6 +97,8 @@ mess: armáda). The café, the mosque courtyard and others come with the art.
   yellow), `coat` (one of five colours), `glasses` (bool), `bag` (bool), and a position, walking direction and speed.
   Place-specific look sets (officers in uniform with cap variants at the mess; peasants, vendors and townsfolk at the
   market).
+- **At the officers' mess** everyone wears a cap or nothing and carries at most a newspaper, so the tip there never names
+  the hat (only scarf, glasses or bag).
 - **The gunman** is one person. The police tip lists `clues` of his attributes (drawn from hat, scarf, glasses, bag).
   **Generator guarantee:** exactly one person matches every clue; at least two innocents share some (not all) clues as
   red herrings; with 0 clues, only behaviour tells.
