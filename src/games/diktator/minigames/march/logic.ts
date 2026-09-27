@@ -6,6 +6,7 @@ import { makeRng } from '../../../../shared/rng';
 import { HEROES, type Hero } from '../../logic/palace';
 import { tileCentre, type MarchMap } from './map';
 import { applyRope, walk } from './move';
+import { createPlaces, stepPlaces } from './places';
 import { MARCH } from './rules';
 import {
   dateOf, dist, IDLE_INPUT, MARCH_END,
@@ -34,6 +35,7 @@ export function createMarch(map: MarchMap, seed: number, solo: boolean, opts: Ma
     negotiating: -1, trail: [[Math.round(x), Math.round(y)]], trailNext: MARCH.trailEvery,
     ending: null, arrivedDay: null,
   };
+  s.places = createPlaces(map, s.rng);
   return s;
 }
 
@@ -74,6 +76,7 @@ export function stepMarch(
   }
 
   // 2. Negotiation, Vlček's blow, the gendarmes, the optional benefits.
+  stepPlaces(s, zin, dt, events);
 
   // 3. The trail, the day banner and the end.
   if (s.now >= s.trailNext) {
