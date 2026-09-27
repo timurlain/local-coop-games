@@ -3,7 +3,8 @@ import { createBot, type Bot } from '../../src/games/spy-vs-spy/bot/bot';
 import { IQ_PARAMS, type Iq } from '../../src/games/spy-vs-spy/bot/iq';
 import { createGame, type GameOptions } from '../../src/games/spy-vs-spy/logic/generator';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
-import { NO_INPUT, type GameEvent, type GameState } from '../../src/games/spy-vs-spy/logic/state';
+import { NO_INPUT, type GameEvent, type GameState, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
+import { kufrik } from './fixtures';
 
 const DT = 1 / 60;
 
@@ -122,6 +123,84 @@ describe('re-planning when the target changes under him (review focus 1)', () =>
         }
         expect(worst, `seed ${seed} IQ ${iq}`).toBeLessThanOrEqual(10);
       }
+    }
+  });
+});
+
+/** The longest stretch (game seconds) side 0 stood free ('normal', not opening a door, not reading the map) and the bot
+ *  pressed nothing. */
+function idleWatch() {
+  let run = 0;
+  let worst = 0;
+  return {
+    see(s: GameState, input: SpyInput) {
+      const spy = s.spies[0];
+      const free = spy.mode === 'normal' && spy.doorOpening === null && spy.kickTimer === 0;
+      const none = input.moveX === 0 && input.moveY === 0 && !input.action && !input.trap;
+      run = free && none ? run + DT : 0;
+      worst = Math.max(worst, run);
+    },
+    get worst() {
+      return worst;
+    },
+  };
+}
+
+describe('last resort: never idle when the notebook runs dry (fix round 1)', () => {
+  it('(a) a missing secret put into a piece he already noted empty: he re-searches, gets it and escapes', () => {
+    const iq: Iq = 5;
+    const { thinkEvery, reaction } = IQ_PARAMS[iq];
+    let escaped = 0;
+    for (const seed of SEEDS.slice(0, 8)) {
+      const s = createGame(seed, 1);
+      park(s);
+      // plány exist once: take them out of the game until he has left some piece empty, then hide them there.
+      const home = s.furniture.find((f) => f.hidden?.kind === 'secret' && f.hidden.secret === 'plany')!;
+      const plany = home.hidden!;
+      home.hidden = null;
+      let placed = false;
+      const bot = createBot(0, iq, seed);
+      const idle = idleWatch();
+      let events: GameEvent[] = [];
+      const cap = Math.ceil(s.spies[0].clock / DT) + 60;
+      for (let t = 0; t < cap && s.result === null && s.spies[0].mode !== 'out'; t++) {
+        const input = bot.think(s, events, DT);
+        idle.see(s, input);
+        events = step(s, [input, NO_INPUT], DT);
+        // A piece he has just searched and left empty (found nothing, took the thing, or stored it): noted `empty`.
+        for (const e of events) {
+          if (placed || (e.type !== 'found' && e.type !== 'stored') || e.spy !== 0) continue;
+          const f = s.furniture[e.furniture];
+          if (f.source !== null || f.hidden !== null) continue;
+          f.hidden = plany;
+          placed = true;
+        }
+      }
+      expect(placed, `seed ${seed} t=${s.time} mode=${s.spies[0].mode}`).toBe(true);
+      expect(idle.worst, `seed ${seed}`).toBeLessThanOrEqual(thinkEvery + reaction + 0.1);
+      if (s.spies[0].mode === 'escaped') escaped++;
+    }
+    expect(escaped).toBeGreaterThanOrEqual(7);
+  });
+
+  it('(b) the full kufřík, exit hidden until now, every room visited: he walks to the exit and escapes, never idle', () => {
+    const iq: Iq = 5;
+    const { thinkEvery, reaction } = IQ_PARAMS[iq];
+    for (const seed of SEEDS.slice(0, 5)) {
+      const s = createGame(seed, 1, { hideAirport: true });
+      park(s);
+      s.spies[0].hand = kufrik('klic', 'penize', 'pas', 'plany');
+      s.spies[0].visited.fill(true);
+      const bot = createBot(0, iq, seed);
+      const idle = idleWatch();
+      let events: GameEvent[] = [];
+      for (let t = 0; t < 60 / DT && s.result === null; t++) {
+        const input = bot.think(s, events, DT);
+        idle.see(s, input);
+        events = step(s, [input, NO_INPUT], DT);
+      }
+      expect(s.spies[0].mode, `seed ${seed}`).toBe('escaped');
+      expect(idle.worst, `seed ${seed}`).toBeLessThanOrEqual(thinkEvery + reaction + 0.1);
     }
   });
 });

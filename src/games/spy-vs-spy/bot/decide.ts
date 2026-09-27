@@ -3,7 +3,7 @@ import { hasAllSecrets, hasKind } from '../logic/hand';
 import { RULES } from '../logic/rules';
 import { DIRS, neighbor, type Dir, type RemedyKind, type Thing, type TrapKind } from '../logic/state';
 import { type Iq, IQ_PARAMS } from './iq';
-import type { Memory, PieceNote } from './memory';
+import { gaveUp, type Memory, type PieceNote } from './memory';
 import { route } from './route';
 import type { BotView } from './view';
 
@@ -37,6 +37,11 @@ const SEARCH_SPREAD = 20;
 const EXPLORE = 45;
 /** a secret of a kind he does not know, worth a look only with empty hands */
 const FETCH_ANY = 30;
+// Last resorts, offered only when nothing above scores: the map (after MAP_AFTER searches, finds or not), a second look
+// at the oldest piece noted empty, a walk to the room he saw least recently.
+const LAST_MAP = 8;
+const LAST_SEARCH = 5;
+const LAST_WANDER = 2;
 const HOP = 4;
 const EXPLORE_HOP = 2;
 /** the map is worth its price after this many searches in a row with nothing found … */
@@ -44,7 +49,7 @@ const MAP_AFTER = 8;
 /** … while his clock has more than this left */
 const MAP_CLOCK = 60;
 
-const sameGoal = (a: Goal, b: Goal | null) => b !== null && JSON.stringify(a) === JSON.stringify(b);
+export const sameGoal = (a: Goal, b: Goal | null) => b !== null && JSON.stringify(a) === JSON.stringify(b);
 
 /** Doors to pass from his room to `room` over known rooms (known dangers cost extra), null when unreachable. */
 function hops(view: BotView, mem: Memory, room: number): number | null {
@@ -73,30 +78,49 @@ function roomHasUnsearched(mem: Memory, room: number): boolean {
   return pieces === undefined || pieces.some((id) => unsearched(mem, id, room));
 }
 
-/**
- * Where exploring takes him: the nearest unvisited room behind a known door, or (unless he only wants the exit) the
- * nearest other known room with a piece still to search. null when there is none.
- */
-export function exploreTarget(view: BotView, mem: Memory, exitOnly: boolean): number | null {
+/** Where exploring takes him, and why: an unvisited room behind a known door (`new`), another known room with a
+ *  piece still to search (`search`), or — the last resort — the room he stood in least recently (`wander`). */
+export interface ExploreTarget {
+  room: number;
+  why: 'new' | 'search' | 'wander';
+}
+
+/** The nearest `new` (or, unless `exitOnly`, `search`) room; else the room he stood in least recently. */
+function exploreTarget(view: BotView, mem: Memory, exitOnly: boolean): ExploreTarget | null {
   const knownIds = new Set(view.known.map((r) => r.id));
-  const targets = new Set<number>();
+  const targets = new Map<number, ExploreTarget['why']>();
   for (const r of view.known) {
     for (const dir of DIRS) {
       const nb = r.doors[dir] ? neighbor(view, r.id, dir) : null;
-      if (nb !== null && !knownIds.has(nb)) targets.add(nb);
+      if (nb !== null && !knownIds.has(nb)) targets.set(nb, 'new');
     }
-    if (!exitOnly && r.id !== view.self.room && roomHasUnsearched(mem, r.id)) targets.add(r.id);
+    if (!exitOnly && r.id !== view.self.room && roomHasUnsearched(mem, r.id)) targets.set(r.id, 'search');
   }
-  let best: number | null = null;
+  let best: ExploreTarget | null = null;
   let bestHops = Infinity;
-  for (const t of [...targets].sort((a, b) => a - b)) {
-    const h = hops(view, mem, t);
+  for (const room of [...targets.keys()].sort((a, b) => a - b)) {
+    const h = hops(view, mem, room);
     if (h !== null && h < bestHops) {
-      best = t;
+      best = { room, why: targets.get(room)! };
       bestHops = h;
     }
   }
+  if (best !== null) return best;
+  let oldest = Infinity;
+  for (const r of view.known) {
+    const seen = mem.lastIn.get(r.id) ?? -Infinity;
+    if (r.id !== view.self.room && seen < oldest && hops(view, mem, r.id) !== null) {
+      best = { room: r.id, why: 'wander' };
+      oldest = seen;
+    }
+  }
   return best;
+}
+
+/** Where the explore goal takes him from here: with the full kufřík anywhere that may show the exit, otherwise the
+ *  nearest room with something new; with nothing left, the room he saw least recently. null when there is none. */
+export function exploreFor(view: BotView, mem: Memory): ExploreTarget | null {
+  return exploreTarget(view, mem, hasAllSecrets(view.self.hand));
 }
 
 /** What fetching the thing noted in a piece is worth with `hand` held (before distance), 0 when it gets him nothing. */
@@ -110,49 +134,102 @@ function fetchValue(note: PieceNote, hand: Thing | null): number {
   return FETCH_SECRET;
 }
 
-/** Every goal worth anything right now, with its plain score (no noise, no stickiness). */
+/** Whether the escape can be done from here: the exit known, a way there, and its door in view when he is there. */
+function canEscape(view: BotView, mem: Memory): boolean {
+  const exit = exitOf(view);
+  if (exit === null || hops(view, mem, exit.room) === null) return false;
+  return exit.room !== view.self.room || view.doors.some((d) => d.exit);
+}
+
+/** The piece noted empty longest ago (reachable, not given up), for a second look. */
+function oldestEmpty(view: BotView, mem: Memory): number | null {
+  let best: number | null = null;
+  let bestAt = Infinity;
+  for (const [piece, e] of mem.pieces) {
+    if (e.note.kind !== 'empty' || e.at >= bestAt || gaveUp(mem, piece, view.time)) continue;
+    if (hops(view, mem, e.room) === null) continue;
+    best = piece;
+    bestAt = e.at;
+  }
+  return best;
+}
+
+/** Every goal worth anything right now, with its plain score (no noise, no stickiness). Empty only when there is
+ *  nothing at all he could do. */
 function candidates(view: BotView, mem: Memory): Scored[] {
   const out: Scored[] = [];
   const self = view.self;
-  const full = hasAllSecrets(self.hand);
-  const exit = exitOf(view);
 
-  if (full) {
-    if (exit !== null && hops(view, mem, exit.room) !== null) out.push({ goal: { kind: 'escape' }, score: ESCAPE });
-    else if (exploreTarget(view, mem, true) !== null) out.push({ goal: { kind: 'explore' }, score: EXPLORE_FOR_EXIT });
+  if (hasAllSecrets(self.hand)) {
+    if (canEscape(view, mem)) out.push({ goal: { kind: 'escape' }, score: ESCAPE });
+    else if (exploreFor(view, mem) !== null) out.push({ goal: { kind: 'explore' }, score: EXPLORE_FOR_EXIT });
     return out;
   }
 
   for (const [piece, entry] of mem.pieces) {
     const value = fetchValue(entry.note, self.hand);
-    if (value <= 0) continue;
+    if (value <= 0 || gaveUp(mem, piece, view.time)) continue;
     const h = hops(view, mem, entry.room);
     if (h !== null) out.push({ goal: { kind: 'fetch', piece }, score: value - HOP * h });
   }
 
   let searchHere = false;
   for (const p of view.pieces) {
-    if (p.source !== null || p.armoury || !unsearched(mem, p.id, self.room)) continue;
+    if (p.source !== null || p.armoury || !unsearched(mem, p.id, self.room) || gaveUp(mem, p.id, view.time)) continue;
     out.push({ goal: { kind: 'search', piece: p.id }, score: SEARCH - (SEARCH_SPREAD * Math.abs(p.x - self.x)) / RULES.roomW });
     searchHere = true;
   }
 
   // Exploring is for when nothing is left here: leaving a half-searched room would only bring him back to it.
-  const target = searchHere ? null : exploreTarget(view, mem, false);
-  if (target !== null) {
-    const h = hops(view, mem, target) ?? 0;
+  const target = searchHere ? null : exploreFor(view, mem);
+  if (target !== null && target.why !== 'wander') {
+    const h = hops(view, mem, target.room) ?? 0;
     out.push({ goal: { kind: 'explore' }, score: Math.max(1, EXPLORE - EXPLORE_HOP * h) });
   }
 
   if (mem.searchedCount >= MAP_AFTER && mem.foundSinceMap === 0 && self.clock > MAP_CLOCK) {
     out.push({ goal: { kind: 'map' }, score: MAP });
   }
+
+  if (out.length === 0) {
+    if (mem.searchedCount >= MAP_AFTER && self.clock > MAP_CLOCK) out.push({ goal: { kind: 'map' }, score: LAST_MAP });
+    const piece = oldestEmpty(view, mem);
+    if (piece !== null) out.push({ goal: { kind: 'search', piece }, score: LAST_SEARCH });
+    if (target !== null) out.push({ goal: { kind: 'explore' }, score: LAST_WANDER });
+  }
   return out;
 }
 
-/** Whether `goal` is still worth pursuing (cheap enough for every tick: it is the plain candidate list). */
-export function stillWorth(view: BotView, mem: Memory, goal: Goal): boolean {
-  return candidates(view, mem).some((c) => sameGoal(c.goal, goal));
+/**
+ * Whether `goal` is still worth pursuing: a cheap check of just that goal, for every tick (the full scoring runs on
+ * the think beat). `since` is when he took the goal up (a second look at an empty piece is spent once it is noted
+ * again after that); `target` is where his explore goal is heading.
+ */
+export function stillWorth(view: BotView, mem: Memory, goal: Goal, since: number, target: ExploreTarget | null): boolean {
+  const full = hasAllSecrets(view.self.hand);
+  switch (goal.kind) {
+    case 'search': {
+      if (full || gaveUp(mem, goal.piece, view.time)) return false;
+      const entry = mem.pieces.get(goal.piece);
+      if (entry === undefined) return true;
+      return unsearched(mem, goal.piece, entry.room) || (entry.note.kind === 'empty' && entry.at < since);
+    }
+    case 'fetch': {
+      const entry = mem.pieces.get(goal.piece);
+      return !full && entry !== undefined && fetchValue(entry.note, view.self.hand) > 0 && !gaveUp(mem, goal.piece, view.time);
+    }
+    case 'escape':
+      return full && exitOf(view) !== null;
+    case 'explore':
+      if (target === null || target.room === view.self.room || (full && exitOf(view) !== null)) return false;
+      if (target.why === 'new') return !view.known.some((r) => r.id === target.room);
+      if (target.why === 'search') return roomHasUnsearched(mem, target.room);
+      return true;
+    case 'map':
+      return mem.searchedCount > 0 && view.self.clock > MAP_CLOCK;
+    default:
+      return false;
+  }
 }
 
 /** All goals with their scores (0..100 + noise), highest first. The current goal gets STICKY (+15). */
@@ -166,7 +243,7 @@ export function scoreGoals(view: BotView, mem: Memory, iq: Iq, current: Goal | n
     .sort((a, b) => b.score - a.score);
 }
 
-/** The best goal; exploring when nothing scores at all. */
+/** The best goal; exploring when nothing scores at all (then there is nowhere to go either, and he waits). */
 export function chooseGoal(view: BotView, mem: Memory, iq: Iq, current: Goal | null, rng: RngState): Goal {
   return scoreGoals(view, mem, iq, current, rng)[0]?.goal ?? { kind: 'explore' };
 }

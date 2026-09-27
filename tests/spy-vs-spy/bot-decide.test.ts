@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { chooseGoal, scoreGoals, STICKY, type Goal } from '../../src/games/spy-vs-spy/bot/decide';
-import { createMemory, type Memory, type PieceNote } from '../../src/games/spy-vs-spy/bot/memory';
+import { chooseGoal, exploreFor, scoreGoals, stillWorth, STICKY, type Goal } from '../../src/games/spy-vs-spy/bot/decide';
+import { createMemory, giveUp, type Memory, type PieceNote } from '../../src/games/spy-vs-spy/bot/memory';
 import type { BotView, KnownRoom, PieceView } from '../../src/games/spy-vs-spy/bot/view';
 import type { Dir, Thing } from '../../src/games/spy-vs-spy/logic/state';
 import { makeRng } from '../../src/shared/rng';
@@ -23,23 +23,26 @@ function known(ids: readonly number[], exitKnown = true): KnownRoom[] {
   }));
 }
 
+/** Every room of the hand-drawn map visited, with no door to an unvisited one. */
+const closedMap = (exitKnown = true) => known([0, 1, 2, 4], exitKnown).map((r) => (r.id === 4 ? { ...r, doors: { ...r.doors, S: false } } : r));
+
 function piece(id: number, x: number): PieceView {
   return { id, kind: 'skrin', x, z: 0, source: null, armoury: false };
 }
 
-function view(o: { hand?: Thing | null; pieces?: PieceView[]; known?: KnownRoom[]; clock?: number } = {}): BotView {
+function view(o: { hand?: Thing | null; pieces?: PieceView[]; known?: KnownRoom[]; clock?: number; room?: number; doors?: BotView['doors'] } = {}): BotView {
   return {
     time: 100,
     cols: 3,
     rows: 3,
     hideAirport: false,
     self: {
-      id: 0, room: 1, x: 100, z: 28, facing: 1, mode: 'normal', health: 7, maxHealth: 7, hand: o.hand ?? null,
+      id: 0, room: o.room ?? 1, x: 100, z: 28, facing: 1, mode: 'normal', health: 7, maxHealth: 7, hand: o.hand ?? null,
       stock: { bomba: 0, pruzina: 0, elektrina: 0, pistole: 0, casovana: 0 }, selected: null, trapPress: null,
       mapOpen: false, clock: o.clock ?? 200, armouryTimer: 0, swingCooldown: 0, attack: null, placing: false, doorOpening: false,
     },
     pieces: o.pieces ?? [],
-    doors: [],
+    doors: o.doors ?? [],
     opponent: null,
     known: o.known ?? known([0, 1, 2, 4]),
     armouryRoom: null,
@@ -172,5 +175,66 @@ describe('decide: goal scores (spec bot §5)', () => {
     const v = view({ pieces: [piece(10, 40), piece(11, 140)] });
     const goals = scoreGoals(v, createMemory(), 1, null, makeRng(3));
     for (let i = 1; i < goals.length; i++) expect(goals[i - 1].score).toBeGreaterThanOrEqual(goals[i].score);
+  });
+
+  describe('last resort: something always scores (fix round 1)', () => {
+    /** Everything visited and searched, a secret still missing, no finds to make the map pay: nothing regular scores. */
+    function spent(): { v: BotView; mem: Memory } {
+      const v = view({ hand: kufrik('klic'), pieces: [piece(10, 40)], known: closedMap() });
+      const mem = searchedAll(v);
+      mem.pieces.get(10)!.at = 50;
+      note(mem, 20, 0, { kind: 'empty' });
+      mem.pieces.get(20)!.at = 10;
+      note(mem, 21, 4, { kind: 'empty' });
+      mem.pieces.get(21)!.at = 30;
+      mem.foundSinceMap = 1;
+      return { v, mem };
+    }
+
+    it('re-searches the oldest piece noted empty', () => {
+      const { v, mem } = spent();
+      expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'search', piece: 20 });
+    });
+
+    it('a piece he gave up on is skipped while he leaves it alone', () => {
+      const { v, mem } = spent();
+      giveUp(mem, 20, v.time);
+      expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'search', piece: 21 });
+    });
+
+    it('the map comes first after MAP_AFTER searches since the last one (finds or not) while the clock allows', () => {
+      const { v, mem } = spent();
+      mem.searchedCount = 7;
+      expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'search', piece: 20 });
+      mem.searchedCount = 8;
+      expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'map' });
+      expect(chooseGoal({ ...v, self: { ...v.self, clock: 40 } }, mem, 5, null, makeRng(1))).toEqual({ kind: 'search', piece: 20 });
+    });
+
+    it('a re-search stays worth it until the piece is noted again', () => {
+      const { v, mem } = spent();
+      const goal: Goal = { kind: 'search', piece: 20 };
+      expect(stillWorth(v, mem, goal, 60, null)).toBe(true);
+      note(mem, 20, 0, { kind: 'empty' });
+      mem.pieces.get(20)!.at = 70;
+      expect(stillWorth({ ...v, time: 70 }, mem, goal, 60, null)).toBe(false);
+    });
+
+    it('the full kufřík with no exit in sight and nothing unvisited: he walks the least recently seen room', () => {
+      const v = view({ hand: kufrik('klic', 'penize', 'pas', 'plany'), known: closedMap(false) });
+      const mem = searchedAll(v);
+      mem.lastIn.set(0, 20);
+      mem.lastIn.set(2, 5);
+      mem.lastIn.set(4, 30);
+      expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'explore' });
+      expect(exploreFor(v, mem)).toMatchObject({ room: 2, why: 'wander' });
+    });
+
+    it('the full kufřík in the exit room with no exit door in view: not escape (it could not be done), explore', () => {
+      const v = view({ hand: kufrik('klic', 'penize', 'pas', 'plany'), known: closedMap(), room: 2 });
+      const goals = scoreGoals(v, searchedAll(v), 5, null, makeRng(1));
+      expect(goals.some((g) => g.goal.kind === 'escape')).toBe(false);
+      expect(goals[0].goal).toEqual({ kind: 'explore' });
+    });
   });
 });

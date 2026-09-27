@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMemory, forget, remember, type Memory } from '../../src/games/spy-vs-spy/bot/memory';
+import { createMemory, forget, gaveUp, giveUp, GIVE_UP_FOR, remember, type Memory } from '../../src/games/spy-vs-spy/bot/memory';
 import type { BotView, PieceView } from '../../src/games/spy-vs-spy/bot/view';
 import { IQ_PARAMS } from '../../src/games/spy-vs-spy/bot/iq';
 import { makeRng } from '../../src/shared/rng';
@@ -205,6 +205,23 @@ describe('memory (spec bot §4)', () => {
     remember(mem, view({ itemRooms: [2, 5] }), [], NO_CTX);
     expect(mem.itemRoomsSeen.get(2)).toBe(10);
     expect(mem.itemRoomsSeen.get(5)).toBe(10);
+  });
+
+  it('notes when he last stood in each room', () => {
+    const mem = createMemory();
+    remember(mem, view(), [], NO_CTX);
+    remember(mem, view({ time: 30, self: { ...view().self, room: 4 } }), [], NO_CTX);
+    expect(mem.lastIn.get(1)).toBe(10);
+    expect(mem.lastIn.get(4)).toBe(30);
+  });
+
+  it('giving up on a piece leaves it alone for a while without noting anything about it', () => {
+    const mem = createMemory();
+    giveUp(mem, 5, 100);
+    expect(mem.pieces.has(5)).toBe(false);
+    expect(gaveUp(mem, 5, 100 + GIVE_UP_FOR - 1)).toBe(true);
+    expect(gaveUp(mem, 5, 100 + GIVE_UP_FOR)).toBe(false);
+    expect(gaveUp(mem, 6, 100)).toBe(false);
   });
 
   it('the open map drops dots of visited rooms that no longer show one', () => {

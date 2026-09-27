@@ -47,7 +47,14 @@ export interface Memory {
   /** searches since the last map use. */
   searchedCount: number;
   foundSinceMap: number;
+  /** room → the last time he stood in it (to walk the least recently seen rooms when nothing else is left). */
+  lastIn: Map<number, number>;
+  /** piece → until when he leaves it alone: a search there kept starting nothing (see `giveUp`). */
+  givenUp: Map<number, number>;
 }
+
+/** How long a piece he gave up on is left alone before it may be tried again. */
+export const GIVE_UP_FOR = 30;
 
 export function createMemory(): Memory {
   return {
@@ -60,6 +67,8 @@ export function createMemory(): Memory {
     lastSeenOpponent: null,
     searchedCount: 0,
     foundSinceMap: 0,
+    lastIn: new Map(),
+    givenUp: new Map(),
   };
 }
 
@@ -83,6 +92,7 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
     if (p.source !== null) mem.pieces.set(p.id, { room, note: { kind: 'fixture', remedy: p.source }, at: time });
   }
   mem.roomPieces.set(room, view.pieces.filter((p) => p.source === null && !p.armoury).map((p) => p.id));
+  mem.lastIn.set(room, time);
 
   const note = (piece: number, n: PieceNote, at = room) => mem.pieces.set(piece, { room: at, note: n, at: time });
   for (const e of events) {
@@ -107,7 +117,7 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
         break;
       case 'hidden':
         note(e.furniture, holding(e.thing));
-        mem.searchedCount++;
+        mem.searchedCount++; // it was a search that found the piece empty, before his hand went in
         break;
       case 'dropped': {
         // On his death the hand lands in the nearest free piece, maybe next door; noted if he knows that piece.
@@ -154,6 +164,17 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
     for (const r of view.known) if (!view.itemRooms.includes(r.id)) mem.itemRoomsSeen.delete(r.id);
     for (const r of view.itemRooms) mem.itemRoomsSeen.set(r, time);
   }
+}
+
+/** Leaves `piece` alone for `GIVE_UP_FOR` seconds from `time` — searches there kept starting nothing. Unlike a note,
+ *  it says nothing about what the piece holds, so it may be tried again later. */
+export function giveUp(mem: Memory, piece: number, time: number): void {
+  mem.givenUp.set(piece, time + GIVE_UP_FOR);
+}
+
+/** Whether he is leaving `piece` alone at `time`. */
+export function gaveUp(mem: Memory, piece: number, time: number): boolean {
+  return (mem.givenUp.get(piece) ?? -Infinity) > time;
 }
 
 /** Fades entries per IQ (`forgetPerMinute`, `forgetOwnTraps`) using the bot RNG. */
