@@ -46,7 +46,7 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
   content: ''; position: absolute; bottom: -12px; left: var(--tail, 50%); width: 0; height: 0;
   border: 10px solid transparent; border-top: 12px solid #1a1410; border-bottom: 0; transform: translateX(-50%);
 }
-.bubble.choice { overflow-y: auto; font-size: 0.9em; }
+.bubble.choice { font-size: 0.9em; }
 .bubble.choice::before {
   content: ''; position: absolute; left: -14px; top: 22px; border: 8px solid transparent; border-right: 12px solid #1a1410; border-left: 0;
 }
@@ -67,3 +67,5 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 .card { max-width: 640px; width: 100%; background: var(--panel); border: 1px solid var(--gold); padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
 .card h2 { font-family: 'Limelight', Georgia, serif; font-weight: 400; color: var(--gold); margin: 0; font-size: 26px; letter-spacing: 1px; }
 #overlay-lines p { margin: 4px 0; }
+
+.bubble .scroll { overflow-y: auto; }

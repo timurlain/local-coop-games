@@ -116,18 +116,25 @@ export function renderBubbles(hero: Hero, bubbles: readonly Bubble[], onChoose: 
     if (b.kind === 'choice') {
       el.style.left = `${px(b.anchor.x + 26)}px`;
       el.style.top = `${oy + ch * 0.03}px`;
-      el.style.maxHeight = `${ch * 0.94}px`;
       el.style.maxWidth = `${px(b.right) - px(b.anchor.x + 26)}px`;
+      // The scrolling lives on an inner box: overflow on the bubble itself would clip its tail.
+      const inner = document.createElement('div');
+      inner.className = 'scroll';
+      inner.style.maxHeight = `${ch * 0.9}px`;
       const h = document.createElement('h3');
       h.textContent = b.title;
-      el.append(h, ...b.body.map(para));
+      inner.append(h, ...b.body.map(para));
       const ol = document.createElement('ol');
       menuList(ol, b.items, b.focus, onChoose);
-      el.append(ol);
+      inner.append(ol);
+      el.append(inner);
       layer.append(el);
       continue;
     }
-    el.textContent = b.text;
+    const says = document.createElement('div');
+    says.className = 'scroll';
+    says.textContent = b.text;
+    el.append(says);
     if (b.more) {
       const m = document.createElement('span');
       m.className = 'more';
@@ -144,8 +151,7 @@ export function renderBubbles(hero: Hero, bubbles: readonly Bubble[], onChoose: 
       el.style.top = '0';
       el.style.maxWidth = `${cw * 0.6}px`;
       const headY = py(b.anchor.y);
-      el.style.maxHeight = `${Math.max(40, headY - 14 - (oy + 4))}px`;
-      el.style.overflowY = 'auto';
+      says.style.maxHeight = `${Math.max(40, headY - 22 - (oy + 4))}px`;
       layer.append(el);
       const w = el.offsetWidth;
       const h = el.offsetHeight;
