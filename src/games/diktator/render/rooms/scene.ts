@@ -6,7 +6,7 @@
 import { FIGURE_HEIGHT, solvePuppet } from '../puppet/skeleton';
 import { drawPuppet } from '../puppet/draw';
 import { LOOKS } from '../puppet/looks';
-import { MOODS, POSES, faceForMood } from '../puppet/poses';
+import { POSES, faceForMood, poseForMood } from '../puppet/poses';
 import type { CrowdView, RoomView } from '../../ui/palace-view';
 import { crowdSlots, FLOOR_Y, STAGE_H, STAGE_W } from './crowd';
 import { portraitFor } from './portrait';
@@ -41,9 +41,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, st: RoomStyle): void {
   ctx.fillRect(0, 14, STAGE_W, 1.5);
   ctx.fillStyle = st.floor;
   ctx.fillRect(0, FLOOR_Y, STAGE_W, STAGE_H - FLOOR_Y);
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  ctx.lineWidth = 1;
   for (let x = 0; x < STAGE_W; x += 30) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, FLOOR_Y); ctx.lineTo(x - 16, STAGE_H); ctx.stroke();
   }
   for (let i = 0; i < st.windows; i++) {
@@ -51,7 +50,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, st: RoomStyle): void {
     ctx.fillStyle = '#9fb4c6';
     ctx.beginPath(); ctx.moveTo(x, 110); ctx.lineTo(x, 50); ctx.arc(x + 20, 50, 20, Math.PI, 0); ctx.lineTo(x + 40, 110); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = st.accent; ctx.lineWidth = 2; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x + 20, 30); ctx.lineTo(x + 20, 110); ctx.moveTo(x, 75); ctx.lineTo(x + 40, 75); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 20, 30); ctx.lineTo(x + 20, 110); ctx.moveTo(x, 75); ctx.lineTo(x + 40, 75);
+    ctx.strokeStyle = st.accent; ctx.lineWidth = 2; ctx.stroke();
   }
 }
 
@@ -82,7 +82,11 @@ function drawFurniture(ctx: CanvasRenderingContext2D, f: Furniture, st: RoomStyl
       box(ctx, x - 30, y - 80, 60, 6, '#5a3e22');
       for (let i = 0; i < 5; i++) { ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 22 + i * 11, y - 76); ctx.lineTo(x - 22 + i * 11, y - 10); ctx.stroke(); }
       break;
-    case 'roundTable': ctx.fillStyle = '#6a4a2a'; ctx.beginPath(); ctx.ellipse(x, y - 26, 40, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); box(ctx, x - 3, y - 26, 6, 26, '#5a3e22'); break;
+    case 'roundTable':
+      ctx.fillStyle = '#6a4a2a'; ctx.beginPath(); ctx.ellipse(x, y - 26, 40, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+      box(ctx, x - 3, y - 26, 6, 26, '#5a3e22');
+      break;
     case 'safe': box(ctx, x - 24, y - 56, 48, 56, '#3a3a40'); ctx.fillStyle = st.accent; ctx.beginPath(); ctx.arc(x, y - 30, 7, 0, Math.PI * 2); ctx.fill(); break;
     case 'bookshelf':
       box(ctx, x - 28, y - 110, 56, 110, '#4a3020');
@@ -95,7 +99,8 @@ function drawFurniture(ctx: CanvasRenderingContext2D, f: Furniture, st: RoomStyl
       break;
     case 'column': box(ctx, x - 10, 20, 20, FLOOR_Y - 20, '#d8ccb0'); box(ctx, x - 14, 14, 28, 8, '#cfc2a4'); break;
     case 'fountain':
-      ctx.fillStyle = '#b9ad90'; ctx.beginPath(); ctx.ellipse(x, y - 8, 46, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#b9ad90'; ctx.beginPath(); ctx.ellipse(x, y - 8, 46, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
       ctx.strokeStyle = `rgba(160,200,230,${0.6 + 0.3 * Math.sin(t * 5)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.quadraticCurveTo(x, y - 48, x + 20, y - 14); ctx.moveTo(x, y - 12); ctx.quadraticCurveTo(x, y - 48, x - 20, y - 14); ctx.stroke();
       break;
   }
@@ -109,7 +114,7 @@ function drawPortrait(ctx: CanvasRenderingContext2D, st: RoomStyle, mood: number
   ctx.rotate((p.tilt * Math.PI) / 180);
   if (p.turned) {
     box(ctx, -18, -24, 36, 48, '#6a5a44');
-    ctx.strokeStyle = '#4a3c2c'; ctx.beginPath(); ctx.moveTo(-18, -24); ctx.lineTo(18, 24); ctx.moveTo(18, -24); ctx.lineTo(-18, 24); ctx.stroke();
+    ctx.strokeStyle = '#4a3c2c'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-18, -24); ctx.lineTo(18, 24); ctx.moveTo(18, -24); ctx.lineTo(-18, 24); ctx.stroke();
   } else {
     box(ctx, -18, -24, 36, 48, st.accent);
     box(ctx, -14, -20, 28, 40, '#3b3f33');
@@ -122,6 +127,7 @@ function drawPortrait(ctx: CanvasRenderingContext2D, st: RoomStyle, mood: number
   if (p.laurel) {
     ctx.strokeStyle = '#6a9a3a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(x, y + 2, 26, Math.PI * 0.6, Math.PI * 1.4); ctx.stroke();
+    ctx.strokeStyle = '#6a9a3a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(x, y + 2, 26, Math.PI * 1.6, Math.PI * 0.4); ctx.stroke();
   }
   if (p.bunting) {
@@ -154,17 +160,18 @@ function drawSpecial(ctx: CanvasRenderingContext2D, v: RoomView, st: RoomStyle, 
     const h = Math.max(2, Math.min(70, v.treasury / 10));
     ctx.fillStyle = st.accent;
     ctx.beginPath(); ctx.moveTo(250, FLOOR_Y); ctx.quadraticCurveTo(300, FLOOR_Y - h * 2, 350, FLOOR_Y); ctx.fill();
-    ctx.strokeStyle = INK; ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.fillStyle = '#f7e9b0'; ctx.font = '11px Georgia, serif';
     ctx.fillText(`${v.treasury.toLocaleString('cs-CZ')} tis.`, 262, FLOOR_Y - h - 6);
   }
   if (v.sealLying) {
     box(ctx, 290, FLOOR_Y - 46, 20, 12, '#6a4a2a');
-    ctx.fillStyle = '#b01e24'; ctx.beginPath(); ctx.arc(300, FLOOR_Y - 50, 6, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.stroke();
+    ctx.fillStyle = '#b01e24'; ctx.beginPath(); ctx.arc(300, FLOOR_Y - 50, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
   }
   if (v.plane) {
     ctx.fillStyle = '#cfd6dc'; ctx.fillRect(320, 60, 100, 14); ctx.fillRect(360, 44, 14, 46); ctx.fillRect(412, 54, 8, 26);
-    ctx.strokeStyle = INK; ctx.strokeRect(320, 60, 100, 14);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.strokeRect(320, 60, 100, 14);
   }
 }
 
@@ -172,39 +179,50 @@ function drawCrowd(ctx: CanvasRenderingContext2D, crowd: CrowdView, t: number, x
   const known = crowd.mood !== null;
   const mood = crowd.mood ?? 6;
   for (const slot of crowdSlots(crowd.count)) {
-    const pose = MOODS[mood](t + slot.phase);
+    const pose = poseForMood(mood)(t + slot.phase);
     puppetAt(ctx, slot.x + xShift, slot.ground, slot.scale, -1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[crowd.look], faceForMood(mood), { grey: !known }));
   }
   if (!known && crowd.count > 0) {
     ctx.fillStyle = 'rgba(21,16,10,0.35)'; ctx.fillRect(240, 20, 235, FLOOR_Y - 20);
     ctx.fillStyle = '#efe4c4'; ctx.font = '28px Georgia, serif'; ctx.textAlign = 'center';
-    ctx.fillText('?', 360, 60); ctx.textAlign = 'start';
+    ctx.fillText('?', 360, 60); ctx.textAlign = 'left';
   }
 }
 
+/** The envoys' salon: one foreign delegate per power, each with its own known/unknown mood — a lone unseen
+ * power gets its own '?' overlay, unlike the home crowds which share one. */
 function drawEnvoys(ctx: CanvasRenderingContext2D, crowds: readonly CrowdView[], t: number): void {
   crowds.forEach((c, i) => {
+    const known = c.mood !== null;
     const mood = c.mood ?? 6;
-    const pose = MOODS[mood](t + i * 0.7);
-    puppetAt(ctx, 300 + i * 60, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[c.look], faceForMood(mood), { grey: c.mood === null }));
+    const x = 300 + i * 60;
+    const pose = poseForMood(mood)(t + i * 0.7);
+    puppetAt(ctx, x, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[c.look], faceForMood(mood), { grey: !known }));
+    if (!known) {
+      ctx.fillStyle = 'rgba(21,16,10,0.35)'; ctx.fillRect(x - 25, 20, 50, FLOOR_Y - 20);
+      ctx.fillStyle = '#efe4c4'; ctx.font = '20px Georgia, serif'; ctx.textAlign = 'center';
+      ctx.fillText('?', x, 60); ctx.textAlign = 'left';
+    }
   });
 }
 
-/** Draws the room; heroes present stand on the left facing right. `t` is seconds (animation). */
+/** Draws the room; heroes present stand on the left facing right. `t` is seconds (animation).
+ * Owns its canvas state (save/restore, and the defaults below) so one room never leaks style into the next. */
 export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number): void {
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
   const st = ROOM_STYLES[v.id];
   drawBackground(ctx, st);
   if (st.portrait) drawPortrait(ctx, st, v.portraitMood);
   for (const f of st.furniture) drawFurniture(ctx, f, st, t);
   drawSpecial(ctx, v, st, t);
-  const envoysRoom = v.crowds.length > 1 && v.crowds.every((c) => c.count === 1);
-  if (envoysRoom) drawEnvoys(ctx, v.crowds, t);
+  if (v.layout === 'envoys') drawEnvoys(ctx, v.crowds, t);
   else v.crowds.forEach((c, i) => drawCrowd(ctx, c, t, i * 12));
-  if (v.id === 'matka') {
-    puppetAt(ctx, 380, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS.mother, 'neutral'));
-  }
-  if (v.id === 'pokladna') {
-    puppetAt(ctx, 380, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS.treasurer, 'neutral'));
+  if (v.resident) {
+    puppetAt(ctx, 380, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS[v.resident!], 'neutral'));
   }
   v.heroes.forEach((h, i) => {
     const pose = POSES.stand(t);
@@ -213,4 +231,5 @@ export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number):
   ctx.fillStyle = '#efe4c4';
   ctx.font = '13px Georgia, serif';
   ctx.fillText(v.name, 10, 11);
+  ctx.restore();
 }

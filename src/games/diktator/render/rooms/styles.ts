@@ -37,7 +37,7 @@ export const ROOM_STYLES: Readonly<Record<RoomId, RoomStyle>> = {
   vyslanci: { wall: '#2a3440', wainscot: '#1f2730', floor: '#3a2e24', accent: '#c9b27a', windows: 2, portrait: false, shows: null, furniture: [{ kind: 'roundTable', x: 240 }] },
   knihovna: { wall: '#3b2a1e', wainscot: '#2b1f16', floor: '#3a2a1c', accent: '#c9a44a', windows: 1, portrait: false, shows: null, furniture: [{ kind: 'bookshelf', x: 280 }, { kind: 'bookshelf', x: 380 }, { kind: 'armchair', x: 220 }] },
   rolnici: { wall: '#6b5a3e', wainscot: '#4d4030', floor: '#5a4632', accent: '#e6d9b8', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'bench', x: 300 }, { kind: 'stove', x: 440 }] },
-  statkari: { wall: '#4a3a1e', wainscot: '#35291a', floor: '#3f2e1e', accent: '#d9b45a', windows: 2, portrait: true, shows: null, furniture: [{ kind: 'sofa', x: 300 }, { kind: 'fireplace', x: 430 }] },
+  statkari: { wall: '#4a3a1e', wainscot: '#35291a', floor: '#3f2e1e', accent: '#d9b45a', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'sofa', x: 300 }, { kind: 'fireplace', x: 430 }] },
   straznice: { wall: '#2a2a2a', wainscot: '#1d1d1d', floor: '#2f2a24', accent: '#c9a44a', windows: 0, portrait: true, shows: 'map', furniture: [{ kind: 'rifleRack', x: 200 }] },
   pokladna: { wall: '#4a3c14', wainscot: '#35290d', floor: '#3a2e1c', accent: '#f0d27a', windows: 0, portrait: false, shows: 'gold', furniture: [{ kind: 'safe', x: 420 }] },
 };

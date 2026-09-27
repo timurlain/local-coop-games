@@ -58,3 +58,8 @@ export const MOOD_FACES: readonly Face[] = ['furious', 'furious', 'grumpy', 'gru
 export function faceForMood(level: number): Face {
   return MOOD_FACES[Math.max(0, Math.min(9, Math.round(level)))];
 }
+
+/** Pose for a popularity level, clamped and rounded the same way as `faceForMood` — never an out-of-range index. */
+export function poseForMood(level: number): PoseFn {
+  return MOODS[Math.max(0, Math.min(9, Math.round(level)))];
+}

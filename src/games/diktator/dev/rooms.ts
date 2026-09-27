@@ -9,7 +9,7 @@ import { albania } from '../scenario/albania';
 import { MOOD_NAMES } from '../render/puppet/poses';
 import { drawRoom } from '../render/rooms/scene';
 import { STAGE_H, STAGE_W } from '../render/rooms/crowd';
-import { roomView, stripView } from '../ui/palace-view';
+import { roomView, stripView, type RoomView } from '../ui/palace-view';
 
 const sc = albania;
 const L = sc.palace!;
@@ -20,7 +20,7 @@ const strength = $<HTMLInputElement>('strength');
 const mood = $<HTMLInputElement>('mood');
 
 let room = 'armada';
-let base: GameState = newGame(sc, 1, undefined, { palace: true }).state;
+const base: GameState = newGame(sc, 1, undefined, { palace: true }).state;
 
 function groupsHere() {
   return GROUPS.filter((g) => g !== 'povstalci' && roomOfGroup(L, g) === room);
@@ -45,6 +45,8 @@ function state(): GameState {
   return s;
 }
 
+let view: RoomView = roomView(sc, state(), room);
+
 function renderStrip(s: GameState): void {
   const strip = $('strip');
   strip.replaceChildren();
@@ -64,7 +66,9 @@ function update(): void {
   const m = Number(mood.value);
   $('strength-out').textContent = strength.value;
   $('mood-out').textContent = m < 0 ? 'neviděno' : `${m} · ${MOOD_NAMES[m]}`;
-  renderStrip(state());
+  const s = state();
+  view = roomView(sc, s, room);
+  renderStrip(s);
 }
 
 function frame(now: number): void {
@@ -77,13 +81,12 @@ function frame(now: number): void {
   const k = canvas.width / STAGE_W;
   ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.clearRect(0, 0, STAGE_W, STAGE_H);
-  drawRoom(ctx, roomView(sc, state(), room), now / 1000);
+  drawRoom(ctx, view, now / 1000);
   requestAnimationFrame(frame);
 }
 
 strength.value = '6';
 mood.value = '7';
 for (const id of ['strength', 'mood', 'zogu', 'velitel', 'plane']) $(id).addEventListener('input', update);
-base = { ...base };
 update();
 requestAnimationFrame(frame);

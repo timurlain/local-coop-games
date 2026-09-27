@@ -55,6 +55,35 @@ describe('roomView', () => {
     expect(roomView(albania, s, 'pracovna').sealLying).toBe(true);
     expect(roomView(albania, s, 'trunni').sealLying).toBe(false);
   });
+
+  it('keeps treasury and rebelFires null outside their own rooms', () => {
+    const s = day();
+    expect(roomView(albania, s, 'trunni').treasury).toBeNull();
+    expect(roomView(albania, s, 'armada').rebelFires).toBeNull();
+  });
+
+  it('shows the plane only in the courtyard, and only when it exists', () => {
+    const seen = { ...day(), hasPlane: true };
+    expect(roomView(albania, seen, 'nadvori').plane).toBe(true);
+    expect(roomView(albania, seen, 'trunni').plane).toBe(false);
+    const none = day();
+    expect(none.hasPlane).toBe(false);
+    expect(roomView(albania, none, 'nadvori').plane).toBe(false);
+  });
+
+  it('computes layout and resident from the layout, never by comparing room ids', () => {
+    const s = day();
+    expect(roomView(albania, s, 'vyslanci').layout).toBe('envoys');
+    expect(roomView(albania, s, 'trunni').layout).toBe('crowd');
+    expect(roomView(albania, s, 'matka').resident).toBe('mother');
+    expect(roomView(albania, s, 'pokladna').resident).toBe('treasurer');
+    expect(roomView(albania, s, 'trunni').resident).toBeNull();
+  });
+
+  it('shows the envoys with unknown mood before anyone has visited the salon', () => {
+    const v = roomView(albania, day(), 'vyslanci');
+    expect(v.crowds.every((c) => c.mood === null)).toBe(true);
+  });
 });
 
 describe('stripView', () => {
@@ -67,5 +96,11 @@ describe('stripView', () => {
     expect(guard.count).toBe(s.str.policie);
     expect(guard.mood).toBe(s.pop.policie);
     expect(strip[1][0].mood).toBeNull();
+  });
+
+  it('never claims a single mood for the envoys’ salon (three separate powers, three moods)', () => {
+    const strip = stripView(albania, day());
+    const envoysCell = strip.flat().find((c) => c.room === 'vyslanci')!;
+    expect(envoysCell.mood).toBeNull();
   });
 });

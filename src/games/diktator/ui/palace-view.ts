@@ -23,6 +23,10 @@ export interface RoomView {
   readonly name: string;
   readonly heroes: readonly Hero[];
   readonly crowds: readonly CrowdView[];
+  /** How the room's people stand: the envoys' salon shows one foreign delegate per power, every other room a home crowd. */
+  readonly layout: 'crowd' | 'envoys';
+  /** Who stands here besides the visiting groups: the queen mother in her room, the treasurer where the gold is kept, else null. */
+  readonly resident: LookId | null;
   /** Guardroom map: campfires = rebel strength. */
   readonly rebelFires: number | null;
   /** Treasury room: the gold on the floor. */
@@ -77,11 +81,13 @@ export function roomView(sc: Scenario, s: GameState, room: RoomId): RoomView {
     name: L.names[room],
     heroes: s.palace ? HEROES.filter((h) => s.palace!.at[h] === room) : [],
     crowds,
+    layout: room === L.envoys ? 'envoys' : 'crowd',
+    resident: room === L.mother ? 'mother' : style.shows === 'gold' ? 'treasurer' : null,
     rebelFires: room === L.guardroom ? s.str.povstalci : null,
-    treasury: style?.shows === 'gold' ? s.treasury : null,
-    sealLying: style?.shows === 'seal' && s.palace !== null && s.palace.seal === null,
-    plane: style?.shows === 'plane' && s.hasPlane,
-    portraitMood: style?.portrait && crowds.length > 0 ? crowds[0].mood : null,
+    treasury: style.shows === 'gold' ? s.treasury : null,
+    sealLying: style.shows === 'seal' && s.palace !== null && s.palace.seal === null,
+    plane: style.shows === 'plane' && s.hasPlane,
+    portraitMood: style.portrait && crowds.length > 0 ? crowds[0].mood : null,
   };
 }
 
@@ -96,6 +102,8 @@ export function stripView(sc: Scenario, s: GameState): StripCell[][] {
         name: v.name,
         heroes: v.heroes,
         count: v.crowds.reduce((n, c) => n + c.count, 0),
+        // The envoys' salon holds three independent foreign powers, each with its own mood; the strip has room
+        // for only one mood per cell, so it never claims a single mood for that room.
         mood: room === L.envoys ? null : (v.crowds[0]?.mood ?? null),
       };
     }),
