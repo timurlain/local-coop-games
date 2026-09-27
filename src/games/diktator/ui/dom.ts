@@ -170,6 +170,66 @@ export interface OverlayModel {
   readonly options: readonly string[];
   readonly focus: number;
   readonly hint: string;
+  /** The evening's news as a gazette (plan 5): a masthead and one article per headline. */
+  readonly gazette?: { readonly date: string; readonly headlines: readonly string[] };
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function svgEl<K extends keyof SVGElementTagNameMap>(name: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
+  const el = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el as SVGElementTagNameMap[K];
+}
+
+/** A 120 × 90 sepia engraving-like placeholder: sky, sun, rooftops and a minaret silhouette of Tirana, hatch
+ * lines. The art plan (plan 5) replaces it with real illustrations. */
+function gazetteArt(): SVGSVGElement {
+  const svg = svgEl('svg', { viewBox: '0 0 120 90', width: 120, height: 90 });
+  svg.append(
+    svgEl('rect', { x: 0, y: 0, width: 120, height: 90, fill: '#e3d3a4' }),
+    svgEl('circle', { cx: 92, cy: 22, r: 12, fill: '#c9a44a' }),
+    svgEl('path', {
+      d: 'M0,90 L0,58 L14,44 L28,58 L40,50 L52,58 L52,34 L58,22 L64,34 L64,58 L78,46 L92,58 L104,50 L120,60 L120,90 Z',
+      fill: '#6a4a2a',
+    }),
+    svgEl('path', { d: 'M58,22 A6,6 0 0 1 64,34 L52,34 A6,6 0 0 1 58,22 Z', fill: '#5a3e22' }),
+  );
+  for (let i = -90; i < 120; i += 6) svg.append(svgEl('line', { x1: i, y1: 0, x2: i + 90, y2: 90, stroke: '#7a6a45', 'stroke-width': 0.4, opacity: 0.35 }));
+  return svg;
+}
+
+function renderGazette(gazette: { readonly date: string; readonly headlines: readonly string[] } | undefined): void {
+  const root = $('#overlay-gazette');
+  $('.card').classList.toggle('with-gazette', !!gazette && gazette.headlines.length > 0);
+  if (!gazette || gazette.headlines.length === 0) {
+    root.hidden = true;
+    root.replaceChildren();
+    return;
+  }
+  root.hidden = false;
+  const masthead = document.createElement('div');
+  masthead.className = 'gazette-masthead';
+  const name = document.createElement('h3');
+  name.textContent = P.gazette;
+  const rule = document.createElement('div');
+  rule.className = 'gazette-rule';
+  const dateline = document.createElement('p');
+  dateline.className = 'gazette-dateline';
+  dateline.textContent = `${P.gazetteDate(gazette.date)} · ${P.gazettePrice}`;
+  masthead.append(name, rule, dateline);
+  const articles = gazette.headlines.map((headline) => {
+    const article = document.createElement('div');
+    article.className = 'gazette-article';
+    const pic = document.createElement('div');
+    pic.className = 'gazette-pic';
+    pic.append(gazetteArt());
+    const h = document.createElement('h4');
+    h.textContent = headline;
+    article.append(pic, h);
+    return article;
+  });
+  root.replaceChildren(masthead, ...articles);
 }
 
 export function renderOverlay(m: OverlayModel | null, onChoose: (i: number) => void): void {
@@ -177,6 +237,7 @@ export function renderOverlay(m: OverlayModel | null, onChoose: (i: number) => v
   if (!m) return;
   $('#overlay-title').textContent = m.title;
   $('#overlay-lines').replaceChildren(...m.lines.map(para));
+  renderGazette(m.gazette);
   menuList($<HTMLOListElement>('#overlay-options'), m.options.map((label) => ({ label, detail: '' })), m.focus, onChoose);
   $('#overlay-hint').textContent = m.hint;
 }

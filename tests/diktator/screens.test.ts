@@ -34,11 +34,42 @@ describe('cardsFor', () => {
     const r = advance(albania, s, { type: 'endDay', hero: 'zogu' });
     const cards = cardsFor(albania, s, r.events, r.state);
     expect(cards[0].title).toBe(P.evening(T.quarter(1925, 1)));
-    expect(cards[0].lines.length).toBeGreaterThan(0);
+    expect(cards[0].date).toBe(T.quarter(1925, 1));
+    expect(cards[0].lines.length + cards[0].news.length).toBeGreaterThan(0);
     if (r.state.phase.kind === 'audience') {
       expect(cards).toHaveLength(2);
       expect(cards[1].title).toBe(T.quarter(1925, 2));
+      expect(cards[1].date).toBe(T.quarter(1925, 2));
     }
+  });
+
+  it('reports the evening news as a headline, not a line, and skips the quiet-night line when there is news', () => {
+    const before = day();
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'audience', petition: '', suggested: false };
+    after.quarter = before.quarter + 1;
+    const events: GameEvent[] = [
+      { type: 'heroDone', hero: 'zogu' },
+      { type: 'news', id: albania.news[0].id },
+      { type: 'quarterStarted', quarter: before.quarter + 1 },
+    ];
+    const cards = cardsFor(albania, before, events, after);
+    expect(cards[0].news).toEqual([albania.news[0].title]);
+    expect(cards[0].lines).toEqual([]);
+  });
+
+  it('falls back to the quiet-night line when the evening has neither news nor other lines', () => {
+    const before = day();
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'audience', petition: '', suggested: false };
+    after.quarter = before.quarter + 1;
+    const events: GameEvent[] = [
+      { type: 'heroDone', hero: 'zogu' },
+      { type: 'quarterStarted', quarter: before.quarter + 1 },
+    ];
+    const cards = cardsFor(albania, before, events, after);
+    expect(cards[0].lines).toEqual([P.quietNight]);
+    expect(cards[0].news).toEqual([]);
   });
 
   it('shows no evening card when the evening ends in a revolution', () => {

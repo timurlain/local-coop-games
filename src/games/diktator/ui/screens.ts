@@ -16,6 +16,10 @@ const P = T.palace;
 export interface Card {
   readonly title: string;
   readonly lines: readonly string[];
+  /** Headlines of this card's news events, in order (the gazette, plan 5). */
+  readonly news: readonly string[];
+  /** The quarter this card reports on, for the gazette's dateline. */
+  readonly date: string;
   readonly button: string;
 }
 
@@ -42,7 +46,12 @@ function dateOf(quarter: number): string {
 }
 
 function lines(sc: Scenario, events: readonly GameEvent[]): string[] {
-  return events.map((e) => eventText(sc, e)).filter((x): x is string => x !== null);
+  return events.filter((e) => e.type !== 'news').map((e) => eventText(sc, e)).filter((x): x is string => x !== null);
+}
+
+/** Headlines of this batch's news events, in order — the gazette's articles (plan 5). */
+function newsOf(sc: Scenario, events: readonly GameEvent[]): string[] {
+  return events.filter((e): e is Extract<GameEvent, { type: 'news' }> => e.type === 'news').map((e) => sc.news.find((n) => n.id === e.id)!.title);
 }
 
 const PALACE_PHASES = new Set(['audience', 'day']);
@@ -60,18 +69,32 @@ export function cardsFor(sc: Scenario, before: GameState | null, events: readonl
     const crisis = before.phase.kind === 'revolution' || before.phase.kind === 'chooseAlly' || before.phase.kind === 'punish';
     if (eveningRan) {
       // The revolution itself is announced by the phase screen, not the evening card.
-      const l = lines(sc, head.filter((e) => e.type !== 'revolution'));
-      if (l.length > 0) {
-        cards.push({ title: P.evening(dateOf(before.quarter)), lines: l, button: P.next });
+      const relevant = head.filter((e) => e.type !== 'revolution');
+      const l = lines(sc, relevant);
+      const n = newsOf(sc, relevant);
+      const date = dateOf(before.quarter);
+      if (l.length > 0 || n.length > 0) {
+        cards.push({ title: P.evening(date), lines: l, news: n, date, button: P.next });
       } else if (after.phase.kind === 'audience') {
-        cards.push({ title: P.evening(dateOf(before.quarter)), lines: [P.quietNight], button: P.next });
+        cards.push({ title: P.evening(date), lines: [P.quietNight], news: [], date, button: P.next });
       }
     } else if (crisis) {
       const l = lines(sc, head);
-      if (l.length > 0) cards.push({ title: before.phase.kind === 'punish' ? P.victory : P.revolutionTitle, lines: l, button: P.next });
+      if (l.length > 0) {
+        cards.push({
+          title: before.phase.kind === 'punish' ? P.victory : P.revolutionTitle,
+          lines: l,
+          news: newsOf(sc, head),
+          date: dateOf(before.quarter),
+          button: P.next,
+        });
+      }
     }
   }
-  if (qi >= 0) cards.push({ title: dateOf(after.quarter), lines: lines(sc, events.slice(qi)), button: P.toPalace });
+  if (qi >= 0) {
+    const tail = events.slice(qi);
+    cards.push({ title: dateOf(after.quarter), lines: lines(sc, tail), news: newsOf(sc, tail), date: dateOf(after.quarter), button: P.toPalace });
+  }
   return cards;
 }
 

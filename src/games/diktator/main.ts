@@ -477,7 +477,16 @@ function overlayModel(): OverlayModel | null {
   }
   if (someoneTalking()) return null;
   const card = cards[0];
-  if (card) return { title: card.title, lines: card.lines, options: [card.button], focus: 0, hint: '' };
+  if (card) {
+    return {
+      title: card.title,
+      lines: card.lines,
+      options: [card.button],
+      focus: 0,
+      hint: '',
+      ...(card.news.length > 0 ? { gazette: { date: card.date, headlines: card.news } } : {}),
+    };
+  }
   const scr = currentScreen();
   if (scr) return { title: scr.title, lines: scr.lines, options: scr.options.map((o) => o.label), focus: overlayUi.focus, hint: '' };
   return null;

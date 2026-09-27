@@ -227,6 +227,10 @@ export const cs = {
       heroDone: (who: string) => `${who} končí čtvrtletí.`,
       evening: (date: string) => `Večer — ${date}`,
       quietNight: 'Noc proběhla klidně.',
+      /** The evening's news as a gazette (play-test wish, plan 5). */
+      gazette: 'Tiranský kurýr',
+      gazetteDate: (date: string) => `Tirana, ${date}`,
+      gazettePrice: 'cena 5 qindarek',
       toPalace: 'Do paláce',
       next: 'Dál',
       revolutionTitle: 'REVOLUCE!',

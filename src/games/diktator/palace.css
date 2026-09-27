@@ -65,7 +65,21 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 .overlay { position: fixed; inset: 0; background: rgba(18, 14, 10, 0.88); display: grid; place-items: center; padding: 16px; }
 .overlay.hidden { display: none; }
 .card { max-width: 640px; width: 100%; background: var(--panel); border: 1px solid var(--gold); padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.card.with-gazette { max-width: 760px; }
 .card h2 { font-family: 'Limelight', Georgia, serif; font-weight: 400; color: var(--gold); margin: 0; font-size: 26px; letter-spacing: 1px; }
 #overlay-lines p { margin: 4px 0; }
+
+#overlay-gazette {
+  background: #efe4c4; color: #1a1410; border: 1px solid #8a6a24; padding: 14px 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; gap: 10px;
+}
+.gazette-masthead { text-align: center; }
+.gazette-masthead h3 { font-family: 'Limelight', Georgia, serif; font-weight: 400; font-size: 28px; margin: 0; letter-spacing: 1px; color: #1a1410; }
+.gazette-rule { height: 5px; margin: 4px auto; width: 90%; border-top: 2px solid #8a6a24; border-bottom: 1px solid #8a6a24; }
+.gazette-dateline { margin: 2px 0 0; font-size: 13px; color: #6a5636; }
+.gazette-article { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.gazette-pic { flex: 0 0 auto; line-height: 0; border: 1px solid #8a6a24; }
+.gazette-pic svg { display: block; }
+.gazette-article h4 { flex: 1 1 160px; margin: 0; font-family: 'Limelight', Georgia, serif; font-weight: 400; font-size: 1.6em; line-height: 1.2; color: #1a1410; }
 
 .bubble .scroll { overflow-y: auto; }
