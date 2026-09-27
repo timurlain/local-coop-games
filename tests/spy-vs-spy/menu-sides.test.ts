@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canStart, humanSlots, type Settings } from '../../src/games/spy-vs-spy/settings';
+import { canStart, humanSlots, startsDemo, type Settings } from '../../src/games/spy-vs-spy/settings';
 import { cs } from '../../src/shared/i18n/cs';
 
 const H = { bot: false, iq: 3 } as const;
@@ -43,5 +43,20 @@ describe('Czech labels for the computer (spec bot §1)', () => {
       'IQ 1 (nemotorný)', 'IQ 2 (začátečník)', 'IQ 3 (šikovný)', 'IQ 4 (mazaný)', 'IQ 5 (mistr špión)',
     ]);
     expect(cs.spy.botLabel(3)).toBe('Počítač IQ 3');
+  });
+});
+
+describe('startsDemo (spec bot §8: any key starts computer against computer)', () => {
+  it('starts on any key while no menu control has focus', () => {
+    for (const code of ['KeyF', 'Enter', 'Space', 'ArrowDown', 'Escape', 'KeyQ']) expect(startsDemo(code, false), code).toBe(true);
+  });
+
+  it('never starts while a menu control has focus: its keys work that control', () => {
+    for (const code of ['Enter', 'Space', 'ArrowDown', 'ArrowUp', 'KeyF', 'Escape']) expect(startsDemo(code, true), code).toBe(false);
+  });
+
+  it('ignores Tab (menu navigation) and F1 (debug toggle) even without focus', () => {
+    expect(startsDemo('Tab', false)).toBe(false);
+    expect(startsDemo('F1', false)).toBe(false);
   });
 });

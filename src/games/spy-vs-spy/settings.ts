@@ -65,6 +65,17 @@ export function canStart(sides: Settings['sides'], joined: readonly [boolean, bo
   return humanSlots(sides).every((i) => joined[i]);
 }
 
+/** Keys that never start the bot-vs-bot demo: menu navigation and the debug toggle. */
+const NOT_A_START: ReadonlySet<string> = new Set(['Tab', 'F1']);
+
+/**
+ * A key press that starts computer against computer from the menu (spec bot §8, „any key"): not while a menu control
+ * (select, checkbox, link) has focus, where the key works that control, and never Tab or F1.
+ */
+export function startsDemo(code: string, focusIsFormControl: boolean): boolean {
+  return !focusIsFormControl && !NOT_A_START.has(code);
+}
+
 export interface LevelStats {
   rooms: number;
   /** traps of both spies together */

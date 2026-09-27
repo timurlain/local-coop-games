@@ -22,7 +22,7 @@ import { escapeCues, escapeOver, renderEscape } from './render/escape';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { TITLE_CARD_TIME, renderTitleCard } from './render/title';
 import { renderGame } from './render/view';
-import { canStart, humanSlots, levelReadout, migrateSettings, type SideSetting } from './settings';
+import { canStart, humanSlots, levelReadout, migrateSettings, startsDemo, type SideSetting } from './settings';
 
 type Screen = 'menu' | 'title' | 'play' | 'pause' | 'escape' | 'victory' | 'result';
 
@@ -54,6 +54,8 @@ let botLabels: [string | null, string | null] = [null, null];
 let lastEvents: readonly GameEvent[] = [];
 /** A menu select changed this tick (a key on a focused select): that key must not also start a bot-vs-bot demo. */
 let menuChanged = false;
+/** Elements whose keys work the menu itself (Enter, Space, arrows), so they never start the demo. */
+const FORM_CONTROLS: readonly string[] = ['SELECT', 'INPUT', 'BUTTON', 'TEXTAREA', 'A'];
 let scale = 1;
 let debug = false;
 let fps = 0;
@@ -279,7 +281,7 @@ const noHumans = (): boolean => bots[0] !== null && bots[1] !== null;
 /** A human pressed `key`; with no human in the match, anyone did. */
 const slotPressed = (key: 'action' | 'pause'): boolean =>
   (noHumans() ? input.devices() : slotDevices()).some((d) => input.pressed(d, key));
-/** Any key (but the F1 debug toggle) or any controller button went down this tick. */
+/** Any key (but the F1 debug toggle) or any controller button went down this tick (in play: the menu is closed). */
 const anyPress = (): boolean =>
   (input.anyKeyPressed() && !input.keyPressed('F1')) ||
   input.devices().some((d) => input.pressed(d, 'action') || input.pressed(d, 'trap') || input.pressed(d, 'pause'));
@@ -345,7 +347,7 @@ function updateMenu(): void {
   const humans = humanSlots(settings.sides);
   if (humans.length === 0) {
     // computer against computer (spec bot §8): nobody joins, any key or button starts the demo
-    if (!changed && anyPress()) {
+    if (!changed && demoStartPressed()) {
       sfx.unlock();
       startGame();
     }
@@ -368,6 +370,19 @@ function updateMenu(): void {
     sfx.play('join');
     renderSlots();
   }
+}
+
+/**
+ * Bot vs bot in the menu (spec bot §8): a key starts the demo only when no menu control has focus (`startsDemo`), a
+ * gamepad button always does. Keyboard „devices" are left out, their keys already went through `startsDemo`; a mouse
+ * click is no key at all.
+ */
+function demoStartPressed(): boolean {
+  const focused = document.activeElement;
+  const inForm = focused !== null && FORM_CONTROLS.includes(focused.tagName);
+  if (input.keysPressed().some((code) => startsDemo(code, inForm))) return true;
+  return input.devices().some((d) =>
+    d.startsWith('pad-') && (input.pressed(d, 'action') || input.pressed(d, 'trap') || input.pressed(d, 'pause')));
 }
 
 function toSpyInput(a: PlayerActions): SpyInput {
@@ -396,7 +411,7 @@ function updatePlay(dt: number): void {
     return;
   }
   // with no human any key or button pauses (spec bot §8); the bots think only while playing, so a pause leaves no backlog
-  if (slotPressed('pause') || (noHumans() && anyPress())) {
+  if (noHumans() ? anyPress() : slotPressed('pause')) {
     pause(T.paused);
     return;
   }

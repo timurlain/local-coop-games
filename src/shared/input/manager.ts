@@ -78,6 +78,11 @@ export class InputManager {
     return this.tickPresses.size > 0;
   }
 
+  /** Codes of the keys that went down this tick. */
+  keysPressed(): string[] {
+    return [...this.tickPresses];
+  }
+
   /** Raw key press this tick (for F1, KeyM and other non-player keys). */
   keyPressed(code: string): boolean {
     return this.tickPresses.has(code);
