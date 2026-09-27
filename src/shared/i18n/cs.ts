@@ -260,7 +260,7 @@ export const cs = {
       hours: 'hodiny',
       sealMark: 'pečeť',
       /** Play-test round 4: steps cost hours too. */
-      steps: (left: number) => `${left} kroků do další hodiny`,
+      steps: (left: number) => `${left} ${left === 1 ? 'krok' : left >= 2 && left <= 4 ? 'kroky' : 'kroků'} do další hodiny`,
       noWalking: 'Už nemáš čas chodit.',
       summoned: 'Stráž přivádí Zogua k žadateli do trůnního sálu.',
       /** The Pokladna's gold at a glance (play-test wish, our addition). */
