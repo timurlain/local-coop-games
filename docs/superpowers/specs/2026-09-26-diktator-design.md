@@ -259,7 +259,13 @@ the palace day is split. The rhythm is together → apart → together.
 
 ### 5.3 Hours and actions
 
-Zog has 3 hours and the commander has 3. The audience is free; Zog answers it in the throne room whenever he comes, and must before the quarter ends (§4.1). Moving between rooms is free.
+Zog has 3 hours and the commander has 3. The audience is free; Zog answers it in the throne room whenever he comes, and must before the quarter ends (§4.1).
+
+**Walking costs time (play-test change, 2026-09-27; our addition).** Every 10th step between rooms costs an hour, and a
+hero with no hours left cannot walk any more; the HUD shows the steps left until the next hour. If Zog runs out of
+hours while the petitioner still waits elsewhere, the guards bring him to the throne room, so a quarter never gets stuck
+without its audience. **The guard follows the king:** once the commander guards Zog (his last hours), he walks with Zog
+into every room for the rest of the quarter; the night's assassination coin is 75 % as before.
 
 | Who | Action | Effect |
 |---|---|---|
