@@ -14,11 +14,42 @@ describe('navigate', () => {
     expect(navigate(CLOSED, { kind: 'close' }, 3, false).pass).toBeNull();
   });
 
-  it('moves the focus up and down with wrap-around, ignores left and right', () => {
+  it('moves the focus up and down, but leaves the menu (closes and passes the intent through) at the ends', () => {
     const open = { open: true, focus: 0 };
     expect(navigate(open, { kind: 'dir', dir: 'down' }, 3, false).ui.focus).toBe(1);
-    expect(navigate(open, { kind: 'dir', dir: 'up' }, 3, false).ui.focus).toBe(2);
-    expect(navigate(open, { kind: 'dir', dir: 'left' }, 3, false)).toEqual({ ui: open, chosen: null, pass: null });
+    expect(navigate(open, { kind: 'dir', dir: 'up' }, 3, false)).toEqual({
+      ui: CLOSED,
+      chosen: null,
+      pass: { kind: 'dir', dir: 'up' },
+    });
+    const bottom = { open: true, focus: 2 };
+    expect(navigate(bottom, { kind: 'dir', dir: 'up' }, 3, false).ui.focus).toBe(1);
+    expect(navigate(bottom, { kind: 'dir', dir: 'down' }, 3, false)).toEqual({
+      ui: CLOSED,
+      chosen: null,
+      pass: { kind: 'dir', dir: 'down' },
+    });
+  });
+
+  it('left and right always leave an open (non-modal) menu, closing it and passing the intent through', () => {
+    const open = { open: true, focus: 1 };
+    expect(navigate(open, { kind: 'dir', dir: 'left' }, 3, false)).toEqual({
+      ui: CLOSED,
+      chosen: null,
+      pass: { kind: 'dir', dir: 'left' },
+    });
+    expect(navigate(open, { kind: 'dir', dir: 'right' }, 3, false)).toEqual({
+      ui: CLOSED,
+      chosen: null,
+      pass: { kind: 'dir', dir: 'right' },
+    });
+  });
+
+  it('an empty open menu passes every arrow through and closes', () => {
+    const open = { open: true, focus: 0 };
+    for (const dir of ['up', 'down', 'left', 'right'] as const) {
+      expect(navigate(open, { kind: 'dir', dir }, 0, false)).toEqual({ ui: CLOSED, chosen: null, pass: { kind: 'dir', dir } });
+    }
   });
 
   it('chooses the focused item and closes, or closes on Esc / seal key', () => {

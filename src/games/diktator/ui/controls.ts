@@ -42,9 +42,18 @@ export function navigate(ui: MenuUi, intent: Intent, count: number, modal: boole
   const after = modal ? ui : CLOSED;
   switch (intent.kind) {
     case 'dir': {
-      if ((intent.dir !== 'up' && intent.dir !== 'down') || count === 0) return { ui, chosen: null, pass: null };
+      if (modal) {
+        if ((intent.dir !== 'up' && intent.dir !== 'down') || count === 0) return { ui, chosen: null, pass: null };
+        const step = intent.dir === 'up' ? -1 : 1;
+        return { ui: { open: ui.open, focus: (ui.focus + step + count) % count }, chosen: null, pass: null };
+      }
+      // A non-modal open menu: left/right always leave, an empty menu leaves on any arrow, and up/down leave once
+      // the focus is already at that end (no wrap-around any more — the ends now leave the menu).
+      if (count === 0 || intent.dir === 'left' || intent.dir === 'right') return { ui: after, chosen: null, pass: intent };
+      const leaves = (intent.dir === 'up' && ui.focus === 0) || (intent.dir === 'down' && ui.focus === count - 1);
+      if (leaves) return { ui: after, chosen: null, pass: intent };
       const step = intent.dir === 'up' ? -1 : 1;
-      return { ui: { open: ui.open, focus: (ui.focus + step + count) % count }, chosen: null, pass: null };
+      return { ui: { open: ui.open, focus: ui.focus + step }, chosen: null, pass: null };
     }
     case 'action':
       return { ui: after, chosen: count > 0 ? Math.min(ui.focus, count - 1) : null, pass: null };
