@@ -273,6 +273,25 @@ Zog has 3 hours and the commander has 3. The audience is free and comes first fo
 **Dialogs belong to their own half.** An audience in Zog's half and an investigation in Kovář's half can run at the
 same time without covering each other.
 
+**Comic dialogue (play-test change, 2026-09-27).** Every conversation happens on the stage in comic speech
+bubbles, like an old RPG — nothing is picked from a side list and nothing vanishes the moment it is chosen:
+1. **Action opens the hero's choice bubble** above his head, listing what he can do here (the same items as the
+   rules allow, with their money). Up/down picks, Action says it, Esc closes. During the audience Zogu's choice
+   bubble opens by itself.
+2. **The hero says the chosen line** in his own speech bubble ("Ano, svoluji.", "Co si přejete?", "Hlášení!").
+3. **The other party answers** in its bubble, from where it stands: the petitioner, the Queen Mother, the room's
+   crowd, the gendarme with the police report, each envoy with his offer. Facts nobody in the room would say
+   (the seal changing hands, the money booked) appear as a caption box in the corner, like a comic's narrator.
+4. **Each bubble stays until that player presses Action**, then the next one comes; after the last the room is
+   quiet again. While one hero talks, the other player keeps playing in his half. The speaker takes the talk pose.
+
+The side panel keeps only the hero's status (room, hours, seal). **Only Zogu takes the Queen Mother's advice**; Kovář
+may enter her room and bows to her.
+
+**Sounds tell the heroes apart.** Each hero has his own footsteps (Zogu: heavy, slow boots; Kovář: quick steps with a
+spur jingle), door and wall-bump sounds, so both players hear who moved where without looking. Every speech bubble
+plays a short "voice" blip in its speaker's pitch.
+
 **Solo play.** Tab / the gamepad's Back button switches which character you control. The screen stays split, and the
 character you are not controlling stays in his room.
 
