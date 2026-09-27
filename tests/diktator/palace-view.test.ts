@@ -98,21 +98,14 @@ describe('roomView', () => {
 });
 
 describe('stripView', () => {
-  it('mirrors the grid with heroes, crowd sizes and seen moods', () => {
+  it('mirrors the grid with rooms and heroes, keeping strength and mood secret', () => {
     const s = day();
     const strip = stripView(albania, s);
     expect(strip.map((row) => row.map((c) => c.room))).toEqual(albania.palace!.grid);
     const guard = strip[2][2];
     expect(guard.heroes).toEqual(['velitel']);
-    expect(guard.count).toBe(s.str.policie);
-    expect(guard.mood).toBe(s.pop.policie);
-    expect(strip[1][0].mood).toBeNull();
-  });
-
-  it('never claims a single mood for the envoys’ salon (three separate powers, three moods)', () => {
-    const strip = stripView(albania, day());
-    const envoysCell = strip.flat().find((c) => c.room === 'vyslanci')!;
-    expect(envoysCell.mood).toBeNull();
+    expect(guard).not.toHaveProperty('count');
+    expect(guard).not.toHaveProperty('mood');
   });
 });
 

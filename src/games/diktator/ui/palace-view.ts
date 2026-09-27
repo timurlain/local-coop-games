@@ -54,10 +54,6 @@ export interface StripCell {
   readonly room: RoomId;
   readonly name: string;
   readonly heroes: readonly Hero[];
-  /** People in the room (sum over its groups). */
-  readonly count: number;
-  /** Mood of the room's main group as known now, null if unknown or nobody lives there. */
-  readonly mood: number | null;
 }
 
 const ENVOY_ORDER: readonly GroupId[] = ['jugoslavie', 'italie', 'britanie'];
@@ -113,18 +109,12 @@ export function roomView(sc: Scenario, s: GameState, room: RoomId): RoomView {
 export function stripView(sc: Scenario, s: GameState): StripCell[][] {
   const L = sc.palace;
   if (!L) throw new Error(`scenario ${sc.id} has no palace`);
+  // The strip shows only rooms and where the heroes stand (play-test change, 2026-09-27): strength and mood
+  // are seen by walking into a room, asked in talk, or read in the police report.
   return L.grid.map((row) =>
     row.map((room) => {
       const v = roomView(sc, s, room);
-      return {
-        room,
-        name: v.name,
-        heroes: v.heroes,
-        count: v.crowds.reduce((n, c) => n + c.count, 0),
-        // The envoys' salon holds three independent foreign powers, each with its own mood; the strip has room
-        // for only one mood per cell, so it never claims a single mood for that room.
-        mood: room === L.envoys ? null : (v.crowds[0]?.mood ?? null),
-      };
+      return { room, name: v.name, heroes: v.heroes };
     }),
   );
 }

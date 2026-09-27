@@ -57,10 +57,6 @@ export function renderStrip(cells: readonly (readonly StripCell[])[], flash: Rea
       div.className = 'cell';
       if (flash.has(c.room)) div.classList.add('flash');
       div.append(para(c.name));
-      const mood = document.createElement('span');
-      mood.className = 'mood';
-      mood.textContent = c.count > 0 ? `${c.count} · ${c.mood === null ? P.unknownMood : T.moods[c.mood]}` : '';
-      div.append(mood);
       const heroes = document.createElement('span');
       heroes.className = 'heroes';
       for (const h of c.heroes) {

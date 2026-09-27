@@ -54,7 +54,8 @@ function renderStrip(s: GameState): void {
     for (const cell of row) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = `${cell.name} · ${cell.count} · ${cell.mood === null ? '?' : cs.diktator.moods[cell.mood]}`;
+      const mood = roomView(sc, s, cell.room).crowds[0]?.mood;
+      b.textContent = mood === undefined || mood === null ? cell.name : `${cell.name} · ${cs.diktator.moods[mood]}`;
       if (cell.room === room) b.classList.add('here');
       b.addEventListener('click', () => { room = cell.room; update(); });
       strip.append(b);

@@ -256,6 +256,7 @@ the palace day is split. The rhythm is together → apart → together.
 - **Entering a room shows its mood.** Moving is free and costs no hour. The palace strip remembers the mood you last saw in each room this quarter; rooms nobody has entered this quarter show "?".
 - **The visuals update live.** When a decision changes the numbers during the day, the people in the room react on the spot.
 - **Plots are never visible just by looking.** They need the commander's check (§5.3). A revealed plot shows as whispering figures in a corner, plus a marker naming the ally.
+- **The palace strip shows only the rooms and where the heroes stand** (play-test change, 2026-09-27): strength and mood are seen by walking into a room, asked in talk, or read in the police report.
 
 ### 5.3 Hours and actions
 
