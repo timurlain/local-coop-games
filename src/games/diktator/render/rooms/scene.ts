@@ -347,11 +347,16 @@ function drawBigMap(ctx: CanvasRenderingContext2D, st: RoomStyle, mapCamps: numb
   // A campfire and tent at each mountain camp the rebels hold; strength past the last camp makes the fires bigger.
   const lit = Math.min(mapCamps, map.camps.length);
   const extra = Math.max(0, mapCamps - map.camps.length);
-  const scale = Math.min(0.9, 0.6 + 0.05 * extra);
+  const scale = Math.min(1.5, 1.1 + 0.08 * extra);
   for (let i = 0; i < lit; i++) {
     const camp = map.camps[i];
     const cx = fx + camp.x * fw;
     const cy = fy + camp.y * fh;
+    // A pulsing red glow so a child spots every camp on the busy old map.
+    ctx.fillStyle = `rgba(200,16,46,${0.28 + 0.12 * Math.sin(t * 3 + i)})`;
+    ctx.beginPath();
+    ctx.arc(cx + 2 * scale, cy - 3 * scale, 6 * scale, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#2a2018';
     ctx.beginPath();
     ctx.moveTo(cx - 3 * scale, cy);
