@@ -39,7 +39,8 @@ function view(o: { hand?: Thing | null; pieces?: PieceView[]; known?: KnownRoom[
     self: {
       id: 0, room: o.room ?? 1, x: 100, z: 28, facing: 1, mode: 'normal', health: 7, maxHealth: 7, hand: o.hand ?? null,
       stock: { bomba: 0, pruzina: 0, elektrina: 0, pistole: 0, casovana: 0 }, selected: null, trapPress: null,
-      mapOpen: false, clock: o.clock ?? 200, armouryTimer: 0, swingCooldown: 0, attack: null, placing: false, doorOpening: false,
+      mapOpen: false, clock: o.clock ?? 200, armouryTimer: 0, swingCooldown: 0, attack: null, placing: false, placingAt: null,
+      doorOpening: false,
     },
     pieces: o.pieces ?? [],
     doors: o.doors ?? [],

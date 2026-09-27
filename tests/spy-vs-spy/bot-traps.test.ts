@@ -63,7 +63,8 @@ function view(o: { hand?: Thing | null; pieces?: PieceView[]; known?: KnownRoom[
     self: {
       id: 0, room: 1, x: 100, z: 28, facing: 1, mode: 'normal', health: 7, maxHealth: 7, hand: o.hand ?? null,
       stock: { ...NO_STOCK, ...o.stock }, selected: null, trapPress: null, mapOpen: false, clock: 200,
-      armouryTimer: o.armouryTimer ?? 0, swingCooldown: 0, attack: null, placing: false, doorOpening: false,
+      armouryTimer: o.armouryTimer ?? 0, swingCooldown: 0, attack: null, placing: false, placingAt: null,
+      doorOpening: false,
     },
     pieces: o.pieces ?? [],
     doors: o.doors ?? ROOM1_DOORS,
@@ -191,6 +192,20 @@ describe('traps (spec bot §5)', () => {
   });
 });
 
+describe('a bomb heard ticking (fix round 1)', () => {
+  it('with the full kufřík at the visible exit he escapes rather than flee', () => {
+    const exitDoor: DoorView = { dir: 'E', key: 'exit', to: null, open: false, exit: true };
+    const base = view({ hand: kufrik('klic', 'penize', 'pas', 'plany'), doors: [{ dir: 'W', key: '1-2', to: 1, open: false, exit: false }, exitDoor] });
+    const v = { ...base, self: { ...base.self, room: 2 } };
+    const mem = createMemory();
+    remember(mem, v, [{ type: 'tick', room: 2 }], { pendingTrapTarget: null, searching: null, door: null });
+    expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'escape' });
+    // Without the kufřík full: out.
+    const lacking = { ...v, self: { ...v.self, hand: kufrik('klic') } };
+    expect(chooseGoal(lacking, mem, 5, null, makeRng(1))).toEqual({ kind: 'flee', dir: 'W' });
+  });
+});
+
 describe('remedies (spec bot §5)', () => {
   /** He is in room 1; the kufřík is noted in room 0, reachable only through door 0-1, where he died by elektřina.
    *  A věšák (deštník) is noted in room 2. */
@@ -220,6 +235,15 @@ describe('remedies (spec bot §5)', () => {
     const v = view({ known: roundMap() });
     mem.roomPieces.set(3, []);
     expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'fetch', piece: 20 });
+  });
+
+  it('a source he could only reach through the very door it is for is no help; another one is', () => {
+    const { v, mem } = deadlyDoor(null);
+    mem.pieces.delete(30);
+    note(mem, 31, 0, { kind: 'fixture', remedy: 'destnik' }); // behind 0-1, with the kufřík
+    expect(scoreGoals(v, mem, 5, null, makeRng(1)).some((g) => g.goal.kind === 'remedy')).toBe(false);
+    note(mem, 30, 2, { kind: 'fixture', remedy: 'destnik' });
+    expect(chooseGoal(v, mem, 5, null, makeRng(1))).toEqual({ kind: 'remedy', piece: 30, remedy: 'destnik' });
   });
 
   it('holding a secret he does not fetch a remedy (the hand holds one thing; the swap would leave the secret)', () => {
@@ -293,6 +317,27 @@ describe('traps, remedies and the armoury in the real game', () => {
       });
       expect(died, `seed ${seed}`).toBe(false);
       if (trapped !== null) expect(s.furniture[trapped].trap, `seed ${seed}`).not.toBeNull();
+    }
+  });
+
+  it('a trap filed under where it was really put, even when the plan moves on while he puts it down', () => {
+    for (const seed of SEEDS.slice(0, 5)) {
+      const s = trapGame({ bomba: 1 });
+      const bot = createBot(0, 5, seed);
+      let events: GameEvent[] = [];
+      let forced = false;
+      for (let t = 0; t < 15 / DT && !mine(events, 'trapSet'); t++) {
+        events = step(s, [bot.think(s, events, DT), NO_INPUT], DT);
+        if (!forced && s.spies[0].placing !== null) {
+          // Mid-placing, every goal changes: the full kufřík (escape/explore beats any trap).
+          s.spies[0].hand = kufrik('klic', 'penize', 'pas', 'plany');
+          forced = true;
+        }
+      }
+      expect(mine(events, 'trapSet'), `seed ${seed}`).toBe(true);
+      bot.think(s, events, DT); // the notebook files it
+      const trapped = s.furniture.find((f) => f.trap?.owner === 0)!;
+      expect([...bot.memory.ownTraps.keys()], `seed ${seed}`).toEqual([`p:${trapped.id}`]);
     }
   });
 

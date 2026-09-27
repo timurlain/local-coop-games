@@ -3,6 +3,7 @@ import { createMemory, forget, gaveUp, giveUp, GIVE_UP_FOR, remember, type Memor
 import type { BotView, PieceView } from '../../src/games/spy-vs-spy/bot/view';
 import { IQ_PARAMS } from '../../src/games/spy-vs-spy/bot/iq';
 import { makeRng } from '../../src/shared/rng';
+import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import type { GameEvent } from '../../src/games/spy-vs-spy/logic/state';
 
 const NO_CTX = { pendingTrapTarget: null, searching: null, door: null };
@@ -20,7 +21,8 @@ function view(overrides: Partial<BotView> = {}): BotView {
     self: {
       id: 0, room: 1, x: 0, z: 0, facing: 1, mode: 'normal', health: 7, maxHealth: 7, hand: null,
       stock: { bomba: 0, pruzina: 0, elektrina: 0, pistole: 0, casovana: 0 }, selected: null, trapPress: null,
-      mapOpen: false, clock: 0, armouryTimer: 0, swingCooldown: 0, attack: null, placing: false, doorOpening: false,
+      mapOpen: false, clock: 0, armouryTimer: 0, swingCooldown: 0, attack: null, placing: false, placingAt: null,
+      doorOpening: false,
     },
     pieces: [],
     doors: [],
@@ -289,5 +291,62 @@ describe('forget (spec bot §4: forgetting)', () => {
     for (let t = 0; t < 600; t += 1) forget(mem, 3, 1, rng);
     expect(mem.ownTraps.size).toBe(2);
     expect(totalEntries(mem)).toBeLessThan(before);
+  });
+});
+
+describe('memory: traps set, refused, sprung, disarmed (Task 7)', () => {
+  const at = (piece: number | null, door: string | null) => ({ pendingTrapTarget: null, searching: piece, door });
+
+  it('a refusal while placing notes the target in noTrap for GIVE_UP_FOR; it is pruned after', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{ type: 'refused', spy: 0 }], { ...NO_CTX, pendingTrapTarget: 'p:5' });
+    expect(mem.noTrap.get('p:5')).toBe(10 + GIVE_UP_FOR);
+    remember(mem, view({ time: 10 + GIVE_UP_FOR }), [], NO_CTX);
+    expect(mem.noTrap.size).toBe(0);
+  });
+
+  it('dying at his own trap drops it from ownTraps (a trap springs once)', () => {
+    const mem = createMemory();
+    mem.ownTraps.set('p:5', 'bomba');
+    mem.ownTraps.set('d:0-1', 'pistole');
+    remember(mem, view(), [{ type: 'died', spy: 0, cause: 'bomba' }], at(5, null));
+    expect(mem.ownTraps.has('p:5')).toBe(false);
+    remember(mem, view(), [{ type: 'died', spy: 0, cause: 'pistole' }], at(null, '0-1'));
+    expect(mem.ownTraps.size).toBe(0);
+  });
+
+  it('a disarm drops his own trap and the danger there', () => {
+    const mem = createMemory();
+    mem.ownTraps.set('p:5', 'bomba');
+    mem.dangers.push({ at: { piece: 5 }, cause: 'bomba', since: 1 }, { at: { door: '0-1' }, cause: 'elektrina', since: 1 });
+    remember(mem, view(), [{ type: 'disarmed', spy: 0, trap: 'bomba', remedy: 'voda' }], at(5, null));
+    expect(mem.ownTraps.size).toBe(0);
+    expect(mem.dangers).toEqual([{ at: { door: '0-1' }, cause: 'elektrina', since: 1 }]);
+    remember(mem, view(), [{ type: 'disarmed', spy: 0, trap: 'elektrina', remedy: 'destnik' }], at(null, '0-1'));
+    expect(mem.dangers).toEqual([]);
+  });
+
+  it('a safe search of a piece or a safe pass through a door clears the danger there', () => {
+    const mem = createMemory();
+    mem.dangers.push({ at: { piece: 5 }, cause: 'bomba', since: 1 }, { at: { door: '0-1' }, cause: 'elektrina', since: 1 });
+    remember(mem, view(), [{ type: 'found', spy: 0, thing: null, furniture: 5 }], NO_CTX);
+    expect(mem.dangers).toEqual([{ at: { door: '0-1' }, cause: 'elektrina', since: 1 }]);
+    // Opened and died on it the same tick: still (again) a danger.
+    remember(mem, view(), [{ type: 'doorOpened', spy: 0, key: '0-1' }, { type: 'died', spy: 0, cause: 'elektrina' }], at(null, '0-1'));
+    expect(mem.dangers.some((d) => 'door' in d.at)).toBe(true);
+    remember(mem, view(), [{ type: 'doorOpened', spy: 0, key: '0-1' }], NO_CTX);
+    expect(mem.dangers).toEqual([]);
+  });
+
+  it('a heard tick means a bomb for a whole fuse, not extended by later ticks; the explosion ends it and his own časovaná', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{ type: 'tick', room: 1 }], NO_CTX);
+    expect(mem.ticking.get(1)).toBe(10 + RULES.timeBombFuse);
+    remember(mem, view({ time: 12 }), [{ type: 'tick', room: 1 }], NO_CTX);
+    expect(mem.ticking.get(1)).toBe(10 + RULES.timeBombFuse);
+    mem.ownTraps.set('f:1', 'casovana');
+    remember(mem, view({ time: 13 }), [{ type: 'explode', room: 1 }], NO_CTX);
+    expect(mem.ticking.size).toBe(0);
+    expect(mem.ownTraps.size).toBe(0);
   });
 });

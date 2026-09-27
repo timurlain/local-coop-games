@@ -1,9 +1,9 @@
 import { makeRng, rand } from '../../../shared/rng';
 import type { GameEvent, GameState, PlayerId, SpyInput } from '../logic/state';
 import { chooseGoal, exitOf, exploreFor, sameGoal, stillWorth, type ExploreTarget, type Goal } from './decide';
-import { doorTrapKey, floorKey, pathTo, pieceKey } from './decide-tactics';
+import { pathTo } from './decide-tactics';
 import { botRngSeed, type Iq, IQ_PARAMS } from './iq';
-import { createMemory, forget, giveUp, remember, type Memory } from './memory';
+import { createMemory, doorTrapKey, floorKey, forget, giveUp, pieceKey, placeKey, remember, type Memory } from './memory';
 import { createMotor, doorPoint, piecePoint, type Intent } from './motor';
 import { botView, noticedEvents, type BotView } from './view';
 
@@ -16,6 +16,8 @@ export interface Bot {
   readonly iq: Iq;
   /** the goal he is pursuing (for tests and the tournament's reports) */
   readonly goal: Goal | null;
+  /** his notebook (for tests and the tournament's reports; read only) */
+  readonly memory: Readonly<Memory>;
   think(state: Readonly<GameState>, events: readonly GameEvent[], dt: number): SpyInput;
 }
 
@@ -78,7 +80,8 @@ function intentFor(goal: Goal, view: BotView, mem: Memory, target: ExploreTarget
   }
 }
 
-/** The key (`Memory.ownTraps`) of where a place intent puts its trap, so the notebook can file it on `trapSet`. */
+/** The key (`Memory.ownTraps`) of where a place intent would put its trap: for a press refused on the spot (no
+ *  placing ever started, so the view never showed where). */
 function placeTarget(intent: Intent, view: BotView): string | null {
   if (intent.kind !== 'place') return null;
   const at = intent.at;
@@ -113,6 +116,9 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
   /** search presses of one piece in a row that brought no answer */
   let tries = 0;
   let triedPiece: number | null = null;
+  /** where the trap being put down goes, from the view while placing — latched until `trapSet`/`refused` files it (the
+   *  plan may have moved on meanwhile) */
+  let placingKey: string | null = null;
 
   function think(state: Readonly<GameState>, events: readonly GameEvent[], dt: number): SpyInput {
     time += dt;
@@ -123,18 +129,20 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
     const noticed = noticedEvents(events, side, self.room);
     // What he was doing (last tick's intent) places a death: the piece he searched, the door he opened.
     const doorDir = intent.kind === 'useDoor' ? intent.dir : null;
+    if (self.placingAt !== null) placingKey = placeKey(self.placingAt, self.room);
     remember(mem, view, noticed, {
-      pendingTrapTarget: placeTarget(intent, view),
+      pendingTrapTarget: placingKey ?? placeTarget(intent, view),
       searching: intent.kind === 'search' ? intent.piece.id : null,
       door: view.doors.find((d) => d.dir === doorDir)?.key ?? null,
     });
     if (noticed.some((e) => SEARCH_ANSWERS.includes(e.type))) tries = 0;
+    if (noticed.some((e) => e.type === 'trapSet' || e.type === 'refused' || e.type === 'died')) placingKey = null;
 
     // Choose again on the think beat, as soon as the goal is spent (the target vanished), or when the last intent
     // finished; the intent is worked out again then and on entering a room. An intent that can't be done from here
-    // (null) waits for the beat — no re-choosing every frame.
+    // (null) waits for the beat — no re-choosing every frame, nor while he stands putting a trap down.
     const done = motor.done();
-    if (self.mode === 'normal') {
+    if (self.mode === 'normal' && !self.placing) {
       const spent = goal === null || !stillWorth(view, mem, goal, goalSince, exploreTo);
       let replan = self.room !== intentRoom;
       if (spent || sinceThink >= params.thinkEvery || (done && !wasDone)) {
@@ -182,6 +190,7 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
     get goal() {
       return goal;
     },
+    memory: mem,
     think,
   };
 }

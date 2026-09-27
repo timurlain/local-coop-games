@@ -3,7 +3,7 @@ import { REMEDY_FOR } from '../logic/traps';
 import { DIRS, TRAPS, doorKey, neighbor, type DeathCause, type Dir, type RemedyKind, type TrapKind } from '../logic/state';
 import type { Goal, Scored } from './decide';
 import { type Iq, IQ_PARAMS } from './iq';
-import { gaveUp, type Danger, type Memory } from './memory';
+import { doorTrapKey, floorKey, gaveUp, pieceKey, type Danger, type Memory } from './memory';
 import { doorPoint } from './motor';
 import { route, type Hop } from './route';
 import type { BotView, DoorView } from './view';
@@ -31,11 +31,6 @@ const ARMOURY = 50;
 const ARMOURY_STOCK = 1;
 /** Out of a room with a bomb ticking: above everything but the escape. */
 const FLEE_BOMB = 98;
-
-/** His own trap's key in `Memory.ownTraps` (and `noTrap`). */
-export const pieceKey = (id: number) => `p:${id}`;
-export const doorTrapKey = (key: string) => `d:${key}`;
-export const floorKey = (room: number) => `f:${room}`;
 
 export const ownTrapped = (mem: Memory, piece: number) => mem.ownTraps.has(pieceKey(piece));
 
@@ -76,9 +71,10 @@ export function pathTo(view: BotView, mem: Memory, room: number): Hop[] | null {
   return route(view.known, view.cols, view.self.room, room, routeDangers(view, mem), closedDoors(view, mem));
 }
 
-/** Doors to pass from his room to `room` (see `pathTo`), null when unreachable — or when a bomb ticks there. */
+/** Doors to pass from his room to `room` (see `pathTo`), null when unreachable — or when a bomb ticks in that other
+ *  room. */
 export function hops(view: BotView, mem: Memory, room: number): number | null {
-  if (ticking(view, mem, room)) return null;
+  if (room !== view.self.room && ticking(view, mem, room)) return null;
   return pathTo(view, mem, room)?.length ?? null;
 }
 
@@ -243,12 +239,18 @@ export function remedyGoal(view: BotView, mem: Memory, dest: { room: number; pie
   for (const [piece, e] of mem.pieces) {
     if (!remedySource(mem, piece, need) || gaveUp(mem, piece, view.time) || ownTrapped(mem, piece)) continue;
     if (mem.dangers.some((d) => 'piece' in d.at && d.at.piece === piece)) continue;
-    const h = hops(view, mem, e.room);
-    if (h === null) continue;
-    const score = dest.score + REMEDY_EDGE - HOP * h;
+    // A source he could only reach through the very danger it is for is no help.
+    const path = ticking(view, mem, e.room) ? null : pathTo(view, mem, e.room);
+    if (path === null || path.some((hop) => needsAt(mem, hop.key, need))) continue;
+    const score = dest.score + REMEDY_EDGE - HOP * path.length;
     if (best === null || score > best.score) best = { goal: { kind: 'remedy', piece, remedy: need }, score };
   }
   return best;
+}
+
+/** Whether a death at door `key` calls for `remedy`. */
+function needsAt(mem: Memory, key: string, remedy: RemedyKind): boolean {
+  return mem.dangers.some((d) => 'door' in d.at && d.at.door === key && remedyFor(d.cause) === remedy);
 }
 
 /** Whether `piece` is noted as giving `remedy`. */

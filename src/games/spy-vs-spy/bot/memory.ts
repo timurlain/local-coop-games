@@ -1,6 +1,6 @@
 import { rand, type RngState } from '../../../shared/rng';
 import { RULES } from '../logic/rules';
-import type { DeathCause, GameEvent, RemedyKind, SecretKind, Thing, TrapKind } from '../logic/state';
+import type { DeathCause, GameEvent, PlaceTarget, RemedyKind, SecretKind, Thing, TrapKind } from '../logic/state';
 import { type Iq, IQ_PARAMS } from './iq';
 import type { BotView, Glance } from './view';
 
@@ -81,8 +81,26 @@ export function createMemory(): Memory {
 
 const FURNITURE_TRAPS: readonly DeathCause[] = ['bomba', 'pruzina'];
 const DOOR_TRAPS: readonly DeathCause[] = ['elektrina', 'pistole'];
-/** A tick heard in his room means a bomb there for at least this long (the next tick comes a second later). */
-const TICK_HEARD = 1.5;
+
+/** His own trap's key in `Memory.ownTraps` (and `noTrap`): on a piece, a door, the floor of a room. */
+export const pieceKey = (id: number) => `p:${id}`;
+export const doorTrapKey = (key: string) => `d:${key}`;
+export const floorKey = (room: number) => `f:${room}`;
+
+/** The key of a trap being put down at `target` in `room`. */
+export function placeKey(target: PlaceTarget, room: number): string {
+  if (target.on === 'furniture') return pieceKey(target.furniture);
+  return target.on === 'door' ? doorTrapKey(target.key) : floorKey(room);
+}
+
+/** His own events that end a search of the piece they name. */
+const SEARCH_DONE: readonly GameEvent['type'][] = ['found', 'stored', 'swapped', 'hidden', 'alreadyHave'];
+
+/** Drops the dangers at `at` (a trap springs once: after a safe pass, a safe search or a disarm it is gone). */
+function clearDanger(mem: Memory, at: { piece: number } | { door: string }): void {
+  mem.dangers = mem.dangers.filter((d) => ('piece' in at ? !('piece' in d.at && d.at.piece === at.piece)
+    : !('door' in d.at && d.at.door === at.door)));
+}
 
 /** The note for a piece that now holds `t`. */
 function holding(t: Thing): PieceNote {
@@ -107,6 +125,8 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
   const note = (piece: number, n: PieceNote, at = room) => mem.pieces.set(piece, { room: at, note: n, at: time });
   for (const e of events) {
     if ('spy' in e && e.spy !== view.self.id) continue;
+    // A search that finished: he came through the piece alive, so no trap sits there now.
+    if (SEARCH_DONE.includes(e.type) && 'furniture' in e && e.furniture !== null) clearDanger(mem, { piece: e.furniture });
     switch (e.type) {
       case 'found':
         // Nothing, or a remedy (a fixture keeps giving it) — or he took a secret/the kufřík, leaving the piece empty.
@@ -154,26 +174,38 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
         if (ctx.pendingTrapTarget !== null) mem.noTrap.set(ctx.pendingTrapTarget, time + GIVE_UP_FOR);
         break;
       case 'tick':
-        mem.ticking.set(e.room, Math.max(mem.ticking.get(e.room) ?? 0, time + TICK_HEARD));
+        // A bomb heard: it may have a whole fuse left (one he set himself he knows the time of).
+        if (!mem.ticking.has(e.room)) mem.ticking.set(e.room, time + RULES.timeBombFuse);
         break;
       case 'explode':
         mem.ticking.delete(e.room);
+        mem.ownTraps.delete(floorKey(e.room));
+        break;
+      case 'doorOpened':
+        // Through a door without dying: no trap there any more.
+        if (!events.some((d) => d.type === 'died' && d.spy === view.self.id)) clearDanger(mem, { door: e.key });
         break;
       case 'died':
         // A trap springs once: if it was his own, it is gone now.
         if (FURNITURE_TRAPS.includes(e.cause) && ctx.searching !== null) {
           mem.dangers.push({ at: { piece: ctx.searching }, cause: e.cause, since: time });
-          mem.ownTraps.delete(`p:${ctx.searching}`);
+          mem.ownTraps.delete(pieceKey(ctx.searching));
         } else if (DOOR_TRAPS.includes(e.cause) && ctx.door !== null) {
           mem.dangers.push({ at: { door: ctx.door }, cause: e.cause, since: time });
-          mem.ownTraps.delete(`d:${ctx.door}`);
+          mem.ownTraps.delete(doorTrapKey(ctx.door));
         } else if (e.cause === 'casovana') {
           mem.dangers.push({ at: { room }, cause: e.cause, since: time });
         }
         break;
       case 'disarmed':
-        if (ctx.searching !== null) mem.ownTraps.delete(`p:${ctx.searching}`);
-        if (ctx.door !== null) mem.ownTraps.delete(`d:${ctx.door}`);
+        if (ctx.searching !== null) {
+          mem.ownTraps.delete(pieceKey(ctx.searching));
+          clearDanger(mem, { piece: ctx.searching });
+        }
+        if (ctx.door !== null) {
+          mem.ownTraps.delete(doorTrapKey(ctx.door));
+          clearDanger(mem, { door: ctx.door });
+        }
         break;
       case 'mapOpened':
         mem.searchedCount = 0;
@@ -185,6 +217,7 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
   }
 
   for (const [r, until] of mem.ticking) if (until <= time) mem.ticking.delete(r);
+  for (const [key, until] of mem.noTrap) if (until <= time) mem.noTrap.delete(key);
 
   if (view.opponent !== null) mem.lastSeenOpponent = { room, at: time };
   if (view.glance !== null) mem.lastGlance = { ...view.glance, at: time };

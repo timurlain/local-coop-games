@@ -190,13 +190,14 @@ function candidates(view: BotView, mem: Memory, iq: Iq): Scored[] {
   const out: Scored[] = [];
   const self = view.self;
 
-  // A bomb ticking here: nothing else matters.
+  // The escape before all; then a bomb ticking here: nothing else matters.
+  const full = hasAllSecrets(self.hand);
+  if (full && canEscape(view, mem)) return [{ goal: { kind: 'escape' }, score: ESCAPE }];
   const flee = bombGoal(view, mem);
   if (flee !== null) return [flee];
 
-  if (hasAllSecrets(self.hand)) {
-    if (canEscape(view, mem)) out.push({ goal: { kind: 'escape' }, score: ESCAPE });
-    else if (exploreFor(view, mem) !== null) out.push({ goal: { kind: 'explore' }, score: EXPLORE_FOR_EXIT });
+  if (full) {
+    if (exploreFor(view, mem) !== null) out.push({ goal: { kind: 'explore' }, score: EXPLORE_FOR_EXIT });
     return out;
   }
 

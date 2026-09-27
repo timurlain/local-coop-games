@@ -2,7 +2,7 @@ import { armouryRoom } from '../logic/armoury';
 import { doorKeyFor, exitVisibleTo, itemRooms } from '../logic/places';
 import {
   ARMOURY_KIND, DIRS, EXIT_KEY, isActive, neighbor, opponentOf,
-  type AttackKind, type Dir, type FurnitureKind, type GameEvent, type GameState, type PlayerId, type RemedyKind,
+  type AttackKind, type Dir, type FurnitureKind, type GameEvent, type GameState, type PlaceTarget, type PlayerId, type RemedyKind,
   type SpyMode, type Thing, type TrapKind,
 } from '../logic/state';
 
@@ -67,6 +67,8 @@ export interface SelfView {
   swingCooldown: number;
   attack: AttackKind | null;
   placing: boolean;
+  /** where the trap he is putting down goes (his own hands: he knows), null when not placing */
+  placingAt: PlaceTarget | null;
   doorOpening: boolean;
 }
 
@@ -153,7 +155,7 @@ export function botView(state: Readonly<GameState>, side: PlayerId, glance: bool
       health: spy.health, maxHealth: spy.maxHealth, hand: copyThing(spy.hand), stock: { ...spy.stock },
       selected: spy.selected, trapPress: spy.trapPress, mapOpen: spy.mapOpen, clock: spy.clock,
       armouryTimer: spy.armouryTimer, swingCooldown: spy.swingCooldown, attack: spy.attack,
-      placing: spy.placing !== null, doorOpening: spy.doorOpening !== null,
+      placing: spy.placing !== null, placingAt: spy.placing === null ? null : { ...spy.placing.target }, doorOpening: spy.doorOpening !== null,
     },
     pieces,
     doors,
