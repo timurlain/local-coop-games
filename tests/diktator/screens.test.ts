@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cs } from '../../src/shared/i18n/cs';
 import { advance, newGame } from '../../src/games/diktator/logic/turn';
-import type { GameState } from '../../src/games/diktator/logic/state';
+import type { GameEvent, GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { cardsFor, phaseScreen } from '../../src/games/diktator/ui/screens';
 
@@ -40,6 +40,59 @@ describe('cardsFor', () => {
       expect(cards[1].title).toBe(T.quarter(1925, 2));
     }
   });
+
+  it('shows no evening card when the evening ends in a revolution', () => {
+    const before = day();
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'revolution', faction: 'armada' };
+    const events: GameEvent[] = [
+      { type: 'heroDone', hero: 'zogu' },
+      { type: 'revolution', faction: 'armada', ally: 'policie', strength: 12 },
+    ];
+    expect(cardsFor(albania, before, events, after)).toEqual([]);
+  });
+
+  it('shows no evening card when the evening ends in death', () => {
+    const before = day();
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'ended', ending: { kind: 'killed', cause: 'assassination' } };
+    const events: GameEvent[] = [
+      { type: 'heroDone', hero: 'zogu' },
+      { type: 'assassination', faction: 'armada', survived: false },
+      { type: 'ended', ending: { kind: 'killed', cause: 'assassination' } },
+    ];
+    expect(cardsFor(albania, before, events, after)).toEqual([]);
+  });
+
+  it('keeps a news line from the evening before a revolution, dropping the revolution line', () => {
+    const before = day();
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'revolution', faction: 'armada' };
+    const events: GameEvent[] = [
+      { type: 'heroDone', hero: 'zogu' },
+      { type: 'warThreat' },
+      { type: 'revolution', faction: 'armada', ally: 'policie', strength: 12 },
+    ];
+    const cards = cardsFor(albania, before, events, after);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].lines).toEqual([T.events.warThreat]);
+  });
+
+  it('titles the crisis outcome card "victory" after a punish decision, then shows the next quarter', () => {
+    const before = day();
+    before.phase = { kind: 'punish', faction: 'armada', chosen: 'policie' };
+    const after: GameState = structuredClone(before);
+    after.phase = { kind: 'audience', petition: '', suggested: false };
+    after.quarter = before.quarter + 1;
+    const events: GameEvent[] = [
+      { type: 'punished', faction: 'armada', ally: 'policie' },
+      { type: 'quarterStarted', quarter: before.quarter + 1 },
+    ];
+    const cards = cardsFor(albania, before, events, after);
+    expect(cards[0].title).toBe(P.victory);
+    expect(cards[0].lines).toEqual([T.events.punished]);
+    expect(cards[1].title).toBe(T.quarter(1925, 2));
+  });
 });
 
 describe('phaseScreen', () => {
@@ -51,11 +104,19 @@ describe('phaseScreen', () => {
     const s = day();
     s.phase = { kind: 'revolution', faction: 'armada' };
     s.hasPlane = true;
+    s.plots.armada = { kind: 'revolution', ally: 'policie' };
     const scr = phaseScreen(albania, s, null)!;
     expect(scr.title).toBe(P.revolutionTitle);
-    expect(scr.lines).toEqual([P.rebels('Armáda'), P.planeReady]);
+    expect(scr.lines).toEqual([T.events.revolution('Armáda', 'Tajná policie', s.str.armada + s.str.policie), P.planeReady]);
     expect(scr.options.map((o) => o.label)).toEqual([T.flee, T.fight]);
     expect(scr.options[0].choice).toEqual({ kind: 'command', command: { type: 'flee' } });
+  });
+
+  it('falls back to a plain rebellion line without a revolution plot', () => {
+    const s = day();
+    s.phase = { kind: 'revolution', faction: 'armada' };
+    const scr = phaseScreen(albania, s, null)!;
+    expect(scr.lines).toEqual([P.rebels('Armáda')]);
   });
 
   it('lists all six strength groups as allies with their known mood or "?"', () => {

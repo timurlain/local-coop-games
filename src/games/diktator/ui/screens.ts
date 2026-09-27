@@ -59,11 +59,16 @@ export function cardsFor(sc: Scenario, before: GameState | null, events: readonl
     const eveningRan = before.phase.kind === 'day' && (qi >= 0 || !PALACE_PHASES.has(after.phase.kind));
     const crisis = before.phase.kind === 'revolution' || before.phase.kind === 'chooseAlly' || before.phase.kind === 'punish';
     if (eveningRan) {
-      const l = lines(sc, head);
-      cards.push({ title: P.evening(dateOf(before.quarter)), lines: l.length > 0 ? l : [P.quietNight], button: P.next });
+      // The revolution itself is announced by the phase screen, not the evening card.
+      const l = lines(sc, head.filter((e) => e.type !== 'revolution'));
+      if (l.length > 0) {
+        cards.push({ title: P.evening(dateOf(before.quarter)), lines: l, button: P.next });
+      } else if (after.phase.kind === 'audience') {
+        cards.push({ title: P.evening(dateOf(before.quarter)), lines: [P.quietNight], button: P.next });
+      }
     } else if (crisis) {
       const l = lines(sc, head);
-      if (l.length > 0) cards.push({ title: P.revolutionTitle, lines: l, button: P.next });
+      if (l.length > 0) cards.push({ title: before.phase.kind === 'punish' ? P.victory : P.revolutionTitle, lines: l, button: P.next });
     }
   }
   if (qi >= 0) cards.push({ title: dateOf(after.quarter), lines: lines(sc, events.slice(qi)), button: P.toPalace });
@@ -82,15 +87,22 @@ export function phaseScreen(sc: Scenario, s: GameState, retryYear: number | null
     case 'audience':
     case 'day':
       return null;
-    case 'revolution':
+    case 'revolution': {
+      const { faction } = s.phase;
+      const plot = s.plots[faction];
+      const revLine =
+        plot.kind === 'revolution'
+          ? T.events.revolution(sc.groupNames[faction], sc.groupNames[plot.ally], s.str[faction] + s.str[plot.ally])
+          : P.rebels(sc.groupNames[faction]);
       return {
         title: P.revolutionTitle,
-        lines: [P.rebels(sc.groupNames[s.phase.faction]), ...(s.hasPlane ? [P.planeReady] : [])],
+        lines: [revLine, ...(s.hasPlane ? [P.planeReady] : [])],
         options: [
           { label: T.flee, choice: cmd({ type: 'flee' }) },
           { label: T.fight, choice: cmd({ type: 'fight' }) },
         ],
       };
+    }
     case 'chooseAlly':
       return {
         title: T.chooseAlly,
