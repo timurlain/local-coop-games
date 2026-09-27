@@ -763,6 +763,57 @@ export function spotResult(s: SpotState): 'found' | 'missed' | null {
 
 ---
 
+### Task 2b: Hidden weapons and things people carry (play-test change, spec §5a)
+
+**Files:**
+- Modify: `src/games/diktator/minigames/spot/logic.ts`
+- Modify: `tests/diktator/spot.test.ts`
+
+- [ ] **Step 1: Types.** Add:
+
+```ts
+export type SpotCarry = 'none' | 'newspaper' | 'basket' | 'bouquet';
+export type SpotWeapon = 'newspaperPistol' | 'appleGrenade' | 'bouquetBomb' | 'coatRevolver';
+```
+
+  `SpotPerson` gains:
+  - `readonly carry: SpotCarry`;
+  - `readonly handInCoat: boolean`;
+  - `readonly weapon: SpotWeapon | null` (non-null only for the gunman).
+
+  `SpotState` gains `readonly weapon: SpotWeapon`. Export `carryOf(w: SpotWeapon): SpotCarry`:
+  - `newspaperPistol` gives `newspaper`;
+  - `appleGrenade` gives `basket`;
+  - `bouquetBomb` gives `bouquet`;
+  - `coatRevolver` gives `none`.
+
+- [ ] **Step 2: Generator** (in `createSpot`, after the crowd is built, using the same dice so it stays deterministic):
+  - **Weapon.** Pick from `['newspaperPistol', 'coatRevolver']` at `dustojnici`, and from all four at `trziste`.
+  - **Gunman.** `carry = carryOf(weapon)`, `handInCoat = weapon === 'coatRevolver'`.
+  - **Innocents.** Each carries a newspaper, basket or bouquet with probability 1/3 (the kind picked evenly), else `none`. Each keeps a hand in the coat with probability 1/8.
+  - **Guarantees:**
+    - If the gunman carries something, at least two innocents carry the same kind; set it on the first innocents that don't.
+    - At least one innocent has `handInCoat`.
+    - Carry and hand-in-coat never change clue attributes, so the "exactly one person matches every clue" invariant is untouched.
+
+- [ ] **Step 3: Glances.** Every person gets `glancing`/`glanceIn`.
+  - Innocents toggle a glance with a longer pause: 5–9 s between glances, 0.6 s each.
+  - The gunman keeps 2–4 s between glances, 0.8 s each.
+  - Keep using the scene dice only.
+
+- [ ] **Step 4: Tests** (add to `spot.test.ts`):
+  - For seeds 1..300 and both places:
+    - the gunman's `carry` equals `carryOf(state.weapon)`;
+    - `handInCoat` is true exactly when the weapon is `coatRevolver`;
+    - the mess never picks `appleGrenade`/`bouquetBomb`;
+    - when he carries, at least 2 innocents carry the same kind;
+    - at least 1 innocent has `handInCoat`;
+    - the clue invariant still holds.
+  - Over 60 simulated seconds, some innocent glances at least once.
+  - Determinism: `createSpot` with the same arguments gives equal states.
+
+- [ ] **Step 5:** Run `npm test` and `npx tsc --noEmit`. Commit: `feat(diktator): hidden weapons — the attacker carries what others carry`.
+
 ### Task 3: Puppets get scarves, glasses, bags and a hidden hand
 
 **Files:**
@@ -881,9 +932,9 @@ export const ARENA_H = 540;
      - A person with `protestUntil > t` shows a small comic bubble with one of the protests, chosen by `id % protests.length`.
   5. **The fuse:** a rope across the top (y 24, x 40–920) that burns from the right. The remaining part is `fuse / seconds`. A flickering spark sits at its end, with the label `P.fuse`.
   6. **The glass:** a gold ring (radius 34) with a handle, at `s.glass`, with a faint lens tint.
-  7. **The close-up window** (top-right, circle radius 90 centred at (850, 150), gold rim). If `personUnderGlass(s)` is someone, draw that person at scale 2.6 inside a circular clip, centred so the head and chest show. Only here do the hidden hand and a nervous `grumpy` face show clearly: the gunman's face is `'grumpy'` while glancing, else `'neutral'`; innocents `'neutral'` or `'happy'`. Otherwise draw an empty, gently darkened lens.
+  7. **The close-up window** (top-right, circle radius 90 centred at (850, 150), gold rim). If `personUnderGlass(s)` is someone, draw that person at scale 2.6 inside a circular clip, centred so the head and chest show. Only here do the hidden weapon (spec §5a: a barrel peeking out of the newspaper, one dark metal apple with a ring pin in the basket, a fuse among the flowers, a pistol grip under the lapel for `coatRevolver`) and a nervous `grumpy` face show clearly. Innocents' carried things look normal in the close-up: the gunman's face is `'grumpy'` while glancing, else `'neutral'`; innocents `'neutral'` or `'happy'`. Otherwise draw an empty, gently darkened lens.
   8. **Endings:**
-     - `outcome === 'found'`: Vlček rushes from his place to the gunman over the first 0.6 s of the ending, then both are drawn low (the gunman lying: rotate his puppet by 90° with the negative-angle convention), a small pistol shape on the ground, and a big "To je on!" bubble.
+     - `outcome === 'found'`: Vlček rushes from his place to the gunman over the first 0.6 s of the ending, then both are drawn low (the gunman lying: rotate his puppet by 90° with the negative-angle convention), the real weapon on the ground by `weapon` (an opened newspaper with a pistol, a grenade apple rolling away, a bouquet with a fizzled fuse, a revolver), and a big "To je on!" bubble.
      - `outcome === 'missed'`: two white muzzle flashes near the gunman and grey smoke puffs expanding over the ending, and the crowd leans back (`POSES.shocked`).
 
 - [ ] **Step 5: Smoke test** (`tests/diktator/spot-render.test.ts`): for both places, for clues 0–3, and at several times (0, mid-fuse, after `found`, after `missed`, each advanced by `stepSpot` and `accuse`), `drawSpot` never throws and the fake ctx's save depth returns to 0. Add a `tipText` test.

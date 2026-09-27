@@ -100,9 +100,8 @@ mess: armáda). The café, the mosque courtyard and others come with the art.
 - **The gunman** is one person. The police tip lists `clues` of his attributes (drawn from hat, scarf, glasses, bag).
   **Generator guarantee:** exactly one person matches every clue; at least two innocents share some (not all) clues as
   red herrings; with 0 clues, only behaviour tells.
-- **Tells** (always present, strongest in the close-up): his hand stays in his coat (a pose), he glances around (head
-  turns every few seconds), and he works his way toward Zogu (his path bends toward the platform; he arrives about when
-  the fuse ends).
+- **Tells**: see §5a — the hidden weapon shows only in the close-up; he glances around and works his way toward Zogu
+  (his path bends toward the platform; he arrives about when the fuse ends).
 - **The crowd** walks between the scene's edges, turns at the ends, some stand still; Zogu moves along the platform
   between greetings.
 - **The glass**: a cursor moved continuously by Vlček's input (≈ 320 units/s), clamped to the scene; the person
@@ -112,6 +111,26 @@ mess: armáda). The café, the mosque courtyard and others come with the art.
 - **The fuse**: burns `seconds`; at 0 → outcome `missed` (after a 1.5 s shots animation).
 - State and step: `createSpot(difficulty, place, seed)`, `stepSpot(state, dt, input)`, `accuse(state)`; the result is
   `'found' | 'missed'`.
+
+### 5a. Hidden weapons (play-test change, 2026-09-27)
+
+A hand always in the coat stood out too much. Assassins of the era struck from the crowd with weapons that looked like
+everyday things — Zogu himself was shot by Beqir Valteri at the entrance to parliament on 23 February 1924; Sarajevo 1914
+began with a bomb thrown from the crowd; King Alexander was shot from the crowd in Marseille 1934; Tsar Alexander II
+died by hand-thrown bombs (1881); Empress Elisabeth by a hidden sharpened file (1898). So:
+
+- **The attacker's weapon** (one per attempt, from the seed): `newspaperPistol` (a pistol in a folded newspaper),
+  `appleGrenade` (a grenade among the apples in a fruit basket), `bouquetBomb` (a bomb with a fuse in a bouquet),
+  `coatRevolver` (a revolver under the coat — his hand stays in the coat). The officers' mess uses only
+  `newspaperPistol` and `coatRevolver`; the market uses all four.
+- **Everyone may carry things:** people carry a newspaper, a basket of apples or a bouquet (about a third of the crowd);
+  whenever the attacker carries one, **at least two innocents carry the same kind**; **at least one innocent** keeps a
+  hand in his coat (a cold day). Nothing distinguishes the attacker at a distance.
+- **The close-up tells the truth:** a barrel peeks out of the newspaper, one apple is dark metal with a ring pin, a fuse
+  sticks out of the flowers, a pistol grip shows under the lapel. Innocents' things look normal up close.
+- **Behaviour:** the attacker still works his way toward Zogu and glances around; some innocents glance around now and
+  then too (less often), so a glance alone proves nothing.
+- **The arrest** shows the real weapon falling out (the newspaper opens on a pistol, the grenade apple rolls away …).
 
 ## 6. Drawing
 
