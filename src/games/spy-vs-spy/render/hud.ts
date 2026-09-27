@@ -1,5 +1,4 @@
 import { cs } from '../../../shared/i18n/cs';
-import { RULES } from '../logic/rules';
 import { backArrows, showsBreadcrumbs } from '../logic/trail';
 import type { Dir, GameState, Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
@@ -87,7 +86,7 @@ export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | n
   }
 
   const pips = p.pips;
-  for (let i = 0; i < RULES.health; i++) {
+  for (let i = 0; i < spy.maxHealth; i++) {
     r(ctx, pips.x + 1 + i * 5, pips.y + 2, 4, 5, i < spy.health ? '#d23c3c' : '#333340');
   }
 }

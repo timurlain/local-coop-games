@@ -118,5 +118,5 @@ export function updateHealthRegen(spy: Spy, dt: number): void {
   const before = regenTicksFor(spy.sinceHit);
   spy.sinceHit += dt;
   const after = regenTicksFor(spy.sinceHit);
-  if (after > before) spy.health = Math.min(RULES.health, spy.health + (after - before));
+  if (after > before) spy.health = Math.min(spy.maxHealth, spy.health + (after - before));
 }

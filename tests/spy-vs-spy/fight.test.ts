@@ -375,4 +375,13 @@ describe('updateHealthRegen', () => {
     updateHealthRegen(b, RULES.regenDelay - 0.01);
     expect(b.health).toBe(RULES.health - 3 - 1); // the hit itself, no recovery yet
   });
+
+  it('caps recovery at the spy\'s own maxHealth, not RULES.health (spec bot §1)', () => {
+    const { b } = duel();
+    b.maxHealth = 5;
+    b.health = 3;
+    b.sinceHit = 0;
+    updateHealthRegen(b, RULES.regenDelay + RULES.regenInterval * 10);
+    expect(b.health).toBe(5);
+  });
 });

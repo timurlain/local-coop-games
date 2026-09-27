@@ -167,6 +167,16 @@ describe('updateDead', () => {
     expect(spy.deathCause).toBeNull();
     expect(ev).toEqual([{ type: 'respawn', spy: 0 }]);
   });
+
+  it('respawns at the spy\'s own maxHealth, not RULES.health (spec bot §1)', () => {
+    const s = openGame();
+    const spy = place(s, 0, 4, 10, 5);
+    spy.maxHealth = 6;
+    spy.health = 1;
+    kill(s, spy, 'fight', []);
+    updateDead(s, spy, RULES.respawnTime, []);
+    expect(spy.health).toBe(6);
+  });
 });
 
 describe('respawnRoom (round 5 §2)', () => {

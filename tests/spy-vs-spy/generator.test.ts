@@ -137,6 +137,22 @@ describe('createGame', () => {
     expect(() => createGame(1, 9)).toThrow();
     expect(() => createGame(1, 2.5)).toThrow();
   });
+
+  it('defaults every spy to RULES.health when no handicap is given (spec bot §1)', () => {
+    const s = createGame(1, 1);
+    expect(s.spies[0].health).toBe(RULES.health);
+    expect(s.spies[0].maxHealth).toBe(RULES.health);
+    expect(s.spies[1].health).toBe(RULES.health);
+    expect(s.spies[1].maxHealth).toBe(RULES.health);
+  });
+
+  it('sets health and maxHealth per spy from opts.maxHealth (spec bot §1)', () => {
+    const s = createGame(1, 1, { maxHealth: [7, 5] });
+    expect(s.spies[0].health).toBe(7);
+    expect(s.spies[0].maxHealth).toBe(7);
+    expect(s.spies[1].health).toBe(5);
+    expect(s.spies[1].maxHealth).toBe(5);
+  });
 });
 
 describe('„Délka hry" (game length)', () => {
