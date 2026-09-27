@@ -20,11 +20,10 @@ export function newSave(scenario: string, state: GameState): SaveFile {
   return { version: SAVE_VERSION, scenario, current: state, checkpoints: isYearStart(state) ? [state] : [], retries: 0 };
 }
 
-/** Stores the latest state; at the start of a year also stores (or replaces) that year's checkpoint. */
+/** Stores the latest state; at the start of a year also stores that year's checkpoint, once — a palace-mode
+ * audience phase spans many commands, so later calls for the same quarter never overwrite the first. */
 export function recordTurn(f: SaveFile, state: GameState): SaveFile {
-  const checkpoints = isYearStart(state)
-    ? [...f.checkpoints.filter((c) => c.quarter !== state.quarter), state]
-    : f.checkpoints;
+  const checkpoints = isYearStart(state) && !f.checkpoints.some((c) => c.quarter === state.quarter) ? [...f.checkpoints, state] : f.checkpoints;
   return { ...f, current: state, checkpoints };
 }
 

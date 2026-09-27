@@ -7,7 +7,7 @@ import type { RoomView } from '../../ui/palace-view';
 import { STAGE_H, STAGE_W } from './crowd';
 import { drawHeroes, drawRoom } from './scene';
 
-export const SLIDE_SEC = 0.4;
+export const SLIDE_SEC = 0.6;
 export const BUMP_SEC = 0.15;
 
 export type StageAnim =
@@ -43,6 +43,7 @@ export function bumpOffset(dir: Direction, p: number): readonly [number, number]
 /** Draws `own`'s half: `view` is the room he stands in now. The caller has set the stage transform (480 × 200). */
 export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Hero, anim: StageAnim | null, t: number): void {
   const p = progress(anim, t);
+  const bowing: readonly Hero[] = view.resident === 'mother' ? ['velitel'] : [];
   ctx.save();
   if (anim && anim.kind === 'slide' && p < 1) {
     const o = slideOffsets(anim.dir, p);
@@ -53,7 +54,7 @@ export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Her
     ctx.save();
     ctx.translate(o.to[0], o.to[1]);
     drawRoom(ctx, view, t, { heroes: false });
-    drawHeroes(ctx, view.heroes.filter((h) => h !== own), own, t);
+    drawHeroes(ctx, view.heroes.filter((h) => h !== own), own, t, 1, bowing);
     ctx.restore();
     drawHeroes(ctx, view.heroes.filter((h) => h === own), own, t, p);
   } else {
@@ -62,7 +63,7 @@ export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Her
       ctx.translate(bx, by);
     }
     drawRoom(ctx, view, t, { heroes: false });
-    drawHeroes(ctx, view.heroes, own, t);
+    drawHeroes(ctx, view.heroes, own, t, 1, bowing);
   }
   ctx.restore();
 }

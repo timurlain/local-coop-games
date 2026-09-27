@@ -56,6 +56,9 @@ describe('palaceAct', () => {
     expect(palaceAct([], { kind: 'seal' })).toBeNull();
     expect(palaceAct(cmds, { kind: 'action' })).toBeNull();
   });
+  it('never bumps or moves a hero who ended his day (no commands)', () => {
+    expect(palaceAct([], { kind: 'dir', dir: 'up' })).toBeNull();
+  });
 });
 
 describe('seats', () => {

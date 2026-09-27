@@ -97,7 +97,7 @@ function retryYear(): number | null {
 }
 
 function currentScreen(): PhaseScreen | null {
-  return file ? phaseScreen(sc, state(), retryYear()) : null;
+  return file ? phaseScreen(sc, state(), state().phase.kind === 'ended' ? retryYear() : null) : null;
 }
 
 function holdAll(): void {
@@ -175,8 +175,10 @@ function play(cmd: Command): void {
     }
     if (e.type === 'decided') sfx.play('stamp');
     if (e.type === 'aidGranted' || e.type === 'swissTransfer') sfx.play('coins');
-    for (const n of notesFor(sc, after, e)) {
-      for (const h of n.to === 'both' ? HEROES : [n.to]) next[h].notes = [...next[h].notes, n.text].slice(-NOTES_KEPT);
+    if (after.quarter === before.quarter) {
+      for (const n of notesFor(sc, after, e)) {
+        for (const h of n.to === 'both' ? HEROES : [n.to]) next[h].notes = [...next[h].notes, n.text].slice(-NOTES_KEPT);
+      }
     }
   }
   halves = next;
@@ -263,6 +265,10 @@ function updateShared(): boolean {
   const count = card ? 1 : scr!.options.length;
   for (const d of seatedDevices(seats)) {
     for (const intent of intentsOf(d)) {
+      if (scr && intent.kind === 'close') {
+        pause(P.pause.title);
+        return true;
+      }
       const r = navigate(overlayUi, intent, count, true);
       if (r.ui.focus !== overlayUi.focus) sfx.play('click');
       overlayUi = r.ui;
@@ -313,11 +319,14 @@ function updatePalace(): void {
   }
   if (updateShared()) return;
   if (!halves) return;
-  for (const d of seatedDevices(seats)) {
+  /** A command played by one device stops only that device's intents this tick; the other device still plays
+   * its own tick, unless the command raised a shared screen or left the palace (then the whole tick is over). */
+  const afterCommand = (): boolean => cards.length > 0 || currentScreen() !== null || screen !== 'palace';
+  devices: for (const d of seatedDevices(seats)) {
     const hero = heroOf(seats, d, active);
     if (!hero) continue;
     for (const intent of intentsOf(d)) {
-      const half = halves[hero];
+      const half = halves![hero];
       if (intent.kind === 'close' && !(half.ui.open && !half.menu.modal)) return pause(P.pause.title);
       const r = navigate(half.ui, intent, half.menu.items.length, half.menu.modal);
       if (r.ui.focus !== half.ui.focus && r.chosen === null) sfx.play('click');
@@ -325,13 +334,15 @@ function updatePalace(): void {
       dirty = true;
       if (r.chosen !== null) {
         choosePalace(hero, r.chosen);
-        return;
+        if (afterCommand()) return;
+        continue devices;
       }
       if (r.pass) {
         const act = palaceAct(palaceCommands(sc, state(), hero), r.pass);
         if (act?.kind === 'command') {
           play(act.command);
-          return;
+          if (afterCommand()) return;
+          continue devices;
         }
         if (act?.kind === 'bump') bump(hero, act.dir);
       }

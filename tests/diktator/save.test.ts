@@ -86,4 +86,17 @@ describe('save file', () => {
     const f1 = recordTurn(f0, suggested);
     expect(f1.checkpoints).toEqual(f0.checkpoints);
   });
+
+  it('keeps the quarter\'s FIRST state as the checkpoint, even across several audience-phase commands', () => {
+    const { state: first } = newGame(albania, 7, undefined, { palace: true });
+    let f = newSave('albania', first);
+    const afterReport = advance(albania, f.current, { type: 'policeReport', hero: 'velitel' }).state;
+    f = recordTurn(f, afterReport);
+    const afterEndDay = advance(albania, afterReport, { type: 'endDay', hero: 'velitel' }).state;
+    f = recordTurn(f, afterEndDay);
+    expect(f.checkpoints.filter((c) => c.quarter === 1)).toHaveLength(1);
+    expect(f.checkpoints.find((c) => c.quarter === 1)).toEqual(first);
+    expect(first.palace!.hours.velitel).toBe(3);
+    expect(first.palace!.done.velitel).toBe(false);
+  });
 });

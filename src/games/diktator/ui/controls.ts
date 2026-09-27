@@ -60,8 +60,10 @@ export type PalaceAct =
   | { readonly kind: 'bump'; readonly dir: Direction }
   | null;
 
-/** A passed-through intent in the palace: a move to the next room, a bump against a wall, or the seal shortcut. */
+/** A passed-through intent in the palace: a move to the next room, a bump against a wall, or the seal shortcut.
+ * No commands (a hero who ended his day) never bumps or moves — null for any intent. */
 export function palaceAct(commands: readonly Command[], intent: Intent): PalaceAct {
+  if (commands.length === 0) return null;
   if (intent.kind === 'dir') {
     const move = commands.find((c) => c.type === 'move' && c.dir === intent.dir);
     return move ? { kind: 'command', command: move } : { kind: 'bump', dir: intent.dir };

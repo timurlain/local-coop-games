@@ -10,7 +10,7 @@ function near(a: readonly number[], b: readonly number[]): void {
 describe('progress', () => {
   it('is 1 without an animation and runs 0 → 1 over its length', () => {
     expect(progress(null, 5)).toBe(1);
-    expect(SLIDE_SEC).toBe(0.4);
+    expect(SLIDE_SEC).toBe(0.6);
     const bump = { kind: 'bump', dir: 'up', start: 1 } as const;
     expect(progress(bump, 1)).toBe(0);
     expect(progress(bump, 1 + BUMP_SEC / 2)).toBeCloseTo(0.5);
