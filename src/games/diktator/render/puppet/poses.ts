@@ -37,6 +37,8 @@ const POSE_TABLE = {
   handInCoat: () => ({ ...STAND, reachF: [6, 22], bendF: -1, hideHandF: true }) satisfies PuppetPose,
   /** Walking with the front hand hidden in the coat, as `handInCoat`. */
   handInCoatWalk: (t: number) => ({ ...walkPose(t), reachF: [6, 22], bendF: -1, hideHandF: true }) satisfies PuppetPose,
+  /** Pochod na Tiranu: a gendarme gives himself up — both hands raised beside the head. */
+  handsUp: () => ({ ...STAND, head: -4, armF: [18, -22], armB: [-18, 22], face: 'shocked' }) satisfies PuppetPose,
 } as const satisfies Record<string, PoseFn>;
 
 export type PoseName = keyof typeof POSE_TABLE;

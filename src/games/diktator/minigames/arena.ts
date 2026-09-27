@@ -7,6 +7,8 @@ export interface ArenaInput {
   readonly moveX: number;
   readonly moveY: number;
   readonly action: boolean;
+  /** Action is held down this tick (Pochod na Tiranu: Zogu negotiates while he holds it). */
+  readonly held?: boolean;
 }
 
 export interface MiniGame<R> {

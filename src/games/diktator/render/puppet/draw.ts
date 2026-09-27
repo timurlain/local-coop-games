@@ -79,6 +79,7 @@ function drawHat(ctx: CanvasRenderingContext2D, J: PuppetJoints, L: Look): void 
       case 'tophat': path.rect(-r * 0.7, r * 0.6, r * 1.4, r * 1.3); path.rect(-r * 1.1, r * 0.55, r * 2.2, r * 0.18); break;
       case 'sajkaca': path.moveTo(-r * 0.95, r * 0.55); path.quadraticCurveTo(0, r * 1.5, r * 0.95, r * 0.55); path.closePath(); break;
       case 'bun': path.ellipse(-r * 0.05, r * 0.45, r * 0.95, r * 0.6, 0, 0, Math.PI); path.ellipse(-r * 0.85, r * 0.35, r * 0.42, r * 0.42, 0, 0, Math.PI * 2); break;
+      case 'papakha': path.moveTo(-r * 0.8, r * 0.5); path.lineTo(-r * 0.72, r * 1.55); path.lineTo(r * 0.72, r * 1.55); path.lineTo(r * 0.8, r * 0.5); path.closePath(); break;
     }
     ctx.fill(path);
     ctx.stroke(path);
@@ -87,6 +88,14 @@ function drawHat(ctx: CanvasRenderingContext2D, J: PuppetJoints, L: Look): void 
       ctx.fillRect(r * 0.1, r * 0.42, r * 1.05, r * 0.16);
       ctx.fillStyle = L.trim;
       ctx.fillRect(-r * 0.7, r * 0.6, r * 1.4, r * 0.12);
+    }
+    if (L.hat === 'papakha') {
+      // Fur: short vertical strokes across the cylinder.
+      ctx.strokeStyle = LINE;
+      ctx.lineWidth = 0.8;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath(); ctx.moveTo(i * r * 0.2, r * 0.62); ctx.lineTo(i * r * 0.2 + r * 0.06, r * 1.45); ctx.stroke();
+      }
     }
     if (L.hat === 'fez') {
       ctx.strokeStyle = '#1a140d';

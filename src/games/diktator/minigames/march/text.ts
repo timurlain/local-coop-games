@@ -5,7 +5,7 @@ import { cs } from '../../../../shared/i18n/cs';
 import type { GroupId } from '../../logic/groups';
 import { regimeFromMarch } from '../../logic/march-regime';
 import { RULES } from '../../logic/rules';
-import type { MarchResult } from './state';
+import type { MarchEvent, MarchResult, MarchState } from './state';
 
 export function marchCardLines(r: MarchResult, names: Readonly<Record<GroupId, string>>, cacheCount: number): string[] {
   const L = cs.diktator.pochod.lines;
@@ -27,4 +27,16 @@ export function marchCardLines(r: MarchResult, names: Readonly<Record<GroupId, s
   if (r.messenger) lines.push(L.messenger(names.italie, pop('italie')));
   if (r.horses) lines.push(L.horses);
   return lines;
+}
+
+/** The short bubble an event raises over the map (a won place's line, a refusal, a catch, a cache), or null. */
+export function marchToast(e: MarchEvent, s: MarchState): string | null {
+  const P = cs.diktator.pochod;
+  switch (e.type) {
+    case 'won': return P.won[s.places[e.place].def.id];
+    case 'refused': return e.reason === 'noGold' ? P.noGold : P.locked;
+    case 'caught': return P.caught;
+    case 'cache': return P.cache;
+    default: return null;
+  }
 }
