@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMemory, forget, gaveUp, giveUp, GIVE_UP_FOR, remember, type Memory } from '../../src/games/spy-vs-spy/bot/memory';
+import { createMemory, forget, gaveUp, giveUp, GIVE_UP_FOR, pieceRoom, remember, type Memory } from '../../src/games/spy-vs-spy/bot/memory';
 import type { BotView, PieceView } from '../../src/games/spy-vs-spy/bot/view';
 import { IQ_PARAMS } from '../../src/games/spy-vs-spy/bot/iq';
 import { makeRng } from '../../src/shared/rng';
@@ -242,6 +242,17 @@ describe('memory (spec bot §4)', () => {
     remember(mem, view(), [{ type: 'mapOpened', spy: 0 }], NO_CTX);
     expect(mem.searchedCount).toBe(0);
     expect(mem.foundSinceMap).toBe(0);
+  });
+});
+
+describe('pieceRoom (Task 9: a piece he died at, never noted)', () => {
+  it('comes from the note, else from the room layout; null for a piece never seen', () => {
+    const mem = createMemory();
+    mem.roomPieces.set(2, [4, 5]);
+    mem.pieces.set(7, { room: 3, note: { kind: 'empty' }, at: 0 });
+    expect(pieceRoom(mem, 7)).toBe(3);
+    expect(pieceRoom(mem, 5)).toBe(2);
+    expect(pieceRoom(mem, 9)).toBeNull();
   });
 });
 

@@ -4,7 +4,9 @@ import { chooseGoal, exitOf, exploreFor, sameGoal, stillWorth, type ExploreTarge
 import { pathTo } from './decide-tactics';
 import { createFightMemo, fightInput, resetFightMemo, watchFight } from './fight';
 import { botRngSeed, type Iq, IQ_PARAMS } from './iq';
-import { createMemory, doorTrapKey, floorKey, forget, giveUp, pieceKey, placeKey, remember, type Memory } from './memory';
+import {
+  createMemory, doorTrapKey, floorKey, forget, giveUp, pieceKey, pieceRoom, placeKey, remember, type Memory,
+} from './memory';
 import { createMotor, doorPoint, piecePoint, type Intent } from './motor';
 import { botView, noticedEvents, type BotView } from './view';
 
@@ -46,8 +48,8 @@ function intentFor(goal: Goal, view: BotView, mem: Memory, target: ExploreTarget
     case 'remedy': {
       const here = view.pieces.find((p) => p.id === goal.piece);
       if (here !== undefined) return { kind: 'search', piece: here };
-      const room = mem.pieces.get(goal.piece)?.room;
-      return room === undefined ? null : towards(view, mem, room);
+      const room = pieceRoom(mem, goal.piece);
+      return room === null ? null : towards(view, mem, room);
     }
     case 'escape': {
       const exit = exitOf(view);

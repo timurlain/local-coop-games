@@ -93,6 +93,15 @@ export function placeKey(target: PlaceTarget, room: number): string {
   return target.on === 'door' ? doorTrapKey(target.key) : floorKey(room);
 }
 
+/** The room of a piece he knows of: from its note, else from the room layout (which never fades — a note can, and a
+ *  piece he died at may never have had one); null for a piece he has never seen. */
+export function pieceRoom(mem: Memory, piece: number): number | null {
+  const noted = mem.pieces.get(piece)?.room;
+  if (noted !== undefined) return noted;
+  for (const [room, ids] of mem.roomPieces) if (ids.includes(piece)) return room;
+  return null;
+}
+
 /** His own events that end a search of the piece they name. */
 const SEARCH_DONE: readonly GameEvent['type'][] = ['found', 'stored', 'swapped', 'hidden', 'alreadyHave'];
 

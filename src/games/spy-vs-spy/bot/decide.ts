@@ -7,7 +7,7 @@ import {
   armouryGoal, bombGoal, hazard, hops, HOP, ownTrapped, remedyGoal, tacticStillWorth, trapGoals,
 } from './decide-tactics';
 import { fightGoal } from './fight';
-import { gaveUp, type Memory, type PieceNote } from './memory';
+import { gaveUp, pieceRoom, type Memory, type PieceNote } from './memory';
 import type { BotView } from './view';
 
 /**
@@ -177,7 +177,7 @@ function destination(goal: Goal, view: BotView, mem: Memory, target: ExploreTarg
   switch (goal.kind) {
     case 'search':
     case 'fetch':
-      return { room: mem.pieces.get(goal.piece)?.room ?? view.self.room, piece: goal.piece };
+      return { room: pieceRoom(mem, goal.piece) ?? view.self.room, piece: goal.piece };
     case 'explore':
       return target === null ? null : { room: target.room, piece: null };
     default:
