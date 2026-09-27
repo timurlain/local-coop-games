@@ -7,16 +7,16 @@ import type { Speaker } from './speech';
 const ENVOYS: ReadonlySet<string> = new Set(['italie', 'britanie', 'jugoslavie']);
 
 export function moveSounds(h: Hero): SfxName[] {
-  return h === 'zogu' ? ['stepZogu', 'doorZogu'] : ['stepKovar', 'doorKovar'];
+  return h === 'zogu' ? ['stepZogu', 'doorZogu'] : ['stepVlcek', 'doorVlcek'];
 }
 
 export function bumpSound(h: Hero): SfxName {
-  return h === 'zogu' ? 'bumpZogu' : 'bumpKovar';
+  return h === 'zogu' ? 'bumpZogu' : 'bumpVlcek';
 }
 
 export function voiceOf(sp: Speaker): SfxName {
   switch (sp.kind) {
-    case 'hero': return sp.hero === 'zogu' ? 'voiceZogu' : 'voiceKovar';
+    case 'hero': return sp.hero === 'zogu' ? 'voiceZogu' : 'voiceVlcek';
     case 'resident': return 'voiceMother';
     case 'petitioner': return 'voiceCrowd';
     case 'group': return ENVOYS.has(sp.group) ? 'voiceEnvoy' : 'voiceCrowd';

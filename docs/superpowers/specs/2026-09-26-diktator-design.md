@@ -35,11 +35,11 @@ Out of scope for v1:
 | Role | Who | Note |
 |---|---|---|
 | Player 1 | **Ahmet Zogu** | President from 1925, **King Zog I from 1 Sep 1928**. |
-| Player 2 | **plk. Jaroslav Kovář** | **Invented.** A Czechoslovak legionnaire who went through Russia and ended up in the Balkans. He marched with Zog in 1924 next to the (historical) White Russian detachment, and now commands the royal guard. The game says openly that he is invented. |
+| Player 2 | **plk. Jaroslav Vlček** | **Invented.** A Czechoslovak legionnaire who went through Russia and ended up in the Balkans. He marched with Zog in 1924 next to the (historical) White Russian detachment, and now commands the royal guard. The game says openly that he is invented. |
 | Advisor (NPC) | **Queen Mother Sadije** | Historical, died 25 Nov 1934. After her death her room passes to Princess Adile, who gives the same advice. |
 | NPCs | Zog's sisters, Geraldine (from 1938), little Leka (born 5 Apr 1939), envoys, petitioners, faction members | |
 
-Kovář's letters home and the "Meanwhile at home" (Mezitím doma) newspaper column tie the story to Czechoslovakia.
+Vlček's letters home and the "Meanwhile at home" (Mezitím doma) newspaper column tie the story to Czechoslovakia.
 
 ### 2.1 Groups (KPIs)
 
@@ -272,7 +272,7 @@ Zog has 3 hours and the commander has 3. The audience is free and comes first fo
 | Either | Seal a decision (free; needs the seal, in the right room) | Carries out one decision. Only one per quarter. |
 | Either | Pick up or hand over the seal (free) | Handing over works only in the same room. |
 
-**Dialogs belong to their own half.** An audience in Zog's half and an investigation in Kovář's half can run at the
+**Dialogs belong to their own half.** An audience in Zog's half and an investigation in Vlček's half can run at the
 same time without covering each other.
 
 **Comic dialogue (play-test change, 2026-09-27).** Every conversation happens on the stage in comic speech
@@ -287,10 +287,10 @@ bubbles, like an old RPG — nothing is picked from a side list and nothing vani
 4. **Each bubble stays until that player presses Action**, then the next one comes; after the last the room is
    quiet again. While one hero talks, the other player keeps playing in his half. The speaker takes the talk pose.
 
-The side panel keeps only the hero's status (room, hours, seal). **Only Zogu takes the Queen Mother's advice**; Kovář
+The side panel keeps only the hero's status (room, hours, seal). **Only Zogu takes the Queen Mother's advice**; Vlček
 may enter her room and bows to her.
 
-**Sounds tell the heroes apart.** Each hero has his own footsteps (Zogu: heavy, slow boots; Kovář: quick steps with a
+**Sounds tell the heroes apart.** Each hero has his own footsteps (Zogu: heavy, slow boots; Vlček: quick steps with a
 spur jingle), door and wall-bump sounds, so both players hear who moved where without looking. Every speech bubble
 plays a short "voice" blip in its speaker's pitch.
 
@@ -311,7 +311,7 @@ the item costs no hour, and only the first player to act on it gets it.
 | **Seasonal** | Q4: a Christmas tree. Put a gift under it: for the peasants' children (Rolníci +1, −10 money), for the officers (Armáda +1, −10) or nothing. Q2 around Easter: painted eggs from the villages. | small |
 | **Trivia** | A question about an article from this or an earlier newspaper, with 3 answers. "Kdo letěl sám přes Atlantik v roce 1927?" (Who flew alone across the Atlantic in 1927?) | right answer: +10 money or +1 popularity to one named group; wrong: nothing, and the correct answer is shown |
 | **Easter egg** | 1928: a Mickey Mouse film reel (a short silent gag plays). 1928: a mouldy dish (penicillin, "keep it!"). The king's ashtray counter ("dnes už 200. cigareta"). 1939: little Leka's cradle. | flavour, or a tiny effect |
-| **Toy** | Kovář's tin soldiers from the Czechoslovak Legion; the princesses' gramophone plays a 1930s tune. | flavour |
+| **Toy** | Vlček's tin soldiers from the Czechoslovak Legion; the princesses' gramophone plays a 1930s tune. | flavour |
 
 - **Data.** Items live in `scenario/albania/playroom.ts`, each with a date window, a condition, and effects in the same format as the other records.
 - **Trivia and the chronicle.** Trivia only asks about articles that have already been shown, so the chronicle doubles as a study guide.
@@ -322,7 +322,7 @@ the item costs no hour, and only the first player to act on it gets it.
 - **Setting.** December 1924. A top-down, hand-authored mountain map from the Yugoslav border to Tirana (the river Drin, passes, snow). The seed varies only the patrols and what each place offers.
 - **Clock.** The days left until Christmas: about 12 days at about 22 s each, roughly 5 minutes.
 - **Player 1 is Zogu, the diplomat.** He holds Action inside a place to negotiate (a progress ring fills). He cannot fight. If a patrol catches him, he loses a day and some gold.
-- **Player 2 is Kovář, the soldier.** He strikes patrols and guards Zog while Zog negotiates; patrols target a negotiating Zog.
+- **Player 2 is Vlček, the soldier.** He strikes patrols and guards Zog while Zog negotiates; patrols target a negotiating Zog.
 - **Rope.** If the two get too far apart, the column halts, and neither moves further away from the other until they close in again.
 
 **Places:**
@@ -349,7 +349,7 @@ has one illustration.
 |---|---|---|
 | Albánie (Albania) | the dated events in `timeline.md` §A | yes, and some offer choices |
 | Ze světa (from the world) | the dated events in `timeline.md` §B | only where they touched Albania (below); the rest is flavour |
-| Mezitím doma (meanwhile at home) | the Czech events in §B | flavour, told through Kovář's letters |
+| Mezitím doma (meanwhile at home) | the Czech events in §B | flavour, told through Vlček's letters |
 | Krátké zprávy (short news) | the original 6 news items + selected remake news, re-themed | the original 1/3 chance, one-off items |
 | Podmíněné zprávy (conditional news) | remake N43–N48, re-themed | repeatable; checked when drawn; returned to the deck if the condition fails |
 
@@ -433,7 +433,7 @@ labelled **our addition** and its constants live in `rules.ts`.
 "Atentát!" (Assassination!).
 
 **Every assassination becomes a mini-game (user decision, 2026-09-27; our addition).** Once the mini-games exist,
-Zogu never simply dies to a coin toss: each attempt is played as a short co-op action scene (Kovář shields the king,
+Zogu never simply dies to a coin toss: each attempt is played as a short co-op action scene (Vlček shields the king,
 Zogu dodges and escapes — the Vienna 1931 shooting is the first of them). The rules only decide *that* an attempt
 happens and how hard it is (the original odds, the guard, the commander's watch set its difficulty); the players'
 play decides whether Zogu survives. Until the mini-games land, the coin stays as the placeholder.
@@ -490,7 +490,7 @@ and march props.
   - Art Deco frames
   - "DuckTales-like human cartoon faces"
   - character reference sheets
-- **Order of generation.** Character reference sheets first (Zog, Kovář, Sadije, Adile, Geraldine, Mussolini, King Alexander, petitioner types), then everything else, using those sheets as references.
+- **Order of generation.** Character reference sheets first (Zog, Vlček, Sadije, Adile, Geraldine, Mussolini, King Alexander, petitioner types), then everything else, using those sheets as references.
 - **Missing images.** A missing image renders as a sepia placeholder frame showing its id and caption.
 - **`npm run assets:check`** is a Node script with no dependencies. It lists missing files and files with the wrong size or no alpha, reading the PNG IHDR header.
 - **Approximate count:**
@@ -546,7 +546,7 @@ The UI is checked by hand in the browser.
 
 ## 15. Follow-up specs (not v1)
 
-1. *Vídeň 1931*: dodge the bullets (Zog + Kovář). It plugs into the assassination crisis.
+1. *Vídeň 1931*: dodge the bullets (Zog + Vlček). It plugs into the assassination crisis.
 2. *Obrana Tirany*: tower defence (two builders). It plugs into war and revolution.
 3. *Útěk do Řecka*: car race with the gold (driver + the one holding the chests). It plugs into the escape crisis and the finale.
 4. A second scenario (e.g. Austria 1927–38) on the same logic.

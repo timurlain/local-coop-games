@@ -85,7 +85,7 @@ export interface Seats {
 
 export const NO_SEATS: Seats = { zogu: null, velitel: null };
 
-/** The first device to join plays Zogu, the second Kovář; a device joins once. */
+/** The first device to join plays Zogu, the second Vlček; a device joins once. */
 export function join(seats: Seats, d: DeviceId): Seats {
   if (seats.zogu === d || seats.velitel === d) return seats;
   if (seats.zogu === null) return { ...seats, zogu: d };

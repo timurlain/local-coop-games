@@ -97,10 +97,10 @@ describe('bubblesFor', () => {
       { speaker: { kind: 'hero', hero: 'zogu' }, text: 'Ano, svoluji.' },
       { speaker: { kind: 'caption' }, text: 'Peníze: stojí 10 tis.' },
     ]);
-    const b = bubblesFor(d, ['Pečeť nese Kovář.'], heroMenu(albania, s, 'zogu'), roomView(albania, s, 'trunni'), 'zogu');
+    const b = bubblesFor(d, ['Pečeť nese Vlček.'], heroMenu(albania, s, 'zogu'), roomView(albania, s, 'trunni'), 'zogu');
     expect(b.map((x) => x.kind)).toEqual(['speech', 'caption']);
     if (b[0].kind === 'speech') expect(b[0].more).toBe(true);
-    if (b[1].kind === 'caption') expect(b[1].text).toBe('Pečeť nese Kovář.');
+    if (b[1].kind === 'caption') expect(b[1].text).toBe('Pečeť nese Vlček.');
   });
 
   it('shows no choice bubble for a closed, non-modal menu', () => {

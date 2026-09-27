@@ -145,7 +145,7 @@ describe('drawHalf and the new room details (canvas smoke test)', () => {
       drawHalf(ctx, roomView(albania, day, 'armada'), 'velitel', null, 0.3);
       expect(ctx.depth).toBe(0);
 
-      // U2: Kovář bows in the Queen Mother's room.
+      // U2: Vlček bows in the Queen Mother's room.
       day.palace!.at.velitel = 'matka';
       const mother = roomView(albania, day, 'matka');
       expect(mother.resident).toBe('mother');

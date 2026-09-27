@@ -74,7 +74,7 @@ describe('keysFor', () => {
 });
 
 describe('seats', () => {
-  it('seats the first device as Zogu and the second as Kovář, once each', () => {
+  it('seats the first device as Zogu and the second as Vlček, once each', () => {
     let s = join(NO_SEATS, 'kb-left');
     expect(s).toEqual({ zogu: 'kb-left', velitel: null });
     expect(join(s, 'kb-left')).toBe(s);

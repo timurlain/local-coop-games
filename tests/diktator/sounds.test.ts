@@ -4,14 +4,14 @@ import { bumpSound, moveSounds, voiceOf } from '../../src/games/diktator/ui/soun
 describe('hero sounds', () => {
   it('gives each hero his own footsteps, door and bump', () => {
     expect(moveSounds('zogu')).toEqual(['stepZogu', 'doorZogu']);
-    expect(moveSounds('velitel')).toEqual(['stepKovar', 'doorKovar']);
+    expect(moveSounds('velitel')).toEqual(['stepVlcek', 'doorVlcek']);
     expect(bumpSound('zogu')).toBe('bumpZogu');
-    expect(bumpSound('velitel')).toBe('bumpKovar');
+    expect(bumpSound('velitel')).toBe('bumpVlcek');
   });
 
   it('gives every speaker a voice', () => {
     expect(voiceOf({ kind: 'hero', hero: 'zogu' })).toBe('voiceZogu');
-    expect(voiceOf({ kind: 'hero', hero: 'velitel' })).toBe('voiceKovar');
+    expect(voiceOf({ kind: 'hero', hero: 'velitel' })).toBe('voiceVlcek');
     expect(voiceOf({ kind: 'resident' })).toBe('voiceMother');
     expect(voiceOf({ kind: 'petitioner' })).toBe('voiceCrowd');
     expect(voiceOf({ kind: 'group', group: 'armada' })).toBe('voiceCrowd');

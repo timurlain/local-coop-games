@@ -19,7 +19,7 @@ function day(): GameState {
 describe('notesFor', () => {
   it('tells both halves who carries the seal', () => {
     const s = day();
-    expect(notesFor(albania, s, { type: 'seal', holder: 'velitel' })).toEqual([{ to: 'both', text: P.sealHolder('Kovář') }]);
+    expect(notesFor(albania, s, { type: 'seal', holder: 'velitel' })).toEqual([{ to: 'both', text: P.sealHolder('Vlček') }]);
     expect(notesFor(albania, s, { type: 'seal', holder: null })).toEqual([{ to: 'both', text: P.sealLies }]);
   });
 
@@ -48,7 +48,7 @@ describe('notesFor', () => {
     expect(notes[1].text.startsWith('Matka o „ne“: ')).toBe(true);
   });
 
-  it('gives Kovář the investigation and the whole police report', () => {
+  it('gives Vlček the investigation and the whole police report', () => {
     const s = day();
     expect(notesFor(albania, s, { type: 'investigated', faction: 'armada', plot: { kind: 'none' } })).toEqual([
       { to: 'velitel', text: P.noPlot('Armáda') },
@@ -80,7 +80,7 @@ describe('notesFor', () => {
 describe('HUD', () => {
   it('shows the hero, his room, his hours as dots and the seal', () => {
     const s = day();
-    expect(heroHud(albania, s, 'velitel')).toEqual({ name: 'Kovář', room: 'Strážnice', hours: '●●●', seal: false, done: false });
+    expect(heroHud(albania, s, 'velitel')).toEqual({ name: 'Vlček', room: 'Strážnice', hours: '●●●', seal: false, done: false });
     const spent = advance(albania, s, { type: 'policeReport', hero: 'velitel' }).state;
     expect(heroHud(albania, spent, 'velitel').hours).toBe('●●○');
   });

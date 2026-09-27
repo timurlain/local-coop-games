@@ -87,7 +87,7 @@ describe('replyLines', () => {
   it('tells the other half, as a caption, that a hero has finished; the actor said it himself', () => {
     const { replies } = run(audience(), { type: 'endDay', hero: 'velitel' }, 'velitel');
     expect(replies.actor).toEqual([]);
-    expect(replies.other).toEqual([P.heroDone('Kovář')]);
+    expect(replies.other).toEqual([P.heroDone('Vlček')]);
   });
 
   it('sends Mother’s advice as a caption, without doubling "Matka"', () => {

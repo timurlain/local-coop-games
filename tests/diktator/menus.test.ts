@@ -90,6 +90,6 @@ describe('heroMenu — day', () => {
     s = walk(s, 'zogu', ['down', 'right']); // vyslanci
     s = walk(s, 'velitel', ['up']); // straznice → vyslanci
     expect(s.palace!.at.velitel).toBe('vyslanci');
-    expect(heroMenu(albania, s, 'zogu').items.map((i) => i.label)).toContain(P.giveSeal('Kovář'));
+    expect(heroMenu(albania, s, 'zogu').items.map((i) => i.label)).toContain(P.giveSeal('Vlček'));
   });
 });

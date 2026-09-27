@@ -188,7 +188,7 @@ export const cs = {
     back: '← Zpět na hry',
     /** The ten mood levels 0–9 (spec §5.2), lowest first. */
     moods: ['vzbouření', 'zuřiví', 'rozzlobení', 'reptají', 'nejistí', 'vlažní', 'klidní', 'spokojení', 'oddaní', 'nadšení'] as readonly string[],
-    heroes: { zogu: 'Zogu', velitel: 'Kovář' },
+    heroes: { zogu: 'Zogu', velitel: 'Vlček' },
     /** The palace game (plan 2c). */
     palace: {
       audienceTitle: (group: string) => `Audience: ${group}`,
@@ -229,7 +229,7 @@ export const cs = {
       plot: (group: string, text: string) => `${group} — ${text}!`,
       reportRead: 'Hlášení tajné policie:',
       reportLimits: (low: number, threshold: number) => `Nepřátelé: nálada ${low} a níž. Revoluce: společná síla ${threshold} a víc.`,
-      guarding: 'Kovář dnes v noci hlídá krále.',
+      guarding: 'Vlček dnes v noci hlídá krále.',
       heroDone: (who: string) => `${who} končí čtvrtletí.`,
       evening: (date: string) => `Večer — ${date}`,
       quietNight: 'Noc proběhla klidně.',
@@ -253,7 +253,7 @@ export const cs = {
         title: 'Diktátor',
         slot: (hero: string, device: string) => `${hero}: ${device}`,
         waiting: 'stiskni Akci…',
-        hint: 'Každý hráč stiskne Akci (F, Enter nebo A). První hraje Zogua, druhý Kováře. Hraješ-li sám, ovládáš oba — Tab / Back přepíná.',
+        hint: 'Každý hráč stiskne Akci (F, Enter nebo A). První hraje Zogua, druhý Vlčka. Hraješ-li sám, ovládáš oba — Tab / Back přepíná.',
         /** Play-test wish: keyboard input needs a window click first (browser focus). */
         clickFirst: 'Nejdřív klikni myší do okna hry, pak hraj klávesnicí.',
         newGame: 'Nová hra',
@@ -277,7 +277,7 @@ export const cs = {
       guard: 'Dnes v noci budu stát u krále.',
       takeSeal: 'Pečeť beru s sebou.',
       giveSealToKing: (address: string) => `Pečeť, ${address}.`,
-      giveSealToCommander: 'Pečeť, Kováři.',
+      giveSealToCommander: 'Pečeť, Vlčku.',
       decide: (title: string) => `Ať se stane: ${title}!`,
       endDay: 'Pro toto čtvrtletí končím.',
       thanks: (address: string) => `Děkujeme, ${address}!`,

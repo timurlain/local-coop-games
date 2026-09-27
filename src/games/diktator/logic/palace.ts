@@ -2,7 +2,7 @@ import type { FactionId, GroupId, LenderId, StrengthGroupId } from './groups';
 import { RULES } from './rules';
 import type { Plot, PoliceSnapshot } from './state';
 
-/** The two playable characters: Zogu (politics, money) and velitel Kovář (security). */
+/** The two playable characters: Zogu (politics, money) and velitel Vlček (security). */
 export const HEROES = ['zogu', 'velitel'] as const;
 export type Hero = (typeof HEROES)[number];
 

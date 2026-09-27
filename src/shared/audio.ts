@@ -10,8 +10,8 @@ export type SfxName =
   | 'umbrella' | 'hiss' | 'snip'
   | 'salvage' | 'resupply'
   | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine'
-  | 'stepZogu' | 'stepKovar' | 'doorZogu' | 'doorKovar' | 'bumpZogu' | 'bumpKovar'
-  | 'voiceZogu' | 'voiceKovar' | 'voiceMother' | 'voiceCrowd' | 'voiceEnvoy';
+  | 'stepZogu' | 'stepVlcek' | 'doorZogu' | 'doorVlcek' | 'bumpZogu' | 'bumpVlcek'
+  | 'voiceZogu' | 'voiceVlcek' | 'voiceMother' | 'voiceCrowd' | 'voiceEnvoy';
 
 interface ToneOpts {
   freq: number;
@@ -194,23 +194,23 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     tone(c, { freq: 90, to: 50, dur: 0.09, type: 'sine', vol: 0.3, delay });
     noise(c, { dur: 0.05, vol: 0.1, delay, lowpass: 400 });
   }),
-  /** Kovář's quick steps with a spur's jingle. */
-  stepKovar: (c) => {
+  /** Vlček's quick steps with a spur's jingle. */
+  stepVlcek: (c) => {
     [0, 0.1, 0.2].forEach((delay) => noise(c, { dur: 0.03, vol: 0.08, delay, lowpass: 1200 }));
     [0.02, 0.12].forEach((delay) => tone(c, { freq: 3200, to: 2800, dur: 0.05, delay, type: 'triangle', vol: 0.05 }));
   },
   /** Zogu's door: a slow, low creak. */
   doorZogu: (c) => { tone(c, { freq: 150, to: 110, dur: 0.25, type: 'triangle', vol: 0.12, delay: 0.3 }); noise(c, { dur: 0.15, vol: 0.08, delay: 0.3, lowpass: 600 }); },
-  /** Kovář's door: a quick latch. */
-  doorKovar: (c) => {
+  /** Vlček's door: a quick latch. */
+  doorVlcek: (c) => {
     tone(c, { freq: 900, dur: 0.02, type: 'square', vol: 0.08, delay: 0.25 });
     tone(c, { freq: 600, dur: 0.03, type: 'square', vol: 0.08, delay: 0.3 });
     noise(c, { dur: 0.03, vol: 0.1, delay: 0.25, lowpass: 4000 });
   },
   bumpZogu: (c) => tone(c, { freq: 80, to: 50, dur: 0.1, type: 'sine', vol: 0.2 }),
-  bumpKovar: (c) => tone(c, { freq: 160, to: 110, dur: 0.07, type: 'sine', vol: 0.15 }),
+  bumpVlcek: (c) => tone(c, { freq: 160, to: 110, dur: 0.07, type: 'sine', vol: 0.15 }),
   voiceZogu: (c) => blips(c, 150, 'square', 0.06),
-  voiceKovar: (c) => blips(c, 230, 'square', 0.06),
+  voiceVlcek: (c) => blips(c, 230, 'square', 0.06),
   voiceMother: (c) => blips(c, 420, 'triangle', 0.08),
   voiceCrowd: (c) => { blips(c, 180, 'sawtooth', 0.04); blips(c, 260, 'sawtooth', 0.03); },
   voiceEnvoy: (c) => blips(c, 300, 'sine', 0.08),
