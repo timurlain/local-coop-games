@@ -49,13 +49,24 @@ describe('hidden weapons and things people carry (§5a)', () => {
           expect(s.weapon).not.toBe('bouquetBomb');
         }
         if (gun.carry !== 'none') {
-          expect(innocents.filter((p) => p.carry === gun.carry).length).toBeGreaterThanOrEqual(2);
+          // Fix wave item 5: they must *visibly* carry it — a hand kept in the coat would hide it again.
+          expect(innocents.filter((p) => p.carry === gun.carry && !p.handInCoat).length).toBeGreaterThanOrEqual(2);
         }
         expect(innocents.some((p) => p.handInCoat)).toBe(true);
 
         const matching = s.people.filter((p) => matchesClues(p, s.clues));
         expect(matching).toHaveLength(1);
         expect(matching[0].gunman).toBe(true);
+      }
+    }
+  });
+
+  it('dresses the mess crowd like officers: only a cap or bare head, only newspapers (fix wave item 9)', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = createSpot(diff(2), 'dustojnici', seed);
+      for (const p of s.people) {
+        expect(['cap', 'none']).toContain(p.hat);
+        expect(['none', 'newspaper']).toContain(p.carry);
       }
     }
   });
@@ -84,6 +95,29 @@ describe('the scene', () => {
     const d0 = Math.abs(gun().x - s.zoguX);
     for (let i = 0; i < 20 * 60; i++) stepSpot(s, 1 / 60, IDLE);
     expect(Math.abs(gun().x - s.zoguX)).toBeLessThan(d0);
+  });
+
+  it('gives the gunman an ordinary walker speed and lets him turn like anyone else (fix wave item 3)', () => {
+    let turnedSeeds = 0;
+    const SEEDS = 200;
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const s = createSpot(diff(1, 14, 40), 'trziste', seed);
+      const gun = s.people.find((p) => p.gunman)!;
+      expect(gun.speed).toBeGreaterThanOrEqual(18);
+      expect(gun.speed).toBeLessThanOrEqual(40);
+      expect(Math.abs(gun.x - s.zoguX)).toBeGreaterThanOrEqual(250 - 1e-6);
+      let sawTurn = false;
+      let dir = gun.dir;
+      for (let i = 0; i < 60; i++) {
+        stepSpot(s, 1, IDLE);
+        const now = s.people.find((p) => p.gunman)!;
+        if (now.dir !== dir) { sawTurn = true; dir = now.dir; }
+        expect(now.x).toBeGreaterThanOrEqual(40);
+        expect(now.x).toBeLessThanOrEqual(920);
+      }
+      if (sawTurn) turnedSeeds++;
+    }
+    expect(turnedSeeds).toBeGreaterThanOrEqual(SEEDS * 0.5);
   });
 
   it('moves the glass with the input and keeps it on screen', () => {

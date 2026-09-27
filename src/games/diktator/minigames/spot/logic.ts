@@ -48,6 +48,10 @@ export interface SpotPerson {
   glanceIn: number;
   /** Shows a protest bubble until this time. */
   protestUntil: number;
+  /** Gunman only (fix wave item 3): seconds until his next loiter decision (which way, or a pause). */
+  wanderIn: number;
+  /** Gunman only, while loitering: standing still between decisions, like an innocent sometimes does. */
+  resting: boolean;
 }
 
 export type ClueKey = 'hat' | 'scarf' | 'glasses' | 'bag';
@@ -87,9 +91,33 @@ export const GROUND_NEAR = 480;
 export const PLATFORM = { left: 390, right: 570 } as const;
 const GLASS_SPEED = 320;
 const ENDING_SECONDS = 1.5;
+/** How far from the platform centre the gunman spawns, at least (fix wave item 3): a distance alone must not give
+ * him away. */
+const MIN_GUNMAN_DIST = 250;
 
 const HATS: readonly SpotHat[] = ['none', 'fez', 'cap', 'plis', 'borsalino'];
+/** The mess's crowd is uniform-like (fix wave item 9): only a cap or a bare head, cap-heavy. */
+const MESS_HATS: readonly SpotHat[] = ['cap', 'cap', 'cap', 'none'];
 const SCARVES: readonly SpotScarf[] = ['none', 'red', 'blue', 'green', 'yellow'];
+
+/** The hat pool this place's crowd (and its gunman/clues) is drawn from. */
+function hatsFor(place: PlaceId): readonly SpotHat[] {
+  return place === 'dustojnici' ? MESS_HATS : HATS;
+}
+
+/** A hat from `hats` other than any in `exclude`, falling back to `hats[0]` if that would leave nothing to pick. */
+function pickHatOtherThan(d: Dice, hats: readonly SpotHat[], exclude: readonly SpotHat[]): SpotHat {
+  const opts = hats.filter((h) => !exclude.includes(h));
+  return opts.length > 0 ? pick(d, opts) : hats[0];
+}
+
+const MARKET_CARRIES: readonly SpotCarry[] = ['newspaper', 'basket', 'bouquet'];
+/** Innocents at the mess carry only newspapers (fix wave item 9): no market baskets or bouquets among officers. */
+const MESS_CARRIES: readonly SpotCarry[] = ['newspaper'];
+
+function carriesFor(place: PlaceId): readonly SpotCarry[] {
+  return place === 'dustojnici' ? MESS_CARRIES : MARKET_CARRIES;
+}
 
 /** Scale of a person at ground line y (far people are smaller). */
 export function depthScale(y: number): number {
@@ -114,9 +142,9 @@ function shuffle<T>(d: Dice, xs: readonly T[]): T[] {
 }
 
 /** Makes `p` fail clue `c` (changes only that attribute). */
-function breakClue(d: Dice, p: SpotPerson, c: Clue): SpotPerson {
+function breakClue(d: Dice, p: SpotPerson, c: Clue, hats: readonly SpotHat[]): SpotPerson {
   switch (c.key) {
-    case 'hat': return { ...p, hat: pick(d, HATS.filter((h) => h !== c.value)) };
+    case 'hat': return { ...p, hat: pickHatOtherThan(d, hats, [c.value]) };
     case 'scarf': return { ...p, scarf: pick(d, SCARVES.filter((s) => s !== c.value)) };
     case 'glasses': return { ...p, glasses: false };
     case 'bag': return { ...p, bag: false };
@@ -124,9 +152,9 @@ function breakClue(d: Dice, p: SpotPerson, c: Clue): SpotPerson {
 }
 
 /** Makes `p` look like clue `c` without matching it: another real hat, another scarf colour, the other accessory. */
-function similarTo(d: Dice, p: SpotPerson, c: Clue): SpotPerson {
+function similarTo(d: Dice, p: SpotPerson, c: Clue, hats: readonly SpotHat[]): SpotPerson {
   switch (c.key) {
-    case 'hat': return { ...p, hat: pick(d, HATS.filter((h) => h !== 'none' && h !== c.value)) };
+    case 'hat': return { ...p, hat: pickHatOtherThan(d, hats, ['none', c.value]) };
     case 'scarf': return { ...p, scarf: pick(d, SCARVES.filter((x) => x !== 'none' && x !== c.value)) };
     case 'glasses': return { ...p, glasses: false, bag: true };
     case 'bag': return { ...p, bag: false, glasses: true };
@@ -164,16 +192,26 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
   const d = rngDice(rng);
   const n = difficulty.crowd;
   const fromLeft = d.int(2) === 0;
+  const hats = hatsFor(place);
+  const carries = carriesFor(place);
+  const centreX = (PLATFORM.left + PLATFORM.right) / 2;
+  // The gunman spawns at a random x like anyone else, just kept at least MIN_GUNMAN_DIST from the platform centre —
+  // a distance alone must not give him away (fix wave item 3, replacing the old fixed edge spawn).
+  const leftZoneEnd = centreX - MIN_GUNMAN_DIST;
+  const rightZoneStart = centreX + MIN_GUNMAN_DIST;
+  const gunmanX = (): number =>
+    fromLeft ? 60 + d.float() * Math.max(0, leftZoneEnd - 60) : rightZoneStart + d.float() * Math.max(0, SPOT_W - 60 - rightZoneStart);
   const person = (id: number, gunman: boolean): SpotPerson => {
     const standing = !gunman && d.int(10) < 3;
     return {
       id,
-      x: gunman ? (fromLeft ? 70 : SPOT_W - 70) : 60 + d.float() * (SPOT_W - 120),
+      x: gunman ? gunmanX() : 60 + d.float() * (SPOT_W - 120),
       y: GROUND_FAR + d.float() * (GROUND_NEAR - GROUND_FAR),
       dir: d.int(2) === 0 ? -1 : 1,
+      // The same walker-speed distribution as everyone else (18–40) — nothing sets him apart on the move either.
       speed: standing ? 0 : 18 + d.float() * 22,
       standing,
-      hat: pick(d, HATS),
+      hat: pick(d, hats),
       scarf: pick(d, SCARVES),
       coat: d.int(5),
       glasses: d.int(5) === 0,
@@ -185,13 +223,15 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
       glancing: false,
       glanceIn: gunman ? 2 + d.float() * 2 : 5 + d.float() * 4,
       protestUntil: -1,
+      wanderIn: gunman ? 1 + d.float() * 2 : 0,
+      resting: false,
     };
   };
   let gunman = person(0, true);
   const keys = shuffle(d, ['hat', 'scarf', 'glasses', 'bag'] as const).slice(0, difficulty.clues);
   // The gunman's clue attributes are always "something to see": a real hat, a coloured scarf, glasses, a bag.
   for (const k of keys) {
-    if (k === 'hat' && gunman.hat === 'none') gunman = { ...gunman, hat: pick(d, HATS.slice(1)) };
+    if (k === 'hat' && gunman.hat === 'none') gunman = { ...gunman, hat: pick(d, hats.filter((h) => h !== 'none')) };
     if (k === 'scarf' && gunman.scarf === 'none') gunman = { ...gunman, scarf: pick(d, SCARVES.slice(1)) };
     if (k === 'glasses') gunman = { ...gunman, glasses: true };
     if (k === 'bag') gunman = { ...gunman, bag: true };
@@ -206,15 +246,15 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
   });
   let innocents = Array.from({ length: n - 1 }, (_, i) => person(i + 1, false));
   // Nobody else may match every clue.
-  innocents = innocents.map((p) => (clues.length > 0 && matchesClues(p, clues) ? breakClue(d, p, pick(d, clues)) : p));
+  innocents = innocents.map((p) => (clues.length > 0 && matchesClues(p, clues) ? breakClue(d, p, pick(d, clues), hats) : p));
   // Red herrings: at least two innocents look like the tip without matching it all. With two or more clues they share
   // one clue each; with a single clue they wear something similar (another hat, another scarf colour, or the other
   // accessory), because sharing the only clue would make them match it.
   if (clues.length > 0) {
     for (let i = 0; i < 2 && i < innocents.length; i++) {
       const c = clues[i % clues.length];
-      innocents[i] = clues.length >= 2 ? shareClue(innocents[i], c) : similarTo(d, innocents[i], c);
-      if (matchesClues(innocents[i], clues)) innocents[i] = breakClue(d, innocents[i], clues.find((o) => o.key !== c.key) ?? c);
+      innocents[i] = clues.length >= 2 ? shareClue(innocents[i], c) : similarTo(d, innocents[i], c, hats);
+      if (matchesClues(innocents[i], clues)) innocents[i] = breakClue(d, innocents[i], clues.find((o) => o.key !== c.key) ?? c, hats);
     }
   }
   // The attacker's hidden weapon — one per attempt, drawn from the same dice so it stays deterministic. The mess
@@ -226,24 +266,32 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
   gunman = { ...gunman, weapon, carry, handInCoat: weapon === 'coatRevolver' };
   // Everyone may carry an everyday thing, or keep a hand in the coat (a cold day) — nothing that touches a clue
   // attribute, so the "exactly one person matches every clue" invariant is untouched.
-  const CARRIES: readonly SpotCarry[] = ['newspaper', 'basket', 'bouquet'];
   innocents = innocents.map((p) => {
     const carriesSomething = d.int(3) === 0;
-    const innocentCarry = carriesSomething ? pick(d, CARRIES) : 'none';
+    const innocentCarry = carriesSomething ? pick(d, carries) : 'none';
     const handInCoat = d.int(8) === 0;
     return { ...p, carry: innocentCarry, handInCoat };
   });
-  // Guarantee: when the gunman carries something, at least two innocents carry the same kind — nothing distinguishes
-  // him at a distance.
+  // Guarantee: when the gunman carries something, at least two innocents *visibly* carry the same kind (a hand kept
+  // in the coat would hide the carry again, so those chosen must show it) — nothing distinguishes him at a distance.
+  const usedForCarry = new Set<number>();
   if (carry !== 'none') {
     let need = 2;
     for (let i = 0; i < innocents.length && need > 0; i++) {
-      if (innocents[i].carry !== carry) { innocents[i] = { ...innocents[i], carry }; need--; }
+      if (innocents[i].carry === carry && !innocents[i].handInCoat) { usedForCarry.add(i); need--; }
+    }
+    for (let i = 0; i < innocents.length && need > 0; i++) {
+      if (usedForCarry.has(i)) continue;
+      innocents[i] = { ...innocents[i], carry, handInCoat: false };
+      usedForCarry.add(i);
+      need--;
     }
   }
-  // Guarantee: at least one innocent keeps a hand in the coat, so a hidden hand alone proves nothing either.
+  // Guarantee: at least one innocent keeps a hand in the coat, so a hidden hand alone proves nothing either — pick
+  // one not already spent proving the carry guarantee above, so that one stays visibly carrying.
   if (!innocents.some((p) => p.handInCoat) && innocents.length > 0) {
-    innocents[0] = { ...innocents[0], handInCoat: true };
+    const idx = innocents.findIndex((_, i) => !usedForCarry.has(i));
+    if (idx !== -1) innocents[idx] = { ...innocents[idx], handInCoat: true };
   }
   // Mix the gunman into the crowd at a random index (ids stay unique).
   const people = [...innocents];
@@ -312,12 +360,28 @@ export function stepSpot(s: SpotState, dt: number, input: SpotInput): void {
   s.zoguX += Math.sign(s.zoguTarget - s.zoguX) * Math.min(Math.abs(s.zoguTarget - s.zoguX), 30 * dt);
   for (const p of s.people) {
     if (p.gunman) {
-      // He works his way to Zogu, arriving about when the fuse ends.
+      // He works his way to Zogu, arriving about when the fuse ends (fix wave item 3): too early, and he loiters
+      // like an innocent (walking, turning at the edges, sometimes standing, drifting on average toward Zogu)
+      // instead of beelining the whole time — a straight, purposeful walk from far away would give him away.
       const gap = s.zoguX - p.x;
-      const speed = Math.max(12, Math.abs(gap) / Math.max(1, s.fuse));
-      if (Math.abs(gap) > 30) {
+      const arriveIn = Math.abs(gap) / p.speed;
+      if (arriveIn < s.fuse - 4) {
+        p.wanderIn -= dt;
+        if (p.wanderIn <= 0) {
+          const towardZogu: -1 | 1 = gap >= 0 ? 1 : -1;
+          const roll = d.float();
+          p.resting = roll < 0.2;
+          if (!p.resting) p.dir = d.float() < 0.7 ? towardZogu : (d.int(2) === 0 ? -1 : 1);
+          p.wanderIn = 1 + d.float() * 2;
+        }
+        if (!p.resting) {
+          p.x += p.dir * p.speed * dt;
+          if (p.x < 40) { p.x = 40; p.dir = 1; }
+          if (p.x > SPOT_W - 40) { p.x = SPOT_W - 40; p.dir = -1; }
+        }
+      } else if (Math.abs(gap) > 30) {
         p.dir = gap > 0 ? 1 : -1;
-        p.x += p.dir * Math.min(Math.abs(gap) - 30, speed * dt);
+        p.x += p.dir * Math.min(Math.abs(gap) - 30, p.speed * dt);
       }
       p.glanceIn -= dt;
       if (p.glanceIn <= 0) {

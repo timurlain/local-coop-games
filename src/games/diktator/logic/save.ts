@@ -44,9 +44,18 @@ export function serialize(f: SaveFile): string {
 export function deserialize(raw: string | null): SaveFile | null {
   if (!raw) return null;
   try {
-    const f = JSON.parse(raw) as Partial<SaveFile>;
-    if (f.version !== SAVE_VERSION || !f.current || !Array.isArray(f.checkpoints)) return null;
-    return f as SaveFile;
+    const raw2 = JSON.parse(raw) as Record<string, unknown>;
+    const version = raw2.version as number | undefined;
+    // Version 5 only added a new `Phase` union member (no shape change), so it loads unchanged apart from the
+    // version stamp itself — migrated to 6 on `current` and every checkpoint (fix wave item 11).
+    if (version !== SAVE_VERSION && version !== 5) return null;
+    if (!raw2.current || !Array.isArray(raw2.checkpoints)) return null;
+    if (version === 5) {
+      raw2.version = SAVE_VERSION;
+      (raw2.current as Record<string, unknown>).version = SAVE_VERSION;
+      for (const cp of raw2.checkpoints as Record<string, unknown>[]) cp.version = SAVE_VERSION;
+    }
+    return raw2 as unknown as SaveFile;
   } catch {
     return null;
   }

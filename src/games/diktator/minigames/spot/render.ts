@@ -189,12 +189,21 @@ function rushProgress(s: SpotState): number {
   return Math.min(1, (s.t - s.endAt) / RUSH_SECONDS);
 }
 
+/** Vlček's ground y this frame: fixed at rest, sliding toward the gunman's own y during the rush/tackle. */
+function vlcekY(s: SpotState): number {
+  if (s.outcome === 'found') {
+    const gunman = s.people.find((p) => p.gunman)!;
+    return VLCEK_Y0 + (gunman.y - VLCEK_Y0) * rushProgress(s);
+  }
+  return VLCEK_Y0;
+}
+
 function drawVlcek(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void {
   if (s.outcome === 'found') {
     const gunman = s.people.find((p) => p.gunman)!;
     const progress = rushProgress(s);
     const x = VLCEK_X0 + (gunman.x - VLCEK_X0) * progress;
-    const y = VLCEK_Y0 + (gunman.y - VLCEK_Y0) * progress;
+    const y = vlcekY(s);
     const scale = depthScale(y) * 1.3;
     if (progress >= 1) {
       puppetAt(ctx, x, y, scale, gunman.x >= x ? 1 : -1, () => {
@@ -212,30 +221,39 @@ function drawVlcek(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void
 }
 
 function drawCrowd(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void {
-  const sorted = [...s.people].sort((a, b) => a.y - b.y);
-  for (const p of sorted) {
-    const look = personLook(p, s.place);
-    if (s.outcome === 'found' && p.gunman) {
+  // Vlček is drawn inside this same y-sorted pass (fix wave item 10) so a nearer crowd member correctly overlaps him.
+  const items: { y: number; draw: () => void }[] = s.people.map((p) => ({
+    y: p.y,
+    draw: () => {
+      const look = personLook(p, s.place);
+      if (s.outcome === 'found' && p.gunman) {
+        const scale = depthScale(p.y) * 1.2;
+        const fallen = rushProgress(s) >= 1;
+        puppetAt(ctx, p.x, p.y, scale, p.dir, () => {
+          if (fallen) {
+            // Only once Vlček has landed on him does he go down — in sync with Vlček's own tackle.
+            ctx.save();
+            ctx.rotate(-90 * RAD);
+            drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
+            ctx.restore();
+          } else {
+            drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
+          }
+        });
+        return;
+      }
+      const pose = s.outcome === 'missed' ? POSES.shocked(t) : poseFor(p, t);
       const scale = depthScale(p.y) * 1.2;
-      const fallen = rushProgress(s) >= 1;
-      puppetAt(ctx, p.x, p.y, scale, p.dir, () => {
-        if (fallen) {
-          // Only once Vlček has landed on him does he go down — in sync with Vlček's own tackle.
-          ctx.save();
-          ctx.rotate(-90 * RAD);
-          drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
-          ctx.restore();
-        } else {
-          drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
-        }
-      });
-      continue;
-    }
-    const pose = s.outcome === 'missed' ? POSES.shocked(t) : poseFor(p, t);
-    const scale = depthScale(p.y) * 1.2;
-    puppetAt(ctx, p.x, p.y, scale, p.dir, () => drawPuppet(ctx, solvePuppet(pose), look, 'neutral'));
-    if (p.protestUntil > s.t) drawBubble(ctx, p.x, p.y - 95 * scale, T.protests[p.id % T.protests.length], false);
-  }
+      puppetAt(ctx, p.x, p.y, scale, p.dir, () => drawPuppet(ctx, solvePuppet(pose), look, 'neutral'));
+      if (p.protestUntil > s.t) {
+        const lines = T.protests[s.place];
+        drawBubble(ctx, p.x, p.y - 95 * scale, lines[p.id % lines.length], false);
+      }
+    },
+  }));
+  items.push({ y: vlcekY(s), draw: () => drawVlcek(ctx, s, t) });
+  items.sort((a, b) => a.y - b.y);
+  for (const item of items) item.draw();
 }
 
 function drawFuse(ctx: CanvasRenderingContext2D, s: SpotState): void {
@@ -252,8 +270,14 @@ function drawFuse(ctx: CanvasRenderingContext2D, s: SpotState): void {
   ctx.fillStyle = 'rgba(255,180,60,0.9)';
   circle(ctx, endX, y, 4 * flick, 'rgba(255,180,60,0.9)');
   circle(ctx, endX, y, 2, '#fff4d0');
-  ctx.fillStyle = '#efe4c4';
+  // A dark ink with a light outline (fix wave item 10): the previous cream-on-cream label was unreadable at the
+  // market, whose sky is a similarly light colour.
   ctx.font = '11px Georgia, serif';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#fff4d0';
+  ctx.strokeText(T.fuse, x0, y - 9);
+  ctx.fillStyle = '#1a1410';
   ctx.fillText(T.fuse, x0, y - 9);
 }
 
@@ -429,7 +453,6 @@ export function drawSpot(ctx: CanvasRenderingContext2D, s: SpotState, t: number)
   ctx.save();
   drawBackground(ctx, s.place);
   drawPlatformAndZogu(ctx, s, t);
-  drawVlcek(ctx, s, t);
   drawCrowd(ctx, s, t);
   drawFuse(ctx, s);
   drawGlass(ctx, s);

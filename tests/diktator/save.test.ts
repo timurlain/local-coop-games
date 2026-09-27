@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deserialize, newSave, recordTurn, retryFromYear, serialize } from '../../src/games/diktator/logic/save';
+import { deserialize, newSave, recordTurn, retryFromYear, SAVE_VERSION, serialize } from '../../src/games/diktator/logic/save';
 import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import type { GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
@@ -29,6 +29,17 @@ describe('save file', () => {
     expect(deserialize(JSON.stringify({ version: 99 }))).toBeNull();
     // version 3 (pre-tariffs, no `accepted`) is now a foreign version too (our addition, play-test change).
     expect(deserialize(JSON.stringify({ version: 3 }))).toBeNull();
+  });
+
+  it('migrates a v5 save (the phase union only gained a member) forward to v6 (fix wave item 11)', () => {
+    const { state } = newGame(albania, 1);
+    const v6 = JSON.parse(serialize(newSave('albania', state)));
+    const v5 = { ...v6, version: 5, current: { ...v6.current, version: 5 }, checkpoints: v6.checkpoints.map((c: object) => ({ ...c, version: 5 })) };
+    const loaded = deserialize(JSON.stringify(v5));
+    expect(loaded).not.toBeNull();
+    expect(loaded!.version).toBe(SAVE_VERSION);
+    expect(loaded!.current.version).toBe(SAVE_VERSION);
+    for (const cp of loaded!.checkpoints) expect(cp.version).toBe(SAVE_VERSION);
   });
 
   it('keeps a checkpoint at the start of each year (Q1 audience)', () => {

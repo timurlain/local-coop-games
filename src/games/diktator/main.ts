@@ -56,6 +56,10 @@ interface ArenaSession {
   readonly game: SpotGame;
   stage: 'intro' | 'playing' | 'result';
   result: 'found' | 'missed' | null;
+  /** Scene times (`SpotState.t`) still due to play a "missed" gunshot, oldest first (task fix wave, item 2). */
+  shotsDue: number[];
+  /** Scene time still due to play the "found" bump-plus-page, landing with the tackle, or null once played. */
+  foundDue: number | null;
 }
 
 interface Half {
@@ -300,7 +304,7 @@ function maybeStartArena(): void {
 }
 
 function startArena(phase: AttemptPhase): void {
-  arena = { game: new SpotGame(phase.difficulty, phase.place, phase.seed), stage: 'intro', result: null };
+  arena = { game: new SpotGame(phase.difficulty, phase.place, phase.seed), stage: 'intro', result: null, shotsDue: [], foundDue: null };
   screen = 'arena';
   showArena(true);
   ambient.setLevel(ARENA_AMBIENT);
@@ -329,6 +333,7 @@ function arenaInputs(): Partial<Record<Hero, ArenaInput>> {
 
 function updateArena(dt: number): void {
   if (!arena) return;
+  if (seatedDevices(seats).some((d) => !input.isConnected(d))) return pause(P.pause.padLost);
   if (seatedDevices(seats).some((d) => input.pressed(d, 'pause'))) {
     pause(P.pause.title);
     return;
@@ -351,18 +356,28 @@ function updateArena(dt: number): void {
     if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
   }
   if (outcomeBefore === null && after.outcome === 'found') {
-    if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
-    if (!samples.play([{ sample: 'page', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('paper');
+    // Lands with the tackle (render.ts's RUSH_SECONDS), not the instant the accusation is made.
+    arena.foundDue = after.endAt + 0.6;
   }
   if (outcomeBefore === null && after.outcome === 'missed') {
-    for (const delay of shotsHits()) window.setTimeout(() => sfx.play('shot'), delay * 1000);
+    // Scene-time scheduling, not wall time: a paused/resumed scene must not fire shots while paused.
+    arena.shotsDue = shotsHits().map((d) => after.endAt + d);
+  }
+  while (arena.shotsDue.length > 0 && after.t >= arena.shotsDue[0]) {
+    arena.shotsDue.shift();
+    sfx.play('shot');
+  }
+  if (arena.foundDue !== null && after.t >= arena.foundDue) {
+    arena.foundDue = null;
+    if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
+    if (!samples.play([{ sample: 'page', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('paper');
   }
   const result = arena.game.result();
   if (result) {
     arena.stage = 'result';
     arena.result = result;
   }
-  dirty = true;
+  if (after.wrong > wrongBefore || after.outcome !== outcomeBefore || result) dirty = true;
 }
 
 /** The result card's Action / click: plays `attemptResult`, plays the reverse transition and returns to the palace. */
@@ -382,10 +397,12 @@ function arenaCardModel(): ArenaCardModel | null {
   if (arena.stage === 'intro') {
     const s = arena.game.state;
     const tip = s.clues.length > 0 ? A.tip(tipText(s.clues)) : A.noTip;
-    return { title: A.title, lines: [A.places[s.place], tip, A.howTo], button: A.start };
+    const keys = keysFor(isSolo(seats) ? (seats.zogu ?? seats.velitel) : seats.velitel);
+    return { title: A.title, lines: [A.places[s.place], tip, A.howTo(keys)], button: A.start };
   }
   if (arena.stage === 'result') {
-    return { title: A.title, lines: [arena.result === 'found' ? A.foundCard : A.missedCard], button: P.next };
+    const line = arena.result === 'found' ? A.foundCard[arena.game.state.weapon] : A.missedCard;
+    return { title: A.title, lines: [line], button: P.next };
   }
   return null;
 }
