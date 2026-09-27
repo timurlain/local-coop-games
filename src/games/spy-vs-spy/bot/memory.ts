@@ -111,6 +111,21 @@ function clearDanger(mem: Memory, at: { piece: number } | { door: string }): voi
     : !('door' in d.at && d.at.door === at.door)));
 }
 
+/** Whether two danger spots are the same piece, door or room. */
+function sameSpot(a: Danger['at'], b: Danger['at']): boolean {
+  if ('piece' in a) return 'piece' in b && a.piece === b.piece;
+  if ('door' in a) return 'door' in b && a.door === b.door;
+  return 'room' in b && a.room === b.room;
+}
+
+/** Notes a danger at `at`: refreshes `since` when one is already noted there (review finding 6) instead of adding a
+ *  duplicate. */
+function noteDanger(mem: Memory, at: Danger['at'], cause: Danger['cause'], time: number): void {
+  const existing = mem.dangers.find((d) => sameSpot(d.at, at));
+  if (existing !== undefined) existing.since = time;
+  else mem.dangers.push({ at, cause, since: time });
+}
+
 /** The note for a piece that now holds `t`. */
 function holding(t: Thing): PieceNote {
   if (t.kind === 'remedy') return { kind: 'remedy', remedy: t.remedy };
@@ -159,11 +174,11 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
         mem.searchedCount++; // it was a search that found the piece empty, before his hand went in
         break;
       case 'dropped': {
-        // On his death the hand lands in the nearest free piece, maybe next door; noted if he knows that piece.
+        // On his death the hand lands in the nearest free piece, maybe next door — but a dead human sees only his
+        // death room, so it's noted only when that piece stands right there in view (review finding 2, fairness).
         if (e.furniture === null || e.thing === null) break;
         const id = e.furniture;
-        const at = [...mem.roomPieces].find(([, ids]) => ids.includes(id))?.[0];
-        if (at !== undefined) note(id, holding(e.thing), at);
+        if (view.pieces.some((p) => p.id === id)) note(id, holding(e.thing));
         break;
       }
       case 'alreadyHave':
@@ -197,13 +212,13 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
       case 'died':
         // A trap springs once: if it was his own, it is gone now.
         if (FURNITURE_TRAPS.includes(e.cause) && ctx.searching !== null) {
-          mem.dangers.push({ at: { piece: ctx.searching }, cause: e.cause, since: time });
+          noteDanger(mem, { piece: ctx.searching }, e.cause, time);
           mem.ownTraps.delete(pieceKey(ctx.searching));
         } else if (DOOR_TRAPS.includes(e.cause) && ctx.door !== null) {
-          mem.dangers.push({ at: { door: ctx.door }, cause: e.cause, since: time });
+          noteDanger(mem, { door: ctx.door }, e.cause, time);
           mem.ownTraps.delete(doorTrapKey(ctx.door));
         } else if (e.cause === 'casovana') {
-          mem.dangers.push({ at: { room }, cause: e.cause, since: time });
+          noteDanger(mem, { room }, e.cause, time);
         }
         break;
       case 'disarmed':

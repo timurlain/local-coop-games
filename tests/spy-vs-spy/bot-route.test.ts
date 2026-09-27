@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Danger } from '../../src/games/spy-vs-spy/bot/memory';
-import { DANGER_COST, nearestFrontier, route, type Hop } from '../../src/games/spy-vs-spy/bot/route';
+import { DANGER_COST, route, type Hop } from '../../src/games/spy-vs-spy/bot/route';
 import type { KnownRoom } from '../../src/games/spy-vs-spy/bot/view';
 import { doorKey, type Dir } from '../../src/games/spy-vs-spy/logic/state';
 
@@ -111,34 +111,5 @@ describe('route (spec §6)', () => {
     const hops = route(known, 3, 4, 2, NO_DANGERS) as Hop[];
     expect(pathIds(4, hops)).toEqual([4, 1, 2]);
     expect(hops[0].dir).toBe('N');
-  });
-});
-
-describe('nearestFrontier (spec §6)', () => {
-  it('returns the hop into the closest unvisited room, tie-broken N before E', () => {
-    // 2x2 grid: known room at id2 (bottom-left) has an N door to unvisited id0 and an E door to unvisited id3 —
-    // both one hop away. N must win.
-    const known = [room(2, { N: true, E: true })];
-    const hops = nearestFrontier(known, 2, 2, 2) as Hop[];
-    expect(hops.length).toBe(1);
-    expect(hops[0].dir).toBe('N');
-    expect(pathIds(2, hops)).toEqual([2, 0]);
-  });
-
-  it('returns the closer frontier room over a farther one', () => {
-    // 2xN grid: 0 -S-> unvisited 2 (1 hop) directly; 0 -E-> known 1 -S-> unvisited 3 (2 hops). 2 is nearer.
-    const known = [room(0, { E: true, S: true }), room(1, { W: true, S: true })];
-    const hops = nearestFrontier(known, 2, 3, 0) as Hop[];
-    expect(pathIds(0, hops)).toEqual([0, 2]);
-  });
-
-  it('returns null when every known door leads back into known space', () => {
-    const known = grid3x3();
-    expect(nearestFrontier(known, 3, 3, 0)).toBeNull();
-  });
-
-  it('has no dangers parameter — routing to the frontier ignores danger entirely', () => {
-    expect(route.length).toBe(5);
-    expect(nearestFrontier.length).toBe(4);
   });
 });

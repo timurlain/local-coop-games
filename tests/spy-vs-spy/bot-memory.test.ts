@@ -102,11 +102,19 @@ describe('memory (spec bot §4)', () => {
     expect(mem.foundSinceMap).toBe(0);
   });
 
-  it('dropped on death into a piece he has seen: that piece holds it now', () => {
+  it('dropped on death into a piece in his own room (his death room): that piece holds it now', () => {
+    const mem = createMemory();
+    remember(mem, view({ pieces: [piece(8)] }), [{ type: 'dropped', spy: 0, furniture: 8, thing: { kind: 'secret', secret: 'plany', lastHolder: 0 } }], NO_CTX);
+    expect(mem.pieces.get(8)).toMatchObject({ room: 1, note: { kind: 'item', thing: 'secret', secret: 'plany' } });
+  });
+
+  it('dropped on death into a piece next door (review finding 2, fairness): a dead human sees only his death '
+    + 'room, so it is noted nothing', () => {
     const mem = createMemory();
     remember(mem, view({ self: { ...view().self, room: 4 }, pieces: [piece(8)] }), [], NO_CTX);
+    // He dies back in room 1, whose view holds no piece 8 — the hand fell into a piece he cannot see from there.
     remember(mem, view(), [{ type: 'dropped', spy: 0, furniture: 8, thing: { kind: 'secret', secret: 'plany', lastHolder: 0 } }], NO_CTX);
-    expect(mem.pieces.get(8)).toMatchObject({ room: 4, note: { kind: 'item', thing: 'secret', secret: 'plany' } });
+    expect(mem.pieces.has(8)).toBe(false);
   });
 
   it('remembers which searchable pieces stand in each room he has been in (not fixtures, not the armoury)', () => {
@@ -149,6 +157,20 @@ describe('memory (spec bot §4)', () => {
     const events: GameEvent[] = [{ type: 'died', spy: 0, cause: 'bomba' }];
     remember(mem, view(), events, { ...NO_CTX, searching: 9 });
     expect(mem.dangers).toEqual([{ at: { piece: 9 }, cause: 'bomba', since: 10 }]);
+  });
+
+  it('dying twice at the same piece (review finding 6) refreshes since instead of duplicating', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{ type: 'died', spy: 0, cause: 'bomba' }], { ...NO_CTX, searching: 9 });
+    remember(mem, view({ time: 20 }), [{ type: 'died', spy: 0, cause: 'bomba' }], { ...NO_CTX, searching: 9 });
+    expect(mem.dangers).toEqual([{ at: { piece: 9 }, cause: 'bomba', since: 20 }]);
+  });
+
+  it('dying twice at the same door refreshes since instead of duplicating', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{ type: 'died', spy: 0, cause: 'elektrina' }], { ...NO_CTX, door: 'd:0:E' });
+    remember(mem, view({ time: 30 }), [{ type: 'died', spy: 0, cause: 'elektrina' }], { ...NO_CTX, door: 'd:0:E' });
+    expect(mem.dangers).toEqual([{ at: { door: 'd:0:E' }, cause: 'elektrina', since: 30 }]);
   });
 
   it('died to a door trap at a door records a danger at that door', () => {

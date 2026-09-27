@@ -1,15 +1,25 @@
-// Headless bot-vs-bot tournament (spec bot §8): npm run bots -- --games 200 --iq 3v3 --level 2 [--length 1] [--seed 1]
+// Headless bot-vs-bot tournament (spec bot §8):
+// npm run bots -- --games 200 --iq 3v3 --level 2 [--length 1] [--seed 1] [--hide-airport]
 import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
 
-const USAGE = 'usage: npm run bots -- [--games N] [--iq AvB] [--level L] [--length M] [--seed S]';
+const USAGE = 'usage: npm run bots -- [--games N] [--iq AvB] [--level L] [--length M] [--seed S] [--hide-airport]';
+/** Flags that take no value — parsed in one step instead of a `--key value` pair. */
+const BOOLEAN_FLAGS = new Set(['hide-airport']);
 
 function args(argv) {
-  const out = { games: '100', iq: '3v3', level: '2', length: '1', seed: '1' };
-  for (let i = 0; i < argv.length; i += 2) {
+  const out = { games: '100', iq: '3v3', level: '2', length: '1', seed: '1', 'hide-airport': false };
+  for (let i = 0; i < argv.length; ) {
     const key = argv[i].replace(/^--/, '');
-    if (!(key in out) || argv[i + 1] === undefined) throw new Error(`bad argument ${argv[i]}\n${USAGE}`);
-    out[key] = argv[i + 1];
+    if (!(key in out)) throw new Error(`bad argument ${argv[i]}\n${USAGE}`);
+    if (BOOLEAN_FLAGS.has(key)) {
+      out[key] = true;
+      i += 1;
+    } else {
+      if (argv[i + 1] === undefined) throw new Error(`bad argument ${argv[i]}\n${USAGE}`);
+      out[key] = argv[i + 1];
+      i += 2;
+    }
   }
   return out;
 }
@@ -34,6 +44,8 @@ const level = int('level', a.level, 1);
 if (!isLevel(level)) throw new Error(`--level ${level} does not exist\n${USAGE}`);
 const gameLength = Number(a.length);
 if (!isGameLengthMultiplier(gameLength)) throw new Error(`--length must be 1, 1.5, 2 or 3, got ${a.length}\n${USAGE}`);
-const opts = { games: int('games', a.games, 1), iq, level, gameLength, seed: int('seed', a.seed, 0) };
+const opts = {
+  games: int('games', a.games, 1), iq, level, gameLength, seed: int('seed', a.seed, 0), hideAirport: a['hide-airport'],
+};
 
 console.log(t.formatReport(opts, t.runTournament(opts)));

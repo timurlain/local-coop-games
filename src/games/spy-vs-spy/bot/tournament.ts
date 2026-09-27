@@ -10,11 +10,12 @@ import { botMaxHealth, type Iq } from './iq';
  * `GameState` itself (ruling R1); otherwise pure — the only clock is the one passed in, for measuring think time.
  */
 
-/** How one game went. `result`: 'draw' is the game's own draw (both clocks ran out); 'timeout' is a game that stopped
- *  with both spies out but no result from `step`; 'capped' hit the hard cap. */
+/** How one game went. `result`: 'draw' is the game's own draw (both clocks ran out — `step` always settles this
+ *  itself, the same tick the second spy goes out, so no separate both-out timeout case is reachable here);
+ *  'capped' hit the hard cap. */
 export interface GameSummary {
   seed: number;
-  result: 'white' | 'black' | 'draw' | 'timeout' | 'capped';
+  result: 'white' | 'black' | 'draw' | 'capped';
   /** game time played */
   seconds: number;
   deaths: Record<DeathCause, number>;
@@ -38,6 +39,8 @@ export interface TournamentOptions {
   gameLength: GameLengthMultiplier;
   /** first seed; games use seed .. seed + games − 1 */
   seed: number;
+  /** „Skrýt letiště" (spec §4); default off */
+  hideAirport?: boolean;
 }
 
 const DT = 1 / 60;
@@ -71,8 +74,9 @@ function standing(stand: Stand, spy: Readonly<Spy>, time: number): boolean {
 /** One game bot vs bot: side 0 (White) plays `iq[0]`, side 1 (Black) `iq[1]`, each with his handicap health. */
 export function playGame(
   seed: number, level: number, iq: readonly [Iq, Iq], gameLength: GameLengthMultiplier, now: () => number = () => 0,
+  hideAirport = false,
 ): GameSummary {
-  const state = createGame(seed, level, { gameLength, maxHealth: [botMaxHealth(iq[0]), botMaxHealth(iq[1])] });
+  const state = createGame(seed, level, { gameLength, hideAirport, maxHealth: [botMaxHealth(iq[0]), botMaxHealth(iq[1])] });
   const bots = [createBot(0, iq[0], seed), createBot(1, iq[1], seed)] as const;
   const cap = Math.ceil((CAP_CLOCKS * scaledClock(levelRules(level).clockSeconds, gameLength)) / DT);
   const deaths = Object.fromEntries(CAUSES.map((c) => [c, 0])) as Record<DeathCause, number>;
@@ -83,8 +87,7 @@ export function playGame(
   let thinks = 0;
   let events: GameEvent[] = [];
   let ticks = 0;
-  const bothOut = () => state.spies.every((s) => s.mode === 'out');
-  while (state.result === null && !bothOut() && ticks < cap) {
+  while (state.result === null && ticks < cap) {
     const t0 = now();
     const inputs: [SpyInput, SpyInput] = [bots[0].think(state, events, DT), bots[1].think(state, events, DT)];
     thinkTime += now() - t0;
@@ -101,7 +104,7 @@ export function playGame(
   }
   const r = state.result;
   const result: GameSummary['result'] = r === null
-    ? (bothOut() ? 'timeout' : 'capped')
+    ? 'capped'
     : r.kind === 'draw' ? 'draw' : r.winner === 0 ? 'white' : 'black';
   return {
     seed, result, seconds: state.time, deaths,
@@ -113,11 +116,12 @@ export function playGame(
 
 /** `opts.games` games on seeds `opts.seed` onwards. */
 export function runTournament(opts: TournamentOptions): GameSummary[] {
-  return Array.from({ length: opts.games }, (_, i) => playGame(opts.seed + i, opts.level, opts.iq, opts.gameLength));
+  return Array.from({ length: opts.games },
+    (_, i) => playGame(opts.seed + i, opts.level, opts.iq, opts.gameLength, () => 0, opts.hideAirport ?? false));
 }
 
 const sum = (games: readonly GameSummary[], f: (g: GameSummary) => number) => games.reduce((a, g) => a + f(g), 0);
-const row = (label: string, value: string) => `${label.padEnd(20)}${value}`;
+const row = (label: string, value: string) => `${label} `.padEnd(24) + value;
 
 /** The tournament's printout (spec bot §8): plain ASCII, one line per figure. */
 export function formatReport(opts: TournamentOptions, games: readonly GameSummary[]): string {
@@ -132,8 +136,7 @@ export function formatReport(opts: TournamentOptions, games: readonly GameSummar
       + `length x${opts.gameLength}, seeds ${opts.seed}-${opts.seed + opts.games - 1}`,
     row('Wins White', pct(count('white'))),
     row('Wins Black', pct(count('black'))),
-    row('Draws', pct(count('draw'))),
-    row('Time-outs', pct(count('timeout'))),
+    row('Draws (both clocks out)', pct(count('draw'))),
     row('Capped', pct(count('capped'))),
     row('Average length', `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')} (${seconds.toFixed(1)} s)`),
     row('Deaths by cause', CAUSES.map((c) => `${c} ${sum(games, (g) => g.deaths[c])}`).join(', ')),

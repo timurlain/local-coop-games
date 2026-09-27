@@ -30,6 +30,13 @@ const MAX_TRIES = 3;
 /** His own events that answer a search: something was learned there. */
 const SEARCH_ANSWERS: readonly GameEvent['type'][] = ['found', 'stored', 'swapped', 'hidden', 'alreadyHave', 'resupplied'];
 
+/** Whether `noticed` holds an answer to the search of `piece` (review finding 1): reach zones overlap (wall slots
+ *  12 apart, reach ±22), so the game may answer a search of a piece he never pressed while he presses another —
+ *  that must not reset `tries` for the one he is actually stuck on. */
+export function answersSearch(noticed: readonly GameEvent[], piece: number | null): boolean {
+  return noticed.some((e) => SEARCH_ANSWERS.includes(e.type) && 'furniture' in e && e.furniture === piece);
+}
+
 const sameIntent = (a: Intent, b: Intent) => JSON.stringify(a) === JSON.stringify(b);
 
 /** The first door on the way to `room`, or null when he is there already or knows no way. */
@@ -141,7 +148,7 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
       searching: intent.kind === 'search' ? intent.piece.id : null,
       door: view.doors.find((d) => d.dir === doorDir)?.key ?? null,
     });
-    if (noticed.some((e) => SEARCH_ANSWERS.includes(e.type))) tries = 0;
+    if (answersSearch(noticed, triedPiece)) tries = 0;
     if (noticed.some((e) => e.type === 'trapSet' || e.type === 'refused' || e.type === 'died')) placingKey = null;
     // The opponent in view is watched whatever he is doing himself (a bash begun while he is busy still counts).
     if (view.opponent !== null) {

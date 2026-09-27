@@ -29,6 +29,15 @@ describe('whole games bot vs bot (spec bot §8, §9)', () => {
     expect(g.thinkMs).toBeGreaterThan(0);
     expect(g.thinkMs).toBeLessThan(0.5);
   });
+
+  it('review finding 5: hideAirport threads through to the created game and changes play', () => {
+    const iq: [5, 5] = [5, 5];
+    const withHidden = runTournament({ games: 15, iq, level: 1, gameLength: 1, seed: 1, hideAirport: true });
+    const shown = runTournament({ games: 15, iq, level: 1, gameLength: 1, seed: 1 });
+    expect(withHidden.map((g) => g.result)).not.toEqual(shown.map((g) => g.result));
+    // playGame itself takes the same flag (default off, same as omitting it from TournamentOptions).
+    expect(playGame(1, 1, iq, 1, undefined, false)).toEqual(playGame(1, 1, iq, 1));
+  }, 15000);
 });
 
 describe('formatReport', () => {
@@ -37,10 +46,17 @@ describe('formatReport', () => {
     const report = formatReport(opts, runTournament(opts));
     expect(report).toMatch(/^Wins White/m);
     expect(report).toMatch(/^Wins Black/m);
-    expect(report).toMatch(/^Draws/m);
+    expect(report).toMatch(/^Draws \(both clocks out\)/m);
     expect(report).toMatch(/^Average length/m);
     expect(report).toMatch(/^Deaths by cause/m);
     for (const cause of ['bomba', 'pruzina', 'elektrina', 'pistole', 'casovana', 'fight']) expect(report).toContain(cause);
     expect(/^[\x20-\x7e\n]*$/.test(report)).toBe(true);
+  });
+
+  it('review finding 3: no unreachable timeout result — step.ts always settles both-out as a draw', () => {
+    const opts: TournamentOptions = { games: 20, iq: [3, 3], level: 1, gameLength: 1, seed: 1 };
+    const games = runTournament(opts);
+    for (const g of games) expect(g.result).not.toBe('timeout');
+    expect(formatReport(opts, games)).not.toContain('Time-outs');
   });
 });
