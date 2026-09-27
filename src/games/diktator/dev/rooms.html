@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diktátor — místnosti paláce</title>
+    <style>
+      body { margin: 0; background: #15100a; color: #efe4c4; font: 16px Georgia, serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      canvas { width: 100%; aspect-ratio: 480 / 200; background: #000; border: 1px solid #8a6a24; }
+      .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      .controls label { display: flex; gap: 6px; align-items: center; }
+      .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+      .strip button { font: inherit; font-size: 13px; text-align: left; background: #221a10; color: #efe4c4; border: 1px solid #8a6a24; padding: 6px; cursor: pointer; }
+      .strip button.here { border-color: #d9b45a; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <canvas id="stage"></canvas>
+      <div class="controls">
+        <label>Síla <input type="range" id="strength" min="0" max="9" step="1" /> <span id="strength-out"></span></label>
+        <label>Nálada <input type="range" id="mood" min="-1" max="9" step="1" /> <span id="mood-out"></span></label>
+        <label><input type="checkbox" id="zogu" checked /> Zogu</label>
+        <label><input type="checkbox" id="velitel" /> Vlček</label>
+        <label><input type="checkbox" id="plane" /> letadlo</label>
+      </div>
+      <div class="strip" id="strip"></div>
+    </main>
+    <script type="module" src="./rooms.ts"></script>
+  </body>
+</html>

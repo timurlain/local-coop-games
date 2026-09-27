@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diktátor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Limelight&family=Poiret+One&display=swap" />
+    <link rel="stylesheet" href="./palace.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="top">
+        <h1 id="title">Diktátor</h1>
+        <div id="top-hud"></div>
+      </header>
+      <div id="strip" class="strip"></div>
+      <section class="half" id="half-zogu">
+        <div class="stage-box">
+          <canvas class="stage"></canvas>
+          <div class="hourglasses"></div>
+          <div class="dossier" hidden></div>
+          <div class="bubbles" aria-live="polite"></div>
+        </div>
+        <aside class="panel">
+          <div class="hud"></div>
+          <p class="hint"></p>
+        </aside>
+      </section>
+      <section class="half" id="half-velitel">
+        <div class="stage-box">
+          <canvas class="stage"></canvas>
+          <div class="hourglasses"></div>
+          <div class="dossier" hidden></div>
+          <div class="bubbles" aria-live="polite"></div>
+        </div>
+        <aside class="panel">
+          <div class="hud"></div>
+          <p class="hint"></p>
+        </aside>
+      </section>
+    </div>
+    <div id="overlay" class="overlay hidden">
+      <div class="card">
+        <h2 id="overlay-title"></h2>
+        <div id="overlay-lines"></div>
+        <div id="overlay-gazette" hidden></div>
+        <ol id="overlay-options" class="menu"></ol>
+        <p id="overlay-hint" class="hint"></p>
+      </div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
