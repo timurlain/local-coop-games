@@ -12,7 +12,7 @@ export const FIGURE_HEIGHT = BONES.thigh + BONES.shin + BONES.torso + BONES.neck
  * Legs: hip absolute, knee relative to the thigh. */
 export type Limb = readonly [number, number];
 
-export type PropKind = 'glass' | 'club' | 'thumb' | 'finger' | 'flagIT' | 'flagYU';
+export type PropKind = 'glass' | 'club' | 'thumb' | 'finger' | 'flagIT' | 'flagYU' | 'newspaper' | 'basket' | 'bouquet';
 export type Face = 'ecstatic' | 'happy' | 'neutral' | 'grumpy' | 'furious' | 'shocked';
 
 export interface PuppetPose {
@@ -28,6 +28,8 @@ export interface PuppetPose {
   readonly reachF?: Vec;
   readonly bendF?: 1 | -1;
   readonly prop?: PropKind;
+  /** The front hand is tucked inside the coat: `drawPuppet` skips the hand and draws a lapel flap over the wrist. */
+  readonly hideHandF?: boolean;
   readonly mouthOpen?: boolean;
   /** Overrides the mood's face (e.g. a startled face). */
   readonly face?: Face;
@@ -54,6 +56,7 @@ export interface PuppetJoints {
   readonly legF: LegJoints;
   readonly legB: LegJoints;
   readonly prop: PropKind | null;
+  readonly hideHandF: boolean;
   readonly mouthOpen: boolean;
   readonly face: Face | null;
 }
@@ -97,6 +100,7 @@ export function solvePuppet(p: PuppetPose): PuppetJoints {
     legF: { kn: up(lf.kn), foot: up(lf.foot) },
     legB: { kn: up(lb.kn), foot: up(lb.foot) },
     prop: p.prop ?? null,
+    hideHandF: p.hideHandF ?? false,
     mouthOpen: p.mouthOpen ?? false,
     face: p.face ?? null,
   };

@@ -23,6 +23,12 @@ export interface Look {
   readonly sash?: readonly string[];
   /** Carried when the pose has no prop of its own. */
   readonly prop?: PropKind;
+  /** A colour: a knotted scarf around the neck, with a short tail hanging on the chest. */
+  readonly scarf?: string;
+  /** Round wire-rim glasses over the eye. */
+  readonly glasses?: boolean;
+  /** A colour: a shoulder bag hanging at the back hip, with its strap across the chest. */
+  readonly bag?: string;
 }
 
 export const LOOKS = {

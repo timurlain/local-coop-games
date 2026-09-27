@@ -7,20 +7,22 @@ export type PoseFn = (t: number) => PuppetPose;
 
 const STAND: PuppetPose = { lean: 0, head: 0, armF: [172, -8], armB: [188, 8], legF: [176, 2], legB: [184, -2] };
 
+function walkPose(t: number): PuppetPose {
+  const s = Math.sin(t * 7);
+  return {
+    ...STAND,
+    lean: 3,
+    armF: [180 - s * 28, -18],
+    armB: [180 + s * 28, -18],
+    legF: [180 + s * 24, -Math.max(0, s) * 30],
+    legB: [180 - s * 24, -Math.max(0, -s) * 30],
+    bob: Math.abs(s) * 1.5,
+  };
+}
+
 const POSE_TABLE = {
   stand: () => STAND,
-  walk: (t: number) => {
-    const s = Math.sin(t * 7);
-    return {
-      ...STAND,
-      lean: 3,
-      armF: [180 - s * 28, -18],
-      armB: [180 + s * 28, -18],
-      legF: [180 + s * 24, -Math.max(0, s) * 30],
-      legB: [180 - s * 24, -Math.max(0, -s) * 30],
-      bob: Math.abs(s) * 1.5,
-    } satisfies PuppetPose;
-  },
+  walk: (t: number) => walkPose(t),
   talk: (t: number) => ({ ...STAND, head: 4, armF: [120 + Math.sin(t * 5) * 12, -40], mouthOpen: Math.sin(t * 12) > 0 }) satisfies PuppetPose,
   bow: () => ({ ...STAND, lean: 32, head: 12, armF: [158, -12], armB: [150, -10], legF: [172, 10], legB: [178, 8] }) satisfies PuppetPose,
   salute: () => ({ ...STAND, head: -2, reachF: [7, 46], bendF: -1 }) satisfies PuppetPose,
@@ -30,6 +32,11 @@ const POSE_TABLE = {
   warn: (t: number) =>
     ({ ...STAND, head: 4, armF: [82, -88 + Math.sin(t * 9) * 14], prop: 'finger', mouthOpen: Math.sin(t * 10) > 0.2 }) satisfies PuppetPose,
   clasp: () => ({ ...STAND, head: 5, armF: [150, -65], armB: [160, -62] }) satisfies PuppetPose,
+  /** The front upper arm down and a little forward, the forearm bent up across the chest: the hand sits inside
+   * the coat at chest height. */
+  handInCoat: () => ({ ...STAND, reachF: [6, 22], bendF: -1, hideHandF: true }) satisfies PuppetPose,
+  /** Walking with the front hand hidden in the coat, as `handInCoat`. */
+  handInCoatWalk: (t: number) => ({ ...walkPose(t), reachF: [6, 22], bendF: -1, hideHandF: true }) satisfies PuppetPose,
 } as const satisfies Record<string, PoseFn>;
 
 export type PoseName = keyof typeof POSE_TABLE;
