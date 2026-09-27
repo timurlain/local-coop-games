@@ -4,8 +4,9 @@
 
 import { makeRng } from '../../../../shared/rng';
 import { HEROES, type Hero } from '../../logic/palace';
-import { tileCentre, type MarchMap } from './map';
+import { stepBenefits } from './benefits';
 import { createGateGuards, stepFoes, strike } from './foes';
+import { tileCentre, type MarchMap } from './map';
 import { applyRope, walk } from './move';
 import { createPlaces, stepPlaces } from './places';
 import { MARCH } from './rules';
@@ -82,6 +83,7 @@ export function stepMarch(
   const helperStrikes = s.solo && active === 'zogu';
   strike(s, vin, helperStrikes ? MARCH.helperCooldown : MARCH.blowCooldown, events);
   stepFoes(s, dt, events);
+  stepBenefits(s, dt, events);
 
   // 3. The trail, the day banner and the end.
   if (s.now >= s.trailNext) {
