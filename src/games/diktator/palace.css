@@ -85,3 +85,4 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 .gazette-article h4 { flex: 1 1 160px; margin: 0; font-family: 'Limelight', Georgia, serif; font-weight: 400; font-size: 1.6em; line-height: 1.2; color: #1a1410; }
 
 .bubble .scroll { overflow-y: auto; }
+#overlay-gazette[hidden] { display: none; }
