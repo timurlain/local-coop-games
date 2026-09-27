@@ -7,7 +7,9 @@ export type FurnitureKind =
   | 'throne' | 'desk' | 'armchair' | 'teaTable' | 'mapTable' | 'bench' | 'stove' | 'sofa' | 'fireplace'
   | 'rifleRack' | 'roundTable' | 'safe' | 'bookshelf' | 'toyChest' | 'rockingHorse' | 'column' | 'fountain'
   /** A cluster of framed family photographs hung on the wall (play-test wish). */
-  | 'familyPhotos';
+  | 'familyPhotos'
+  /** The playroom's war toys — a young king's toys of choice (play-test 2026-09-27). */
+  | 'wallMap' | 'strategyTable' | 'toyCannon' | 'tinSoldiers';
 
 export interface Furniture {
   readonly kind: FurnitureKind;
@@ -33,7 +35,7 @@ export const ROOM_STYLES: Readonly<Record<RoomId, RoomStyle>> = {
   trunni: { wall: '#5a2a2a', wainscot: '#3d1c1c', floor: '#4a3522', accent: '#d9b45a', windows: 2, portrait: false, shows: null, furniture: [{ kind: 'throne', x: 240 }] },
   pracovna: { wall: '#3a2f22', wainscot: '#2a2118', floor: '#3b2c1c', accent: '#c9a44a', windows: 1, portrait: true, shows: 'seal', furniture: [{ kind: 'desk', x: 300 }, { kind: 'bookshelf', x: 420 }] },
   matka: { wall: '#3e3450', wainscot: '#2c2438', floor: '#3a2c2a', accent: '#d6c7e0', windows: 1, portrait: false, shows: null, furniture: [{ kind: 'familyPhotos', x: 285 }, { kind: 'armchair', x: 330 }, { kind: 'teaTable', x: 400 }] },
-  herna: { wall: '#4d5a3a', wainscot: '#36402a', floor: '#5a4630', accent: '#e8c56a', windows: 2, portrait: false, shows: null, furniture: [{ kind: 'rockingHorse', x: 320 }, { kind: 'toyChest', x: 410 }] },
+  herna: { wall: '#4d5a3a', wainscot: '#36402a', floor: '#5a4630', accent: '#e8c56a', windows: 1, portrait: false, shows: null, furniture: [{ kind: 'wallMap', x: 330 }, { kind: 'toyChest', x: 200 }, { kind: 'rockingHorse', x: 262 }, { kind: 'strategyTable', x: 352 }, { kind: 'tinSoldiers', x: 300 }, { kind: 'toyCannon', x: 446 }] },
   armada: { wall: '#34422a', wainscot: '#26311f', floor: '#3a2e20', accent: '#b8963f', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'mapTable', x: 250 }] },
   nadvori: { wall: '#8aa0b5', wainscot: '#b9a98a', floor: '#9c8a6c', accent: '#f1e6c8', windows: 0, portrait: false, shows: 'plane', furniture: [{ kind: 'column', x: 40 }, { kind: 'fountain', x: 250 }, { kind: 'column', x: 450 }] },
   vyslanci: { wall: '#2a3440', wainscot: '#1f2730', floor: '#3a2e24', accent: '#c9b27a', windows: 2, portrait: false, shows: null, furniture: [{ kind: 'roundTable', x: 240 }] },

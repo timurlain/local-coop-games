@@ -32,6 +32,14 @@ function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: 
   ctx.strokeRect(x, y, w, h);
 }
 
+/** A tin soldier 10 units tall standing at (x, base): shako, coat of `coat`, white trousers. */
+function tinSoldier(ctx: CanvasRenderingContext2D, x: number, base: number, coat: string): void {
+  ctx.fillStyle = '#e8e2d0'; ctx.fillRect(x - 1.5, base - 4, 3, 4);
+  ctx.fillStyle = coat; ctx.fillRect(x - 2, base - 8, 4, 4);
+  ctx.fillStyle = '#e6c9a0'; ctx.fillRect(x - 1.5, base - 10, 3, 2);
+  ctx.fillStyle = '#1a1410'; ctx.fillRect(x - 1.5, base - 12.5, 3, 2.5);
+}
+
 function drawBackground(ctx: CanvasRenderingContext2D, st: RoomStyle): void {
   ctx.fillStyle = st.wall;
   ctx.fillRect(0, 0, STAGE_W, FLOOR_Y);
@@ -121,6 +129,40 @@ function drawFurniture(ctx: CanvasRenderingContext2D, f: Furniture, st: RoomStyl
     case 'rockingHorse':
       ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 4, 26, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
       box(ctx, x - 18, y - 36, 36, 12, '#c0a070'); box(ctx, x + 14, y - 50, 10, 16, '#c0a070');
+      break;
+    case 'wallMap': {
+      // A campaign map pinned to the wall: parchment, a coastline, a river, red and blue arrows.
+      box(ctx, x - 50, 26, 100, 62, '#e3d3a4');
+      ctx.strokeStyle = '#7a6a45'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x - 44, 36); ctx.quadraticCurveTo(x - 20, 52, x - 36, 82); ctx.stroke();
+      ctx.strokeStyle = '#4a7aa0'; ctx.beginPath(); ctx.moveTo(x - 10, 30); ctx.quadraticCurveTo(x + 6, 58, x + 30, 84); ctx.stroke();
+      ctx.strokeStyle = '#a8202a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - 24, 70); ctx.lineTo(x + 8, 52); ctx.lineTo(x + 2, 50); ctx.moveTo(x + 8, 52); ctx.lineTo(x + 4, 58); ctx.stroke();
+      ctx.strokeStyle = '#2c3a55'; ctx.beginPath(); ctx.moveTo(x + 40, 40); ctx.lineTo(x + 18, 62); ctx.lineTo(x + 24, 62); ctx.moveTo(x + 18, 62); ctx.lineTo(x + 18, 56); ctx.stroke();
+      ctx.fillStyle = st.accent; ctx.beginPath(); ctx.arc(x - 46, 30, 2, 0, Math.PI * 2); ctx.arc(x + 46, 30, 2, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'strategyTable': {
+      // A low table with a sand-table map and tin soldiers of two colours facing each other, little flags.
+      box(ctx, x - 40, y - 30, 80, 6, '#6a4a2a'); box(ctx, x - 36, y - 24, 5, 24, '#5a3e22'); box(ctx, x + 31, y - 24, 5, 24, '#5a3e22');
+      ctx.fillStyle = '#9fb06a'; ctx.fillRect(x - 38, y - 33, 76, 3);
+      for (let i = 0; i < 4; i++) { tinSoldier(ctx, x - 30 + i * 7, y - 33, '#a8202a'); tinSoldier(ctx, x + 10 + i * 7, y - 33, '#2c3a55'); }
+      ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 36, y - 33); ctx.lineTo(x - 36, y - 45); ctx.moveTo(x + 36, y - 33); ctx.lineTo(x + 36, y - 45); ctx.stroke();
+      ctx.fillStyle = '#c8102e'; ctx.fillRect(x - 36, y - 45, 7, 5); ctx.fillStyle = '#2c3a55'; ctx.fillRect(x + 36, y - 45, 7, 5);
+      break;
+    }
+    case 'tinSoldiers':
+      // A parade of tin soldiers on the floor, in step.
+      for (let i = 0; i < 6; i++) tinSoldier(ctx, x - 20 + i * 8, y - 1, i % 2 === 0 ? '#a8202a' : '#c9a44a');
+      break;
+    case 'toyCannon':
+      // A little brass cannon on red wheels, a pyramid of cannonballs beside it.
+      ctx.save(); ctx.translate(x, y - 12); ctx.rotate(-0.25);
+      box(ctx, -18, -5, 30, 9, '#b8963f'); box(ctx, 10, -6, 5, 11, '#8a6a24');
+      ctx.restore();
+      ctx.fillStyle = '#7a1f24'; ctx.strokeStyle = '#1a1410'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(x - 6, y - 7, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#2a2a2a';
+      for (const [bx, by] of [[x + 16, y - 3], [x + 23, y - 3], [x + 19.5, y - 9]] as const) { ctx.beginPath(); ctx.arc(bx, by, 3.2, 0, Math.PI * 2); ctx.fill(); }
       break;
     case 'column': box(ctx, x - 10, 20, 20, FLOOR_Y - 20, '#d8ccb0'); box(ctx, x - 14, 14, 28, 8, '#cfc2a4'); break;
     case 'fountain':
