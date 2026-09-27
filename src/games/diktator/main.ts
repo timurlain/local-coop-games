@@ -3,11 +3,12 @@
 // shared overlay) ⇄ pause.
 
 import { cs } from '../../shared/i18n/cs';
-import { Sfx } from '../../shared/audio';
+import { getAudioContext, Sfx } from '../../shared/audio';
 import { InputManager, type DeviceId } from '../../shared/input/manager';
 import { startLoop } from '../../shared/loop';
 import { randomSeed } from '../../shared/rng';
 import { saveJson } from '../../shared/storage';
+import { Samples } from './audio/samples';
 import { exits, HEROES, neighbour, other, type Hero, type RoomId } from './logic/palace';
 import { palaceCommands } from './logic/palace-actions';
 import { deserialize, newSave, recordTurn, retryFromYear, type SaveFile } from './logic/save';
@@ -25,7 +26,7 @@ import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
 import { roomView, stripView, type RoomView } from './ui/palace-view';
 import { cardsFor, phaseScreen, type Card, type PhaseScreen } from './ui/screens';
-import { bumpSound, moveSounds, voiceOf } from './ui/sounds';
+import { bumpHits, bumpSound, moveHits, moveSounds, voiceOf } from './ui/sounds';
 import { heroLine, replyLines, type Line } from './ui/speech';
 
 const T = cs.diktator;
@@ -50,6 +51,7 @@ interface Half {
 
 const input = new InputManager(window);
 const sfx = new Sfx();
+const samples = new Samples(getAudioContext);
 const flicks = new Map<DeviceId, Flick>();
 
 let screen: Screen = 'title';
@@ -180,14 +182,16 @@ function play(cmd: Command, actor: Hero | null = null): void {
   for (const e of events) {
     if (e.type === 'moved') {
       next[e.hero].anim = { kind: 'slide', from: oldViews[e.hero], dir: dirOf(e.from, e.to), start: t };
-      moveSounds(e.hero).forEach((n) => sfx.play(n));
+      if (!samples.play(moveHits(e.hero))) moveSounds(e.hero).forEach((n) => sfx.play(n));
       // Entering the throne room while the petitioner waits: his question pops up (not modal — Esc or an arrow leaves).
       if (e.hero === 'zogu' && e.to === sc.palace!.throne && after.phase.kind === 'audience') {
         next.zogu.dialogue = { ...next.zogu.dialogue, ui: { open: true, focus: 0 } };
       }
     }
     if (e.type === 'decided') sfx.play('stamp');
-    if (e.type === 'aidGranted' || e.type === 'swissTransfer') sfx.play('coins');
+    if (e.type === 'aidGranted' || e.type === 'swissTransfer') {
+      if (!samples.play([{ sample: 'coins', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('coins');
+    }
   }
   if (actor && after.quarter === before.quarter) {
     const said = heroLine(sc, before, cmd);
@@ -208,7 +212,7 @@ function play(cmd: Command, actor: Hero | null = null): void {
   if (newCards.length > 0) {
     cards.push(...newCards);
     overlayUi = CLOSED;
-    sfx.play('paper');
+    if (!samples.play([{ sample: 'page', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('paper');
     holdAll();
   }
   dirty = true;
@@ -226,7 +230,7 @@ function bump(hero: Hero, dir: 'up' | 'down' | 'left' | 'right'): void {
   const L = sc.palace!;
   const room = state().palace!.at[hero];
   flash = { rooms: new Set(exits(L, room).map((d) => neighbour(L, room, d)!)), until: t + FLASH_SEC };
-  sfx.play(bumpSound(hero));
+  if (!samples.play(bumpHits(hero))) sfx.play(bumpSound(hero));
   dirty = true;
 }
 
@@ -259,6 +263,7 @@ function updateTitle(): void {
     if (!seated) {
       if (intents.some((i) => i.kind === 'action')) {
         sfx.unlock();
+        samples.load();
         const joined = join(seats, d);
         if (joined !== seats) {
           seats = joined;
@@ -444,7 +449,10 @@ function updatePause(): void {
 function update(dt: number): void {
   input.update();
   t += dt;
-  if (input.anyKeyPressed()) sfx.unlock();
+  if (input.anyKeyPressed()) {
+    sfx.unlock();
+    samples.load();
+  }
   if (flash.rooms.size > 0 && t > flash.until) {
     flash = { rooms: new Set(), until: 0 };
     dirty = true;

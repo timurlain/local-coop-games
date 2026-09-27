@@ -194,11 +194,11 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     tone(c, { freq: 90, to: 50, dur: 0.09, type: 'sine', vol: 0.3, delay });
     noise(c, { dur: 0.05, vol: 0.1, delay, lowpass: 400 });
   }),
-  /** Vlček's quick steps with a spur's jingle. */
-  stepVlcek: (c) => {
-    [0, 0.1, 0.2].forEach((delay) => noise(c, { dur: 0.03, vol: 0.08, delay, lowpass: 1200 }));
-    [0.02, 0.12].forEach((delay) => tone(c, { freq: 3200, to: 2800, dur: 0.05, delay, type: 'triangle', vol: 0.05 }));
-  },
+  /** Vlček's quick steps: three noise steps, each with a low heel tone (play-test: the old spur jingle sounded like birds). */
+  stepVlcek: (c) => [0, 0.1, 0.2].forEach((delay) => {
+    noise(c, { dur: 0.03, vol: 0.08, delay, lowpass: 1500 });
+    tone(c, { freq: 120, to: 80, dur: 0.05, type: 'sine', vol: 0.12, delay });
+  }),
   /** Zogu's door: a slow, low creak. */
   doorZogu: (c) => { tone(c, { freq: 150, to: 110, dur: 0.25, type: 'triangle', vol: 0.12, delay: 0.3 }); noise(c, { dur: 0.15, vol: 0.08, delay: 0.3, lowpass: 600 }); },
   /** Vlček's door: a quick latch. */
