@@ -11,6 +11,7 @@
 html, body { margin: 0; height: 100%; background: var(--night); color: var(--cream); }
 body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 16px; overflow: hidden; }
 #app { display: grid; grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); gap: 6px; height: 100vh; padding: 6px 10px; }
+#app[hidden] { display: none; }
 #top { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
 #top h1 { font-family: 'Limelight', Georgia, serif; font-weight: 400; color: var(--gold); margin: 0; font-size: 24px; letter-spacing: 2px; }
 #top-hud { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); }
@@ -23,8 +24,14 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 .strip .cell .heroes b { background: var(--gold); color: var(--night); border-radius: 50%; width: 16px; height: 16px; font-size: 11px; display: grid; place-items: center; }
 .strip .cell.flash { border-color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold); }
 
-.half { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 16%); gap: 10px; min-height: 0; }
+.half {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 16%); gap: 10px; min-height: 0;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
 .half.inactive { opacity: 0.55; }
+/* The merged mini-game screen (task 5): the two halves slide toward the centre and fade while they merge. */
+#app.merging #half-zogu { transform: translateY(-25%); opacity: 0; }
+#app.merging #half-velitel { transform: translateY(25%); opacity: 0; }
 .stage-box { min-height: 0; min-width: 0; display: flex; align-items: center; justify-content: center; position: relative; }
 .stage { display: block; border: 1px solid var(--gold-dark); background: #000; }
 .panel { min-height: 0; overflow-y: auto; background: var(--panel); border: 1px solid var(--gold-dark); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
@@ -115,3 +122,21 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 
 .bubble .scroll { overflow-y: auto; }
 #overlay-gazette[hidden] { display: none; }
+
+/* The merged mini-game arena (task 5, spec §3): fixed, centred, ~90 % of the viewport, 16:9 letterboxed. */
+#arena {
+  position: fixed; inset: 0; z-index: 5; display: grid; place-items: center;
+  background: rgba(6, 4, 2, 0.94); opacity: 0; transition: opacity 0.5s ease; pointer-events: none;
+}
+#arena[hidden] { display: none; }
+#arena.shown { opacity: 1; pointer-events: auto; }
+/* Sized in script by fitArena (ui/dom.ts): the largest 16:9 box at 90 % of the viewport, device-pixel-ratio aware. */
+.arena-stage { display: block; border: 2px solid var(--gold); background: #000; box-shadow: 0 0 30px rgba(0, 0, 0, 0.6); }
+#arena-card {
+  position: absolute; inset: 0; margin: auto; max-width: 560px; width: calc(100% - 32px); max-height: 80vh; height: fit-content; overflow-y: auto;
+}
+#arena-card[hidden] { display: none; }
+#arena-card h2 { font-family: 'Limelight', Georgia, serif; font-weight: 400; color: var(--gold); margin: 0; font-size: 26px; letter-spacing: 1px; }
+#arena-card p { margin: 4px 0; }
+#arena-card button { font: inherit; color: var(--cream); background: #241c12; border: 1px solid var(--gold-dark); padding: 6px 12px; align-self: flex-start; cursor: pointer; margin-top: 4px; }
+#arena-card button:hover, #arena-card button:focus { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }

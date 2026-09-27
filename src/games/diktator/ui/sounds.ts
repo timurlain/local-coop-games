@@ -42,6 +42,12 @@ export function bumpHits(h: Hero): SampleHit[] {
   return [{ sample: h === 'zogu' ? 'zogu-bump' : 'vlcek-bump', delay: 0, rate: 1, gain: 0.5 }];
 }
 
+/** Delays (scene seconds) for the two "missed" gunshots of the Atentát mini-game (task 5, spec §5.3):
+ * one at 0 s and one at 0.25 s. */
+export function shotsHits(): readonly number[] {
+  return [0, 0.25];
+}
+
 /**
  * How restless the crowd is (play-test round 6b §3, "a rebel noise when some of the factions are super unhappy"):
  * 0 while every faction is above rozzlobení (popularity > 2); 0.5 once the worst is exactly at 2 (rozzlobení);

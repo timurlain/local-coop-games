@@ -10,21 +10,24 @@ import { randomSeed } from '../../shared/rng';
 import { saveJson } from '../../shared/storage';
 import { Ambient } from './audio/ambient';
 import { Samples } from './audio/samples';
+import { FACTIONS } from './logic/groups';
 import { exits, HEROES, neighbour, other, type Hero, type RoomId } from './logic/palace';
 import { palaceCommands } from './logic/palace-actions';
 import { deserialize, newSave, recordTurn, retryFromYear, type SaveFile } from './logic/save';
-import type { Command, GameEvent, GameState } from './logic/state';
+import type { Command, GameEvent, GameState, Phase } from './logic/state';
 import { advance, newGame, quarterLabel } from './logic/turn';
 import { loadSettings, nextEffects, saveSettings } from './settings';
 import { STAGE_H, STAGE_W } from './render/rooms/crowd';
 import { drawHalf, type StageAnim } from './render/rooms/stage';
 import { albania } from './scenario/albania';
+import { ARENA_W, ARENA_H, type ArenaInput } from './minigames/arena';
+import { SpotGame, tipText } from './minigames/spot/game';
 import { bubblesFor, stageView } from './ui/bubbles';
 import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
 import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
 import {
-  fitStage, renderBubbles, renderDossier, renderHalf, renderHourglasses, renderOverlay, renderStrip, renderTop, stageCanvas,
-  type OverlayModel,
+  arenaCanvas, fitArena, fitStage, renderArenaCard, renderBubbles, renderDossier, renderHalf, renderHourglasses, renderOverlay,
+  renderStrip, renderTop, showArena, stageCanvas, type ArenaCardModel, type OverlayModel,
 } from './ui/dom';
 import { dossierModel, type DossierModel } from './ui/dossier';
 import { Flick } from './ui/flick';
@@ -32,17 +35,28 @@ import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
 import { roomView, stripView, type RoomView } from './ui/palace-view';
 import { cardsFor, phaseScreen, type Card, type PhaseScreen } from './ui/screens';
-import { bumpHits, bumpSound, moveHits, moveSounds, unrestLevel, voiceOf } from './ui/sounds';
+import { bumpHits, bumpSound, moveHits, moveSounds, shotsHits, unrestLevel, voiceOf } from './ui/sounds';
 import { heroLine, replyLines, type Line } from './ui/speech';
 
 const T = cs.diktator;
 const P = T.palace;
+const A = T.atentat;
 const sc = albania;
 const SAVE_KEY = 'diktator/palace';
 const FLASH_SEC = 0.5;
 const CAPTION_SEC = 4;
+/** The unrest ambience level while "Najdi střelce" runs (task 5, spec §5.3). */
+const ARENA_AMBIENT = 0.6;
 
-type Screen = 'title' | 'palace' | 'pause';
+type Screen = 'title' | 'palace' | 'pause' | 'arena';
+
+type AttemptPhase = Extract<Phase, { kind: 'attempt' }>;
+
+interface ArenaSession {
+  readonly game: SpotGame;
+  stage: 'intro' | 'playing' | 'result';
+  result: 'found' | 'missed' | null;
+}
 
 interface Half {
   dialogue: Dialogue;
@@ -84,12 +98,14 @@ function effectsVolumeOption(): { label: string; run: () => void } {
 
 let screen: Screen = 'title';
 let pauseReason = '';
+let pausedFrom: Screen = 'palace';
 let seats: Seats = NO_SEATS;
 let active: Hero = 'zogu';
 let file: SaveFile | null = null;
 let cards: Card[] = [];
 let overlayUi: MenuUi = CLOSED;
 let halves: Record<Hero, Half> | null = null;
+let arena: ArenaSession | null = null;
 let flash: { rooms: Set<RoomId>; until: number } = { rooms: new Set(), until: 0 };
 let t = 0;
 let dirty = true;
@@ -163,10 +179,17 @@ function begin(f: SaveFile, first: readonly GameEvent[]): void {
   holdAll();
   ambient.setLevel(unrestLevel(state()));
   dirty = true;
+  // A save whose phase is 'attempt' (or a new game forced into one, dev hook below): start the scene at once.
+  maybeStartArena();
 }
 
 function startNew(): void {
   const { state: s, events } = newGame(sc, randomSeed(), undefined, { palace: true });
+  // Dev-only test hook (task 5, brief step 5): `?attempt=1` forces every faction to plot an assassination so the
+  // very next evening triggers "Najdi střelce", without playing through years of rounds first.
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('attempt') === '1') {
+    for (const f of FACTIONS) s.plots[f] = { kind: 'assassination' };
+  }
   begin(newSave(sc.id, s), events);
 }
 
@@ -190,6 +213,10 @@ function toTitle(): void {
   overlayUi = CLOSED;
   screen = 'title';
   ambient.setLevel(0);
+  if (arena) {
+    arena = null;
+    showArena(false);
+  }
   dirty = true;
 }
 
@@ -256,6 +283,117 @@ function play(cmd: Command, actor: Hero | null = null): void {
   }
   ambient.setLevel(unrestLevel(after));
   dirty = true;
+  maybeStartArena();
+}
+
+/**
+ * After any command that lands the rules in the 'attempt' phase — once no bubble line is waiting and no cards are
+ * pending — creates the scene and switches to it (task 5, spec §3). Also runs right after `begin()`, so continuing
+ * a save whose phase is 'attempt' starts the scene from the phase's own seed.
+ */
+function maybeStartArena(): void {
+  if (!file || screen !== 'palace') return;
+  const phase = state().phase;
+  if (phase.kind !== 'attempt') return;
+  if (someoneTalking() || cards.length > 0) return;
+  startArena(phase);
+}
+
+function startArena(phase: AttemptPhase): void {
+  arena = { game: new SpotGame(phase.difficulty, phase.place, phase.seed), stage: 'intro', result: null };
+  screen = 'arena';
+  showArena(true);
+  ambient.setLevel(ARENA_AMBIENT);
+  dirty = true;
+}
+
+function startPlaying(): void {
+  if (!arena) return;
+  arena.stage = 'playing';
+  holdAll();
+  dirty = true;
+}
+
+/** The seated heroes' inputs for this tick (task 5): held movement plus an Action edge. Solo play always steers
+ * Vlček's glass, whichever hero is currently active — the scene itself is his alone. */
+function arenaInputs(): Partial<Record<Hero, ArenaInput>> {
+  const out: Partial<Record<Hero, ArenaInput>> = {};
+  for (const d of seatedDevices(seats)) {
+    const hero = isSolo(seats) ? 'velitel' : heroOf(seats, d, active);
+    if (!hero) continue;
+    const axes = input.get(d);
+    out[hero] = { moveX: axes.moveX, moveY: axes.moveY, action: input.pressed(d, 'action') };
+  }
+  return out;
+}
+
+function updateArena(dt: number): void {
+  if (!arena) return;
+  if (seatedDevices(seats).some((d) => input.pressed(d, 'pause'))) {
+    pause(P.pause.title);
+    return;
+  }
+  if (arena.stage === 'intro') {
+    if (seatedDevices(seats).some((d) => input.pressed(d, 'action'))) startPlaying();
+    return;
+  }
+  if (arena.stage === 'result') {
+    if (seatedDevices(seats).some((d) => input.pressed(d, 'action'))) finishArena();
+    return;
+  }
+  const before = arena.game.state;
+  const wrongBefore = before.wrong;
+  const outcomeBefore = before.outcome;
+  arena.game.update(dt, arenaInputs());
+  const after = arena.game.state;
+  if (after.wrong > wrongBefore) {
+    // A wrong accusation (task 5, spec §5.3): the wood-knock protest sound, reused from a hero's wall bump.
+    if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
+  }
+  if (outcomeBefore === null && after.outcome === 'found') {
+    if (!samples.play(bumpHits('zogu'))) sfx.play(bumpSound('zogu'));
+    if (!samples.play([{ sample: 'page', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('paper');
+  }
+  if (outcomeBefore === null && after.outcome === 'missed') {
+    for (const delay of shotsHits()) window.setTimeout(() => sfx.play('shot'), delay * 1000);
+  }
+  const result = arena.game.result();
+  if (result) {
+    arena.stage = 'result';
+    arena.result = result;
+  }
+  dirty = true;
+}
+
+/** The result card's Action / click: plays `attemptResult`, plays the reverse transition and returns to the palace. */
+function finishArena(): void {
+  if (!arena || !file) return;
+  const found = arena.result === 'found';
+  arena = null;
+  showArena(false);
+  screen = 'palace';
+  holdAll(); // a direction held at the scene's end must not fire straight into a palace move
+  play({ type: 'attemptResult', found });
+  dirty = true;
+}
+
+function arenaCardModel(): ArenaCardModel | null {
+  if (!arena) return null;
+  if (arena.stage === 'intro') {
+    const s = arena.game.state;
+    const tip = s.clues.length > 0 ? A.tip(tipText(s.clues)) : A.noTip;
+    return { title: A.title, lines: [A.places[s.place], tip, A.howTo], button: A.start };
+  }
+  if (arena.stage === 'result') {
+    return { title: A.title, lines: [arena.result === 'found' ? A.foundCard : A.missedCard], button: P.next };
+  }
+  return null;
+}
+
+function onArenaCardChoose(): void {
+  if (!arena) return;
+  if (arena.stage === 'intro') startPlaying();
+  else if (arena.stage === 'result') finishArena();
 }
 
 function dirOf(from: RoomId, to: RoomId): 'up' | 'down' | 'left' | 'right' {
@@ -397,6 +535,10 @@ function choosePalace(hero: Hero, i: number): void {
 }
 
 function updatePalace(): void {
+  // A command that landed the rules in 'attempt' may have queued a bubble line first (the actor's own reply);
+  // check again on every tick, so the scene starts the moment that line is dismissed, not only right after play().
+  maybeStartArena();
+  if (screen !== 'palace') return;
   if (seatedDevices(seats).some((d) => !input.isConnected(d))) return pause(P.pause.padLost);
   const switchPressed = input.keyPressed('Tab') || seatedDevices(seats).some((d) => input.pressed(d, 'back'));
   if (switchPressed && isSolo(seats)) {
@@ -472,6 +614,7 @@ function updatePalace(): void {
 
 function pause(reason: string): void {
   pauseReason = reason;
+  pausedFrom = screen === 'pause' ? pausedFrom : screen;
   screen = 'pause';
   overlayUi = CLOSED;
   pausedAt = t;
@@ -487,9 +630,10 @@ function pauseOptions(): { label: string; run: () => void }[] {
         if (seatedDevices(seats).every((d) => input.isConnected(d))) {
           const paused = t - pausedAt;
           if (halves) for (const h of HEROES) halves[h].captions = halves[h].captions.map((c) => ({ ...c, until: c.until + paused }));
-          screen = 'palace';
+          screen = pausedFrom;
           holdAll();
-          if (file) ambient.setLevel(unrestLevel(state()));
+          if (pausedFrom === 'arena') ambient.setLevel(ARENA_AMBIENT);
+          else if (file) ambient.setLevel(unrestLevel(state()));
         }
       },
     },
@@ -544,6 +688,7 @@ function update(dt: number): void {
   }
   if (screen === 'title') updateTitle();
   else if (screen === 'palace') updatePalace();
+  else if (screen === 'arena') updateArena(dt);
   else updatePause();
 }
 
@@ -572,6 +717,7 @@ function overlayModel(): OverlayModel | null {
       : HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`);
     return { title: pauseReason, lines: pauseLines, options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
   }
+  if (screen === 'arena') return null;
   if (someoneTalking()) return null;
   const card = cards[0];
   if (card) {
@@ -603,6 +749,7 @@ function onOverlayClick(i: number): void {
 
 function renderDom(): void {
   renderOverlay(overlayModel(), onOverlayClick);
+  renderArenaCard(arenaCardModel(), onArenaCardChoose);
   if (!file || !halves) return;
   const s = state();
   renderTop(topHud(s));
@@ -631,6 +778,19 @@ function render(): void {
   if (dirty) {
     dirty = false;
     renderDom();
+  }
+  if (screen === 'arena' && arena) {
+    const canvas = arenaCanvas();
+    const before = canvas.width;
+    const k = fitArena(canvas);
+    if (canvas.width !== before) dirty = true;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      ctx.clearRect(0, 0, ARENA_W, ARENA_H);
+      arena.game.render(ctx, t);
+    }
+    return;
   }
   if (!halves) return;
   for (const h of HEROES) {

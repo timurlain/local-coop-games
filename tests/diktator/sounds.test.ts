@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { initialState } from '../../src/games/diktator/logic/state';
-import { bumpHits, bumpSound, moveHits, moveSounds, unrestLevel, voiceOf } from '../../src/games/diktator/ui/sounds';
+import { bumpHits, bumpSound, moveHits, moveSounds, shotsHits, unrestLevel, voiceOf } from '../../src/games/diktator/ui/sounds';
 
 describe('hero sounds', () => {
   it('gives each hero his own footsteps, door and bump', () => {
@@ -43,6 +43,21 @@ describe('hero sounds', () => {
     expect(voiceOf({ kind: 'group', group: 'italie' })).toBe('voiceEnvoy');
     expect(voiceOf({ kind: 'group', group: 'jugoslavie' })).toBe('voiceEnvoy');
     expect(voiceOf({ kind: 'caption' })).toBe('paper');
+  });
+});
+
+describe('shotsHits (task 5: the two "missed" gunshots)', () => {
+  it('fires one shot immediately and a second a quarter-second later', () => {
+    expect(shotsHits()).toEqual([0, 0.25]);
+  });
+
+  it('every delay is non-negative and increasing', () => {
+    const hits = shotsHits();
+    expect(hits.length).toBeGreaterThan(0);
+    for (let i = 1; i < hits.length; i++) {
+      expect(hits[i]).toBeGreaterThan(hits[i - 1]);
+      expect(hits[i - 1]).toBeGreaterThanOrEqual(0);
+    }
   });
 });
 
