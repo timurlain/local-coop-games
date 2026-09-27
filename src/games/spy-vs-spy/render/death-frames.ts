@@ -134,7 +134,18 @@ export function hatPieces(hat: readonly string[], bare: readonly string[]): Piec
   return pieces.sort((a, b) => hash(a[0]) - hash(b[0]));
 }
 
-export const DEATH_FRAMES = build();
+export type DeathFrames = ReturnType<typeof build>;
+
+let built: DeathFrames | null = null;
+
+/**
+ * The death frames, built on first use (not at load: nobody needs them until someone dies). main.ts asks for them
+ * once the menu is up, in idle time, so the first death normally finds them ready.
+ */
+export function deathFrames(): DeathFrames {
+  built ??= build();
+  return built;
+}
 
 // ---------- props ----------
 
