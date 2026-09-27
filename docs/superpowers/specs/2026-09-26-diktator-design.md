@@ -481,6 +481,12 @@ in `rules.ts`). The number of retries used is shown next to the score.
 3. **Skin.** One generated **part sheet** per character: head front and side, **five expression heads** (ecstatic, happy, neutral, grumpy, furious), torso, upper and lower arms, legs, hat. Each part is a transparent cut-out from one reference. The parts are mounted on the bones, so the generator never has to draw the same person twice in different poses.
 4. **Final look.** Smooth cut-out with a light outline, matching the painted illustrations. It is not pixelated.
 
+**Seasons (user wish, 2026-09-27; for the art plan).** Once real art exists, the palace follows the quarter's
+season: snow or rain behind the windows, blossoms, summer sun, autumn leaves, and the room light (warm lamps and early
+dusk in winter, bright noon in summer, dimming for evening scenes). Rooms with windows get seasonal window variants;
+windowless rooms change only their light. Mood variants and season variants combine (the season is a light/window
+layer over the mood image, not 4 × 10 extra rooms).
+
 **Static art is whole generated images:** newspaper illustrations, room backgrounds, big-moment posters, the march map
 and march props.
 
