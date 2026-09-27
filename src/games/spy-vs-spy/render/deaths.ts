@@ -6,7 +6,7 @@ import {
   electricPhase, hatPiece, nearestTilt, pistolPhase, sootPhase, springPhase,
   type ElectricPhase, type PistolPhase, type SootPhase, type SpringPhase,
 } from './death-phases';
-import { BUCKET, DEATH_FRAMES, deathPalettes, HEAP, PROP_PALETTE, type DeathFrame } from './death-frames';
+import { BUCKET, deathFrames, deathPalettes, HEAP, PROP_PALETTE, type DeathFrame } from './death-frames';
 import { disc, line, r, text } from './draw';
 import { SPY_CENTER_X, SPY_FRAMES, SPY_STAND_H, SPY_STAND_REACH } from './sprite-data';
 import { bake, drawIconScaled, drawSpySprite, spyImage } from './sprites';
@@ -118,7 +118,7 @@ function spark(ctx: Ctx, x: number, y: number, dir: number, colour: string): voi
 function drawElectric(ctx: Ctx, spy: SpyColour, at: DeathSpot, p: ElectricPhase, elapsed: number): void {
   const { sx, sy, flip } = at;
   const pals = deathPalettes(spy);
-  const F = DEATH_FRAMES;
+  const F = deathFrames();
   switch (p.phase) {
     case 'fall': {
       drawSpySprite(ctx, spyImage(spy, 'stand'), sx, sy, flip);
@@ -213,7 +213,7 @@ function puff(ctx: Ctx, x: number, y: number, k: number, size: number): void {
 function drawSoot(ctx: Ctx, spy: SpyColour, at: DeathSpot, p: SootPhase, elapsed: number): void {
   const { sx, sy, flip } = at;
   const pals = deathPalettes(spy);
-  const F = DEATH_FRAMES;
+  const F = deathFrames();
   switch (p.phase) {
     case 'flash': {
       drawFrame(ctx, 'sootHat', F.soot.hat, pals.soot, `soot-${spy}`, sx, sy, flip);
@@ -270,7 +270,7 @@ const COIL_H = 9;
 function drawSpring(ctx: Ctx, spy: SpyColour, at: DeathSpot, p: SpringPhase, elapsed: number): void {
   const { sx, sy, flip, ceiling } = at;
   const pal = deathPalettes(spy).own;
-  const F = DEATH_FRAMES;
+  const F = deathFrames();
   // the spring stays up out of the floor, wobbling a little after the launch
   const wobble = p.phase === 'spring' ? 0 : Math.round(Math.sin(elapsed * 30) * 1.5 * Math.max(0, 1 - elapsed));
   const coilH = p.phase === 'spring' ? Math.round(COIL_H * p.k) : COIL_H + wobble;
@@ -377,7 +377,7 @@ function gunAndFlag(ctx: Ctx, at: DeathSpot, slide: number, pop: number, droop: 
 function drawPistol(ctx: Ctx, spy: SpyColour, at: DeathSpot, p: PistolPhase, elapsed: number): void {
   const { sx, sy, flip } = at;
   const pal = deathPalettes(spy).own;
-  const F = DEATH_FRAMES;
+  const F = deathFrames();
   const hole = (frame: DeathFrame, key: string): void => {
     drawFrame(ctx, key, frame, pal, spy, sx, sy, flip);
   };

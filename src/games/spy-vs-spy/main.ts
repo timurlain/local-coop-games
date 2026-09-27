@@ -12,6 +12,7 @@ import { GAME_LENGTH_MULTIPLIERS, LEVELS, levelRules } from './logic/rules';
 import { rankFor } from './logic/score';
 import type { GameEvent, GameState, PlayerId, RemedyKind, Spy, SpyInput } from './logic/state';
 import { step } from './logic/step';
+import { deathFrames } from './render/death-frames';
 import { laugher, spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
 import { pushToast, toastFor, type ToastQueue } from './render/toast';
@@ -490,3 +491,7 @@ setupMenu();
 resize();
 show('menu');
 startLoop(update, render);
+// The death animations are built on first use; build them now, while the menu idles, so no death waits for them.
+// (No requestIdleCallback in Safari, which we don't target; a timeout does the same job there.)
+if ('requestIdleCallback' in window) requestIdleCallback(() => deathFrames());
+else setTimeout(() => deathFrames(), 500);
