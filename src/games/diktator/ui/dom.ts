@@ -84,6 +84,8 @@ export interface HalfModel {
   /** Solo play: this half is not the one being steered. */
   readonly inactive: boolean;
   readonly solo: boolean;
+  /** This half's device's control reminder (play-test wish: clear per-player controls). */
+  readonly keys: string;
 }
 
 export function renderHalf(hero: Hero, m: HalfModel): void {
@@ -93,7 +95,18 @@ export function renderHalf(hero: Hero, m: HalfModel): void {
   if (m.hud.seal) hud.push(`✉ ${P.sealMark}`);
   $('.hud', root).replaceChildren(...hud.map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
   const hint = m.talking ? P.hintTalk : m.open ? P.hintOpen : P.hintClosed;
-  $('.hint', root).textContent = m.solo ? `${hint} · ${P.soloHint}` : hint;
+  const line = m.solo ? `${hint} · ${P.soloHint}` : hint;
+  const context = document.createElement('span');
+  context.className = 'hint-context';
+  context.textContent = line;
+  const children: Node[] = [context];
+  if (m.keys) {
+    const keys = document.createElement('span');
+    keys.className = 'hint-keys';
+    keys.textContent = m.keys;
+    children.push(keys);
+  }
+  $('.hint', root).replaceChildren(...children);
 }
 
 /** Draws a half's comic bubbles over its canvas. Stage units are mapped onto the canvas' on-screen box. */

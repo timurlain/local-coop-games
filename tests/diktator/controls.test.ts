@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { cs } from '../../src/shared/i18n/cs';
 import type { Command } from '../../src/games/diktator/logic/state';
-import { CLOSED, clampFocus, heroOf, isSolo, join, navigate, NO_SEATS, palaceAct, seatedDevices } from '../../src/games/diktator/ui/controls';
+import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices } from '../../src/games/diktator/ui/controls';
+
+const P = cs.diktator.palace;
 
 describe('navigate', () => {
   it('opens a closed menu with Action, and passes arrows and the seal key through', () => {
@@ -58,6 +61,15 @@ describe('palaceAct', () => {
   });
   it('never bumps or moves a hero who ended his day (no commands)', () => {
     expect(palaceAct([], { kind: 'dir', dir: 'up' })).toBeNull();
+  });
+});
+
+describe('keysFor', () => {
+  it('names the keys for each device, and nothing for no device', () => {
+    expect(keysFor('kb-left')).toBe(P.keys['kb-left']);
+    expect(keysFor('kb-right')).toBe(P.keys['kb-right']);
+    expect(keysFor('pad-0')).toBe(P.keys.pad);
+    expect(keysFor(null)).toBe('');
   });
 });
 

@@ -17,7 +17,7 @@ import { STAGE_H, STAGE_W } from './render/rooms/crowd';
 import { drawHalf, type StageAnim } from './render/rooms/stage';
 import { albania } from './scenario/albania';
 import { bubblesFor, stageView } from './ui/bubbles';
-import { CLOSED, clampFocus, heroOf, isSolo, join, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
+import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
 import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
 import { fitStage, renderBubbles, renderHalf, renderOverlay, renderStrip, renderTop, stageCanvas, type OverlayModel } from './ui/dom';
 import { Flick } from './ui/flick';
@@ -463,17 +463,22 @@ function overlayModel(): OverlayModel | null {
   if (screen === 'title') {
     const deviceName = (d: DeviceId | null) =>
       d === null ? P.join.waiting : d === 'kb-left' ? cs.spy.devices.kbLeft : d === 'kb-right' ? cs.spy.devices.kbRight : cs.spy.devices.pad(Number(d.slice(4)) + 1);
+    const slotLine = (hero: Hero, d: DeviceId | null) => {
+      const base = P.join.slot(T.heroes[hero], deviceName(d));
+      return d === null ? base : `${base} — ${keysFor(d)}`;
+    };
     const opts = seatedDevices(seats).length > 0 ? titleOptions().map((o) => o.label) : [];
     return {
       title: P.join.title,
-      lines: [T.subtitle, P.join.slot(T.heroes.zogu, deviceName(seats.zogu)), P.join.slot(T.heroes.velitel, deviceName(seats.velitel))],
+      lines: [T.subtitle, slotLine('zogu', seats.zogu), slotLine('velitel', seats.velitel)],
       options: opts,
       focus: overlayUi.focus,
-      hint: P.join.hint,
+      hint: `${P.join.clickFirst} ${P.join.hint}`,
     };
   }
   if (screen === 'pause') {
-    return { title: pauseReason, lines: [], options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
+    const pauseLines = HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`);
+    return { title: pauseReason, lines: pauseLines, options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
   }
   if (someoneTalking()) return null;
   const card = cards[0];
@@ -518,6 +523,7 @@ function renderDom(): void {
       open: half.dialogue.ui.open || half.menu.modal,
       inactive: isSolo(seats) && active !== h,
       solo: isSolo(seats),
+      keys: keysFor(isSolo(seats) ? seats.zogu : seats[h]),
     });
     renderBubbles(h, bubblesFor(half.dialogue, half.captions.map((c) => c.text), half.menu, half.stage, h), (i) => {
       choosePalace(h, i);

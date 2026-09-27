@@ -205,10 +205,16 @@ export const cs = {
       seal: (title: string) => `Zapečetit: ${title}`,
       waiting: (other: string) => `Čtvrtletí ukončeno. Čeká se na: ${other}.`,
       noActions: 'Tady se nedá nic dělat.',
-      hintClosed: 'Akce: mluvit · pohyb: jiná místnost · G / pravý Ctrl / X: pečeť',
-      hintOpen: 'Nahoru a dolů vybrat · Akce říct · Esc zavřít',
-      hintTalk: 'Akce: dál · Esc: přeskočit',
+      hintClosed: 'Akce = mluvit / nabídka · pohyb = vedlejší místnost',
+      hintOpen: 'nahoru / dolů = vybrat · Akce = říct · Esc = zavřít',
+      hintTalk: 'Akce = dál · Esc = přeskočit',
       soloHint: 'Tab / Back: přepnout postavu',
+      /** Per-device control reminders (play-test: "how am I supposed to control the two players?"). */
+      keys: {
+        'kb-left': 'W A S D pohyb · F akce · G pečeť · Esc pauza',
+        'kb-right': 'šipky pohyb · Enter akce · pravý Ctrl pečeť · Esc pauza',
+        pad: 'páčka nebo kříž pohyb · A akce · X pečeť · Start pauza',
+      },
       sealHolder: (who: string) => `Pečeť nese ${who}.`,
       sealLies: 'Pečeť leží v pracovně.',
       wish: (group: string, title: string) => `${group}: „Přejeme si: ${title}.“`,
@@ -248,6 +254,8 @@ export const cs = {
         slot: (hero: string, device: string) => `${hero}: ${device}`,
         waiting: 'stiskni Akci…',
         hint: 'Každý hráč stiskne Akci (F, Enter nebo A). První hraje Zogua, druhý Kováře. Hraješ-li sám, ovládáš oba — Tab / Back přepíná.',
+        /** Play-test wish: keyboard input needs a window click first (browser focus). */
+        clickFirst: 'Nejdřív klikni myší do okna hry, pak hraj klávesnicí.',
         newGame: 'Nová hra',
         continueGame: 'Pokračovat',
         textMode: 'Textová verze',

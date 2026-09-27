@@ -1,9 +1,12 @@
 // Controls of the palace game (spec §12), device-free and pure: menu navigation shared by the halves and the
 // shared screens, what an arrow or the seal key means in the palace, and which device steers which hero.
 
+import { cs } from '../../../shared/i18n/cs';
 import type { DeviceId } from '../../../shared/input/manager';
 import type { Direction, Hero } from '../logic/palace';
 import type { Command } from '../logic/state';
+
+const P = cs.diktator.palace;
 
 export type Intent =
   | { readonly kind: 'dir'; readonly dir: Direction }
@@ -104,4 +107,12 @@ export function heroOf(seats: Seats, d: DeviceId, active: Hero): Hero | null {
   if (seats.zogu === d) return 'zogu';
   if (seats.velitel === d) return 'velitel';
   return null;
+}
+
+/** The control reminder for a device (play-test: "how am I supposed to control the two players?"); '' for none. */
+export function keysFor(d: DeviceId | null): string {
+  if (d === 'kb-left') return P.keys['kb-left'];
+  if (d === 'kb-right') return P.keys['kb-right'];
+  if (d?.startsWith('pad-')) return P.keys.pad;
+  return '';
 }
