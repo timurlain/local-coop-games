@@ -281,21 +281,31 @@ function drawPlotMarker(ctx: CanvasRenderingContext2D, text: string): void {
  * Heroes on the left, facing right. With `own` (the split screen's hero) the other hero stands behind, a little
  * smaller, and `own` is drawn last so his own figure is always foremost; `stepIn` < 1 walks `own` in from the
  * left edge (the room change). Without `own`, the heroes stand side by side as in plan 2b. `bowing` names heroes
- * who bow rather than stand (the Queen Mother's room) — never applied to a hero still walking in.
+ * who bow rather than stand (the Queen Mother's room) — never applied to a hero still walking in. `talking` names
+ * the hero currently speaking (comic dialogue) — he gestures instead, taking priority over bowing, but never over
+ * still walking in.
  */
-export function drawHeroes(ctx: CanvasRenderingContext2D, heroes: readonly Hero[], own: Hero | null, t: number, stepIn = 1, bowing: readonly Hero[] = []): void {
+export function drawHeroes(
+  ctx: CanvasRenderingContext2D,
+  heroes: readonly Hero[],
+  own: Hero | null,
+  t: number,
+  stepIn = 1,
+  bowing: readonly Hero[] = [],
+  talking: Hero | null = null,
+): void {
   ctx.save();
   const others = own === null ? heroes : heroes.filter((h) => h !== own);
   others.forEach((h, i) => {
     const x = own === null ? 90 + i * 55 : 145 + i * 55;
     const scale = own === null ? 1 : 0.92;
-    const pose = bowing.includes(h) ? POSES.bow(t) : POSES.stand(t);
+    const pose = h === talking ? POSES.talk(t) : bowing.includes(h) ? POSES.bow(t) : POSES.stand(t);
     puppetAt(ctx, x, FLOOR_Y, scale, 1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[h], 'neutral'));
   });
   if (own !== null && heroes.includes(own)) {
     const walking = stepIn < 1;
     const x = walking ? -20 + 110 * Math.max(0, stepIn) : 90;
-    const pose = walking ? POSES.walk(t) : bowing.includes(own) ? POSES.bow(t) : POSES.stand(t);
+    const pose = walking ? POSES.walk(t) : own === talking ? POSES.talk(t) : bowing.includes(own) ? POSES.bow(t) : POSES.stand(t);
     puppetAt(ctx, x, FLOOR_Y, 1, 1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[own], 'neutral'));
   }
   ctx.restore();

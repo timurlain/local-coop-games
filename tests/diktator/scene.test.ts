@@ -139,6 +139,8 @@ describe('drawHalf and the new room details (canvas smoke test)', () => {
         }
       }
       const ctx = createFakeCtx();
+      drawHalf(ctx, roomView(albania, day, 'trunni'), 'zogu', null, 0.3, 'zogu');
+      drawHalf(ctx, roomView(albania, day, 'trunni'), 'zogu', null, 0.3, 'velitel');
       drawHalf(ctx, throne, 'zogu', null, 0.3);
       drawHalf(ctx, roomView(albania, day, 'armada'), 'velitel', null, 0.3);
       expect(ctx.depth).toBe(0);

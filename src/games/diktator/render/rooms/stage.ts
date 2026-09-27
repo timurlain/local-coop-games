@@ -41,7 +41,7 @@ export function bumpOffset(dir: Direction, p: number): readonly [number, number]
 }
 
 /** Draws `own`'s half: `view` is the room he stands in now. The caller has set the stage transform (480 × 200). */
-export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Hero, anim: StageAnim | null, t: number): void {
+export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Hero, anim: StageAnim | null, t: number, talking: Hero | null = null): void {
   const p = progress(anim, t);
   const bowing: readonly Hero[] = view.resident === 'mother' ? ['velitel'] : [];
   ctx.save();
@@ -54,7 +54,7 @@ export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Her
     ctx.save();
     ctx.translate(o.to[0], o.to[1]);
     drawRoom(ctx, view, t, { heroes: false });
-    drawHeroes(ctx, view.heroes.filter((h) => h !== own), own, t, 1, bowing);
+    drawHeroes(ctx, view.heroes.filter((h) => h !== own), own, t, 1, bowing, talking);
     ctx.restore();
     drawHeroes(ctx, view.heroes.filter((h) => h === own), own, t, p);
   } else {
@@ -63,7 +63,7 @@ export function drawHalf(ctx: CanvasRenderingContext2D, view: RoomView, own: Her
       ctx.translate(bx, by);
     }
     drawRoom(ctx, view, t, { heroes: false });
-    drawHeroes(ctx, view.heroes, own, t, 1, bowing);
+    drawHeroes(ctx, view.heroes, own, t, 1, bowing, talking);
   }
   ctx.restore();
 }
