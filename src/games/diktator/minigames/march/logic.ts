@@ -6,6 +6,7 @@ import { makeRng } from '../../../../shared/rng';
 import { HEROES, type Hero } from '../../logic/palace';
 import { stepBenefits } from './benefits';
 import { createGateGuards, stepFoes, strike } from './foes';
+import { helperInput } from './helper';
 import { tileCentre, type MarchMap } from './map';
 import { applyRope, walk } from './move';
 import { createPlaces, stepPlaces } from './places';
@@ -59,7 +60,7 @@ export function stepMarch(
   if (s.ending) return events;
   const dayBefore = dateOf(s.t);
   s.t += dt;
-  const input = (h: Hero): MarchInput => (s.solo && h !== active ? IDLE_INPUT : inputs[h] ?? IDLE_INPUT);
+  const input = (h: Hero): MarchInput => (s.solo && h !== active ? helperInput(s, h) : inputs[h] ?? IDLE_INPUT);
   const zin = input('zogu');
   const vin = input('velitel');
 
