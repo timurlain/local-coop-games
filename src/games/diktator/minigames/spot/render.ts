@@ -3,10 +3,10 @@
 // scene's people.
 
 import { cs } from '../../../../shared/i18n/cs';
-import { FIGURE_HEIGHT, solvePuppet, type Face, type PuppetPose } from '../../render/puppet/skeleton';
+import { BONES, FIGURE_HEIGHT, solvePuppet, type Face, type PuppetPose } from '../../render/puppet/skeleton';
 import { drawPuppet } from '../../render/puppet/draw';
 import { POSES } from '../../render/puppet/poses';
-import type { Look } from '../../render/puppet/looks';
+import { LOOKS, type Look } from '../../render/puppet/looks';
 import {
   depthScale, GROUND_FAR, PLATFORM, personUnderGlass, SPOT_H, SPOT_W,
   type SpotPerson, type SpotScarf, type SpotState, type SpotWeapon,
@@ -176,19 +176,23 @@ function drawPlatformAndZogu(ctx: CanvasRenderingContext2D, s: SpotState, t: num
   ctx.lineWidth = 1.2;
   ctx.strokeRect(PLATFORM.left, 300, PLATFORM.right - PLATFORM.left, 30);
   const pose = Math.floor(t / 3) % 2 === 0 ? POSES.talk(t) : POSES.salute(t);
-  puppetAt(ctx, s.zoguX, 300, 1.3, 1, () => drawPuppet(ctx, solvePuppet(pose), ZOGU_LOOK, 'happy'));
+  puppetAt(ctx, s.zoguX, 300, 1.3, 1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS.zogu, 'happy'));
 }
 
-const ZOGU_LOOK: Look = { coat: '#5d6b4c', trim: '#c9a44a', legs: '#4a563c', boots: '#231a12', hat: 'kepi', hatColor: '#5d6b4c', moustache: true };
-const VLCEK_LOOK: Look = { coat: '#7a6a45', trim: '#8c2f2a', legs: '#5f5335', boots: '#2a1d12', hat: 'cap', hatColor: '#6b5c3b', moustache: true };
 const VLCEK_X0 = PLATFORM.left - 60;
 const VLCEK_Y0 = 460;
 const RUSH_SECONDS = 0.6;
 
+/** How far into the 0.6 s rush/tackle the found ending is, clamped to [0, 1]; 1 means Vlček has landed on the
+ * gunman — the moment both puppets drop low together. */
+function rushProgress(s: SpotState): number {
+  return Math.min(1, (s.t - s.endAt) / RUSH_SECONDS);
+}
+
 function drawVlcek(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void {
   if (s.outcome === 'found') {
     const gunman = s.people.find((p) => p.gunman)!;
-    const progress = Math.min(1, (s.t - s.endAt) / RUSH_SECONDS);
+    const progress = rushProgress(s);
     const x = VLCEK_X0 + (gunman.x - VLCEK_X0) * progress;
     const y = VLCEK_Y0 + (gunman.y - VLCEK_Y0) * progress;
     const scale = depthScale(y) * 1.3;
@@ -196,15 +200,15 @@ function drawVlcek(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void
       puppetAt(ctx, x, y, scale, gunman.x >= x ? 1 : -1, () => {
         ctx.save();
         ctx.rotate(-90 * RAD);
-        drawPuppet(ctx, solvePuppet(POSES.bow(t)), VLCEK_LOOK, 'furious');
+        drawPuppet(ctx, solvePuppet(POSES.bow(t)), LOOKS.velitel, 'furious');
         ctx.restore();
       });
     } else {
-      puppetAt(ctx, x, y, scale, gunman.x >= x ? 1 : -1, () => drawPuppet(ctx, solvePuppet(POSES.walk(t)), VLCEK_LOOK, 'furious'));
+      puppetAt(ctx, x, y, scale, gunman.x >= x ? 1 : -1, () => drawPuppet(ctx, solvePuppet(POSES.walk(t)), LOOKS.velitel, 'furious'));
     }
     return;
   }
-  puppetAt(ctx, VLCEK_X0, VLCEK_Y0, 1.3, 1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), VLCEK_LOOK, 'neutral'));
+  puppetAt(ctx, VLCEK_X0, VLCEK_Y0, 1.3, 1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS.velitel, 'neutral'));
 }
 
 function drawCrowd(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void {
@@ -213,11 +217,17 @@ function drawCrowd(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void
     const look = personLook(p, s.place);
     if (s.outcome === 'found' && p.gunman) {
       const scale = depthScale(p.y) * 1.2;
+      const fallen = rushProgress(s) >= 1;
       puppetAt(ctx, p.x, p.y, scale, p.dir, () => {
-        ctx.save();
-        ctx.rotate(-90 * RAD);
-        drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
-        ctx.restore();
+        if (fallen) {
+          // Only once Vlček has landed on him does he go down — in sync with Vlček's own tackle.
+          ctx.save();
+          ctx.rotate(-90 * RAD);
+          drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
+          ctx.restore();
+        } else {
+          drawPuppet(ctx, solvePuppet(POSES.shocked(t)), look, 'shocked');
+        }
       });
       continue;
     }
@@ -303,7 +313,17 @@ function drawWeaponTell(ctx: CanvasRenderingContext2D, hx: number, hy: number, w
   }
 }
 
-const CLOSEUP: Readonly<{ x: number; y: number; r: number }> = { x: 850, y: 150, r: 90 };
+export const CLOSEUP: Readonly<{ x: number; y: number; r: number }> = { x: 850, y: 150, r: 90 };
+/** Local y (world units, feet at 0) of the base of the head / top of the neck — everything below is torso and
+ * legs, everything above is the head. Puts the chin at the window's centre so the close-up frames the face and
+ * shoulders together (spec §6, review round 1: previously the ground point put the whole head above the window). */
+const CHEST_LOCAL_Y = BONES.thigh + BONES.shin + BONES.torso + BONES.neck;
+
+/** The `ground` argument for `puppetAt` that centres the close-up window on the chin/collar at the given puppet
+ * `scale`, so the head and chest both sit inside the circular clip. Pure — exported for the geometry test. */
+export function closeupGround(scale: number): number {
+  return CLOSEUP.y + PUPPET_SCALE * scale * CHEST_LOCAL_Y;
+}
 
 function drawCloseup(ctx: CanvasRenderingContext2D, s: SpotState, t: number): void {
   ctx.save();
@@ -318,7 +338,7 @@ function drawCloseup(ctx: CanvasRenderingContext2D, s: SpotState, t: number): vo
     const look = personLook(p, s.place);
     const face: Face = p.gunman ? (p.glancing ? 'grumpy' : 'neutral') : p.id % 2 === 0 ? 'neutral' : 'happy';
     const scale = 2.6;
-    const ground = CLOSEUP.y + CLOSEUP.r * 0.85;
+    const ground = closeupGround(scale);
     puppetAt(ctx, CLOSEUP.x, ground, scale, 1, () => {
       const joints = solvePuppet(poseFor(p, t));
       drawPuppet(ctx, joints, look, face);
@@ -335,9 +355,10 @@ function drawCloseup(ctx: CanvasRenderingContext2D, s: SpotState, t: number): vo
   ctx.restore();
 }
 
-function drawDroppedWeapon(ctx: CanvasRenderingContext2D, x: number, y: number, weapon: SpotWeapon): void {
+function drawDroppedWeapon(ctx: CanvasRenderingContext2D, x: number, y: number, weapon: SpotWeapon, scale: number): void {
   ctx.save();
   ctx.translate(x, y);
+  ctx.scale(scale, scale);
   switch (weapon) {
     case 'newspaperPistol':
       ctx.fillStyle = '#e9e4d2';
@@ -381,7 +402,8 @@ function drawDroppedWeapon(ctx: CanvasRenderingContext2D, x: number, y: number, 
 function drawFoundEnding(ctx: CanvasRenderingContext2D, s: SpotState): void {
   const gunman = s.people.find((p) => p.gunman)!;
   if (s.t - s.endAt < RUSH_SECONDS) return;
-  drawDroppedWeapon(ctx, gunman.x + 14, gunman.y, gunman.weapon!);
+  const k = depthScale(gunman.y);
+  drawDroppedWeapon(ctx, gunman.x + 14 * k, gunman.y, gunman.weapon!, k);
   drawBubble(ctx, (gunman.x + VLCEK_X0) / 2, gunman.y - 60, T.thatsHim, true);
 }
 

@@ -5,10 +5,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { accuse, createSpot, spotResult, stepSpot, type SpotInput, type SpotState } from '../../src/games/diktator/minigames/spot/logic';
-import { drawSpot } from '../../src/games/diktator/minigames/spot/render';
+import { CLOSEUP, closeupGround, drawSpot } from '../../src/games/diktator/minigames/spot/render';
 import { tipText } from '../../src/games/diktator/minigames/spot/game';
+import { FIGURE_HEIGHT } from '../../src/games/diktator/render/puppet/skeleton';
 import type { AttemptDifficulty } from '../../src/games/diktator/logic/state';
 import type { PlaceId } from '../../src/games/diktator/logic/state';
+
+/** Same convention as render.ts's private `PUPPET_SCALE`: a standing figure is ~95 units tall at scale 1. */
+const PUPPET_SCALE = 95 / FIGURE_HEIGHT;
 
 /** Records every call and rejects a non-finite numeric argument, the way a real Path2D would misbehave silently. */
 class FakePath2D {
@@ -166,5 +170,21 @@ describe('tipText', () => {
     expect(tipText([{ key: 'hat', value: 'fez' }, { key: 'scarf', value: 'red' }])).toBe('fez a červený šátek');
     expect(tipText([{ key: 'hat', value: 'fez' }, { key: 'glasses', value: true }, { key: 'bag', value: true }])).toBe('fez, brýle a brašnu přes rameno');
     expect(tipText([])).toBe('');
+  });
+});
+
+describe('closeupGround (review round 1, fix 1)', () => {
+  it('keeps the head top and the hand/chest height inside the close-up window at the drawn scale (2.6)', () => {
+    const scale = 2.6;
+    const ground = closeupGround(scale);
+    // The head's top (world y = FIGURE_HEIGHT above the feet) must not be drawn above the circle's top edge.
+    const headTopY = ground - PUPPET_SCALE * scale * FIGURE_HEIGHT;
+    expect(headTopY).toBeGreaterThanOrEqual(CLOSEUP.y - CLOSEUP.r);
+    // The chin/collar landmark that `closeupGround` centres the window on must land inside the circle too (it's
+    // what carries the face and the hand/chest-height weapon tell).
+    expect(ground).toBe(CLOSEUP.y + PUPPET_SCALE * scale * (15 + 14 + 28 + 3)); // thigh + shin + torso + neck
+    const chinY = ground - PUPPET_SCALE * scale * (15 + 14 + 28 + 3);
+    expect(chinY).toBeGreaterThanOrEqual(CLOSEUP.y - CLOSEUP.r);
+    expect(chinY).toBeLessThanOrEqual(CLOSEUP.y + CLOSEUP.r);
   });
 });
