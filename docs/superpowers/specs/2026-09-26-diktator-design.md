@@ -432,6 +432,12 @@ labelled **our addition** and its constants live in `rules.ts`.
 **Assassination.** The original rule applies, with a 75 % coin if the commander guarded the king. The v1 poster is
 "Atentát!" (Assassination!).
 
+**Every assassination becomes a mini-game (user decision, 2026-09-27; our addition).** Once the mini-games exist,
+Zogu never simply dies to a coin toss: each attempt is played as a short co-op action scene (Kovář shields the king,
+Zogu dodges and escapes — the Vienna 1931 shooting is the first of them). The rules only decide *that* an attempt
+happens and how hard it is (the original odds, the guard, the commander's watch set its difficulty); the players'
+play decides whether Zogu survives. Until the mini-games land, the coin stays as the placeholder.
+
 **War with Jugoslávie** follows the original's threat or invasion.
 - The invasion shows the poster "Obrana Tirany" (Defence of Tirana).
 - It resolves with the original comparison.
