@@ -6,9 +6,10 @@ import { describe, expect, it } from 'vitest';
 import { drawRoom } from '../../src/games/diktator/render/rooms/scene';
 import { roomView, type RoomView } from '../../src/games/diktator/ui/palace-view';
 import { albania } from '../../src/games/diktator/scenario/albania';
-import { newGame } from '../../src/games/diktator/logic/turn';
+import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import { roomOfGroup } from '../../src/games/diktator/logic/palace';
 import { GROUPS, hasStrength } from '../../src/games/diktator/logic/groups';
+import { drawHalf, SLIDE_SEC } from '../../src/games/diktator/render/rooms/stage';
 
 /** Records every call and rejects a non-finite numeric argument, the way a real Path2D would misbehave silently. */
 class FakePath2D {
@@ -109,6 +110,38 @@ describe('drawRoom (canvas smoke test)', () => {
           }
         }
       }
+    } finally {
+      (globalThis as { Path2D: unknown }).Path2D = originalPath2D;
+    }
+  });
+});
+
+describe('drawHalf and the new room details (canvas smoke test)', () => {
+  it('slides, bumps and draws the petitioner and a plot marker without throwing, balancing save/restore', () => {
+    const originalPath2D = globalThis.Path2D;
+    (globalThis as { Path2D: unknown }).Path2D = FakePath2D;
+    try {
+      const audience = newGame(albania, 1, undefined, { palace: true }).state;
+      const day = advance(albania, audience, { type: 'answer', answer: 'no' }).state;
+      day.palace!.investigated.armada = { kind: 'revolution', ally: 'policie' };
+      day.palace!.at.velitel = 'trunni';
+      const throne = roomView(albania, audience, 'trunni');
+      expect(throne.petitioner).not.toBeNull();
+      for (const room of ROOMS) {
+        const view = roomView(albania, day, room);
+        const from = roomView(albania, day, 'nadvori');
+        for (const t of [0, SLIDE_SEC / 2, SLIDE_SEC * 2]) {
+          for (const anim of [null, { kind: 'slide', from, dir: 'left', start: 0 }, { kind: 'bump', dir: 'up', start: 0 }] as const) {
+            const ctx = createFakeCtx();
+            drawHalf(ctx, view, 'zogu', anim, t);
+            expect(ctx.depth, `${room} t=${t} ${anim?.kind ?? 'still'}`).toBe(0);
+          }
+        }
+      }
+      const ctx = createFakeCtx();
+      drawHalf(ctx, throne, 'zogu', null, 0.3);
+      drawHalf(ctx, roomView(albania, day, 'armada'), 'velitel', null, 0.3);
+      expect(ctx.depth).toBe(0);
     } finally {
       (globalThis as { Path2D: unknown }).Path2D = originalPath2D;
     }

@@ -2,10 +2,12 @@
 // always visible) and their mood (live if a hero is present, else last seen this quarter, else unknown).
 // Pure: reads the game state, never changes it. Plan 2c renders it.
 
-import { GROUPS, hasStrength, type GroupId } from '../logic/groups';
+import { petitionById } from '../logic/audience';
+import { FACTIONS, GROUPS, hasStrength, type GroupId } from '../logic/groups';
 import { HEROES, roomOfGroup, type Hero, type RoomId } from '../logic/palace';
 import type { Scenario } from '../logic/scenario';
 import type { GameState } from '../logic/state';
+import { plotText } from './event-text';
 import { GROUP_LOOK, type LookId } from '../render/puppet/looks';
 import { ROOM_STYLES } from '../render/rooms/styles';
 
@@ -37,6 +39,10 @@ export interface RoomView {
   readonly plane: boolean;
   /** Mood the portrait on the wall reacts to (the room's faction), null if unknown or no portrait. */
   readonly portraitMood: number | null;
+  /** Throne room during the audience: the petitioner's look; else null. */
+  readonly petitioner: LookId | null;
+  /** A plot the commander revealed this quarter for this room's faction (investigation, else police report), as text; null if none known. */
+  readonly plotMarker: string | null;
 }
 
 export interface StripCell {
@@ -76,6 +82,10 @@ export function roomView(sc: Scenario, s: GameState, room: RoomId): RoomView {
   if (!L) throw new Error(`scenario ${sc.id} has no palace`);
   const style = ROOM_STYLES[room];
   const crowds = crowdsIn(sc, s, room);
+  const petitioner = room === L.throne && s.phase.kind === 'audience' ? GROUP_LOOK[petitionById(sc, s.phase.petition).from] : null;
+  const faction = crowds.map((c) => c.group).find((g) => (FACTIONS as readonly string[]).includes(g)) as (typeof FACTIONS)[number] | undefined;
+  const known = faction && s.palace ? (s.palace.investigated[faction] ?? s.palace.report?.plots[faction]) : undefined;
+  const plotMarker = known && known.kind !== 'none' ? plotText(sc, known) : null;
   return {
     id: room,
     name: L.names[room],
@@ -88,6 +98,8 @@ export function roomView(sc: Scenario, s: GameState, room: RoomId): RoomView {
     sealLying: style.shows === 'seal' && s.palace !== null && s.palace.seal === null,
     plane: style.shows === 'plane' && s.hasPlane,
     portraitMood: style.portrait && crowds.length > 0 ? crowds[0].mood : null,
+    petitioner,
+    plotMarker,
   };
 }
 

@@ -3,6 +3,8 @@ import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import type { GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { roomView, stripView } from '../../src/games/diktator/ui/palace-view';
+import { petitionById } from '../../src/games/diktator/logic/audience';
+import { GROUP_LOOK } from '../../src/games/diktator/render/puppet/looks';
 
 function day(): GameState {
   return advance(albania, newGame(albania, 4, undefined, { palace: true }).state, { type: 'answer', answer: 'no' }).state;
@@ -102,5 +104,33 @@ describe('stripView', () => {
     const strip = stripView(albania, day());
     const envoysCell = strip.flat().find((c) => c.room === 'vyslanci')!;
     expect(envoysCell.mood).toBeNull();
+  });
+});
+
+describe('roomView — petitioner and revealed plots', () => {
+  it('puts the petitioner in the throne room during the audience only', () => {
+    const s = newGame(albania, 4, undefined, { palace: true }).state;
+    const pet = petitionById(albania, (s.phase as { petition: string }).petition);
+    expect(roomView(albania, s, 'trunni').petitioner).toBe(GROUP_LOOK[pet.from]);
+    expect(roomView(albania, s, 'pracovna').petitioner).toBeNull();
+    expect(roomView(albania, day(), 'trunni').petitioner).toBeNull();
+  });
+
+  it('marks a plot the commander revealed, in the faction’s own room', () => {
+    const s = day();
+    expect(roomView(albania, s, 'armada').plotMarker).toBeNull();
+    s.palace!.investigated.armada = { kind: 'assassination' };
+    expect(roomView(albania, s, 'armada').plotMarker).toBe('spiknutí: atentát');
+    s.palace!.investigated.armada = { kind: 'none' };
+    expect(roomView(albania, s, 'armada').plotMarker).toBeNull();
+  });
+
+  it('takes plots from the police report too', () => {
+    const s = day();
+    s.palace!.report = {
+      pop: s.pop, str: s.str, guard: s.guard, low: s.low, threshold: s.threshold,
+      plots: { armada: { kind: 'none' }, rolnici: { kind: 'revolution', ally: 'policie' }, statkari: { kind: 'none' } },
+    };
+    expect(roomView(albania, s, 'rolnici').plotMarker).toBe('spiknutí: revoluce, spojenec Tajná policie');
   });
 });

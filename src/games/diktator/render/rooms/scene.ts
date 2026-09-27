@@ -3,6 +3,7 @@
 // the room's people on the right (count = strength, pose = mood; unknown mood = grey figures and a "?"),
 // and the visiting heroes on the left. Stage units 480 × 200, y down; the caller scales the context.
 
+import type { Hero } from '../../logic/palace';
 import { FIGURE_HEIGHT, solvePuppet } from '../puppet/skeleton';
 import { drawPuppet } from '../puppet/draw';
 import { LOOKS } from '../puppet/looks';
@@ -230,9 +231,14 @@ function drawEnvoys(ctx: CanvasRenderingContext2D, crowds: readonly CrowdView[],
   });
 }
 
+export interface DrawRoomOptions {
+  /** Draw the heroes standing in the room (default). The split screen draws them itself with `drawHeroes`. */
+  readonly heroes?: boolean;
+}
+
 /** Draws the room; heroes present stand on the left facing right. `t` is seconds (animation).
  * Owns its canvas state (save/restore, and the defaults below) so one room never leaks style into the next. */
-export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number): void {
+export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number, opts: DrawRoomOptions = {}): void {
   ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
@@ -248,12 +254,47 @@ export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number):
   if (v.resident) {
     puppetAt(ctx, 380, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS[v.resident!], 'neutral'));
   }
-  v.heroes.forEach((h, i) => {
-    const pose = POSES.stand(t);
-    puppetAt(ctx, 90 + i * 55, FLOOR_Y, 1, 1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[h], 'neutral'));
-  });
+  if (v.petitioner) {
+    puppetAt(ctx, 330, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.talk(t)), LOOKS[v.petitioner!], 'neutral'));
+  }
+  if (v.plotMarker) drawPlotMarker(ctx, v.plotMarker);
+  if (opts.heroes ?? true) drawHeroes(ctx, v.heroes, null, t);
   ctx.fillStyle = '#efe4c4';
   ctx.font = '13px Georgia, serif';
   ctx.fillText(v.name, 10, 11);
+  ctx.restore();
+}
+
+/** A revealed plot: a red ribbon over the room's crowd (spec §5.2: "a marker naming the ally"). */
+function drawPlotMarker(ctx: CanvasRenderingContext2D, text: string): void {
+  ctx.save();
+  ctx.fillStyle = '#8c1d24';
+  ctx.fillRect(250, 16, 222, 18);
+  ctx.fillStyle = '#efe4c4';
+  ctx.font = '11px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 361, 29);
+  ctx.restore();
+}
+
+/**
+ * Heroes on the left, facing right. With `own` (the split screen's hero) the other hero stands behind, a little
+ * smaller, and `own` is drawn last so his own figure is always foremost; `stepIn` < 1 walks `own` in from the
+ * left edge (the room change). Without `own`, the heroes stand side by side as in plan 2b.
+ */
+export function drawHeroes(ctx: CanvasRenderingContext2D, heroes: readonly Hero[], own: Hero | null, t: number, stepIn = 1): void {
+  ctx.save();
+  const others = own === null ? heroes : heroes.filter((h) => h !== own);
+  others.forEach((h, i) => {
+    const x = own === null ? 90 + i * 55 : 145 + i * 55;
+    const scale = own === null ? 1 : 0.92;
+    puppetAt(ctx, x, FLOOR_Y, scale, 1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS[h], 'neutral'));
+  });
+  if (own !== null && heroes.includes(own)) {
+    const walking = stepIn < 1;
+    const x = walking ? -20 + 110 * Math.max(0, stepIn) : 90;
+    const pose = walking ? POSES.walk(t) : POSES.stand(t);
+    puppetAt(ctx, x, FLOOR_Y, 1, 1, () => drawPuppet(ctx, solvePuppet(pose), LOOKS[own], 'neutral'));
+  }
   ctx.restore();
 }
