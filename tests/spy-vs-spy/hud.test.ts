@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Dir } from '../../src/games/spy-vs-spy/logic/state';
 import { cs } from '../../src/shared/i18n/cs';
-import { itemRooms, knownDoors } from '../../src/games/spy-vs-spy/render/map';
+import { itemRooms } from '../../src/games/spy-vs-spy/logic/places';
+import { knownDoors } from '../../src/games/spy-vs-spy/render/map';
 import { TOAST_TIME, currentToast, pushToast, toastFor, type ToastQueue } from '../../src/games/spy-vs-spy/render/toast';
 import { defusedBy, formatLed, secretSlots } from '../../src/games/spy-vs-spy/render/trapulator';
 import { firstFurniture, kufrik, openGame, remedy, secret } from './fixtures';
