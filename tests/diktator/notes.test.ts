@@ -81,9 +81,21 @@ describe('notesFor', () => {
 describe('HUD', () => {
   it('shows the hero, his room, his hours as dots and the seal', () => {
     const s = day();
-    expect(heroHud(albania, s, 'velitel')).toEqual({ name: 'Vlček', room: 'Strážnice', hours: '●●●', seal: false, done: false });
+    expect(heroHud(albania, s, 'velitel')).toEqual({
+      name: 'Vlček', room: 'Strážnice', hours: '●●●', seal: false, done: false, stepsLeft: 10,
+    });
     const spent = advance(albania, s, { type: 'policeReport', hero: 'velitel' }).state;
     expect(heroHud(albania, spent, 'velitel').hours).toBe('●●○');
+  });
+
+  it('counts down the steps left to the next hour, and hides them once the hours are gone', () => {
+    const s = day();
+    expect(heroHud(albania, s, 'velitel').stepsLeft).toBe(10);
+    const moved = advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' }).state;
+    expect(heroHud(albania, moved, 'velitel').stepsLeft).toBe(9);
+    const out = structuredClone(s);
+    out.palace!.hours.velitel = 0;
+    expect(heroHud(albania, out, 'velitel').stepsLeft).toBeNull();
   });
 
   it('shows the date and the money on top', () => {

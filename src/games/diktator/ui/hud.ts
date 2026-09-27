@@ -16,6 +16,8 @@ export interface HeroHud {
   readonly hours: string;
   readonly seal: boolean;
   readonly done: boolean;
+  /** Steps left before the next hour is spent (play-test round 4); null once he has no hour left to spend it in. */
+  readonly stepsLeft: number | null;
 }
 
 export function heroHud(sc: Scenario, s: GameState, hero: Hero): HeroHud {
@@ -29,6 +31,7 @@ export function heroHud(sc: Scenario, s: GameState, hero: Hero): HeroHud {
     hours: '●'.repeat(left) + '○'.repeat(total - left),
     seal: p.seal === hero,
     done: p.done[hero],
+    stepsLeft: p.hours[hero] >= 1 ? RULES.palace.stepsPerHour - p.steps[hero] : null,
   };
 }
 

@@ -250,6 +250,10 @@ export const cs = {
       toMenu: 'Do menu',
       hours: 'hodiny',
       sealMark: 'pečeť',
+      /** Play-test round 4: steps cost hours too. */
+      steps: (left: number) => `do další hodiny ${left} kroků`,
+      noWalking: 'Už nemáš čas chodit.',
+      summoned: 'Stráž přivádí Zogua k žadateli do trůnního sálu.',
       join: {
         title: 'Diktátor',
         slot: (hero: string, device: string) => `${hero}: ${device}`,

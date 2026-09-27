@@ -93,6 +93,8 @@ export function renderHalf(hero: Hero, m: HalfModel): void {
   root.classList.toggle('inactive', m.inactive);
   const hud = [m.hud.name, m.hud.room, `${P.hours} ${m.hud.hours}`];
   if (m.hud.seal) hud.push(`✉ ${P.sealMark}`);
+  if (m.hud.stepsLeft !== null) hud.push(P.steps(m.hud.stepsLeft));
+  if (!m.hud.done && m.hud.stepsLeft === null) hud.push(P.noWalking);
   $('.hud', root).replaceChildren(...hud.map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
   const hint = m.talking ? P.hintTalk : m.open ? P.hintOpen : P.hintClosed;
   const line = m.solo ? `${hint} · ${P.soloHint}` : hint;

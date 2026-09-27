@@ -113,6 +113,16 @@ describe('replyLines', () => {
     expect(replies.other).toEqual([T.events.forcedNo]);
   });
 
+  it('captions the summons to both halves when Zogu is walked to the petitioner out of hours', () => {
+    const s = audience();
+    s.palace!.hours.zogu = 1;
+    s.palace!.steps.zogu = 9;
+    s.palace!.at.zogu = 'matka';
+    const { replies } = run(s, { type: 'move', hero: 'zogu', dir: 'right' }, 'zogu');
+    expect(replies.actor.some((l) => l.text === P.summoned)).toBe(true);
+    expect(replies.other).toContain(P.summoned);
+  });
+
   it('shows the seal changing hands to both halves', () => {
     let s = day();
     s = advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' }).state;

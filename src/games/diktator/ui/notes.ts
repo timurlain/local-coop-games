@@ -64,6 +64,8 @@ export function notesFor(sc: Scenario, s: GameState, e: GameEvent): Note[] {
       ].map((text) => ({ to: 'velitel' as const, text }));
     case 'guarding':
       return [{ to: 'both', text: P.guarding }];
+    case 'summoned':
+      return [{ to: 'both', text: P.summoned }];
     case 'heroDone':
       return [{ to: 'both', text: P.heroDone(T.heroes[e.hero]) }];
     default: {
