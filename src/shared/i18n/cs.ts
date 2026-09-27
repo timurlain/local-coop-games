@@ -203,6 +203,31 @@ export const cs = {
     /** Atentát: find the gunman (spec 2026-09-27-diktator-atentat-design). */
     atentat: {
       foiled: (group: string) => `Vlček zadržel střelce (${group}). Král je v bezpečí!`,
+      title: 'Atentát!',
+      places: { trziste: 'Tržiště v Tiraně', dustojnici: 'Důstojnická jídelna' },
+      tip: (clues: string) => `Tajná policie hlásí: střelec nosí ${clues}.`,
+      noTip: 'Tajná policie nic neví. Hledej toho, kdo se chová divně.',
+      clueWords: {
+        hat: { fez: 'fez', cap: 'čepici', plis: 'bílou plstěnou čapku', borsalino: 'klobouk', none: '' },
+        scarf: { red: 'červený šátek', blue: 'modrý šátek', green: 'zelený šátek', yellow: 'žlutý šátek', none: '' },
+        glasses: 'brýle',
+        bag: 'brašnu přes rameno',
+      },
+      and: ' a ',
+      howTo: 'Vlček hledá lupou (šipky nebo páčka). Akce: „To je on!“ — ale pozor, každý omyl zkrátí doutnák.',
+      start: 'Hledat!',
+      thatsHim: 'To je on!',
+      protests: [
+        'Já? Já jen prodávám fíky!',
+        'Pane, já jsem tu s babičkou!',
+        'Nechte mě, nesu chleba!',
+        'To je omyl, Excelence!',
+        'Já jsem jen zvědavý!',
+      ] as readonly string[],
+      foundCard: 'Mám ho! Pistole mu vypadla z kabátu.',
+      missedCard: 'Výstřely! Střelec zmizel v davu…',
+      survivedAfterShots: 'Kulky minuly — král žije!',
+      fuse: 'doutnák',
     },
     /** The library's historical map, 1921 (play-test wish, 2026-09-27). */
     map: {
