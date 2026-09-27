@@ -36,12 +36,12 @@ function startQuarter(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[
   s.decisionTaken = false;
   if (s.palace) {
     s.palace = newPalaceDay(sc.palace!);
-    refreshSeen(sc, s);
   }
   events.push({ type: 'quarterStarted', quarter: s.quarter });
   formPlots(s);
   applyTariffPenalty(sc, s, events);
   settleTreasury(s, events);
+  if (s.palace) refreshSeen(sc, s);
   const id = drawPetition(sc, s, dice);
   s.phase = { kind: 'audience', petition: id, suggested: false };
   events.push({ type: 'petition', id });

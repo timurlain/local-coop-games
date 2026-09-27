@@ -418,3 +418,13 @@ describe('palace knowledge (seenPop, investigated, report, offers, wishes)', () 
     expect(deserialize(serialize(f))).toEqual(f);
   });
 });
+
+describe('seen popularity at the start of a quarter', () => {
+  it('is refreshed after the treasury is settled (bankruptcy lowers the police first)', () => {
+    let s = day();
+    s = { ...s, treasury: -50 };
+    s = play(s, { type: 'endDay', hero: 'zogu' }, { type: 'endDay', hero: 'velitel' });
+    if (s.phase.kind !== 'audience') return; // a crisis ended the quarter differently; nothing to check
+    expect(s.palace!.seenPop.policie).toBe(s.pop.policie);
+  });
+});
