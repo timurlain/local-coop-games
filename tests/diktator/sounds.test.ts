@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { bumpHits, bumpSound, moveHits, moveSounds, voiceOf } from '../../src/games/diktator/ui/sounds';
+import { initialState } from '../../src/games/diktator/logic/state';
+import { bumpHits, bumpSound, moveHits, moveSounds, unrestLevel, voiceOf } from '../../src/games/diktator/ui/sounds';
 
 describe('hero sounds', () => {
   it('gives each hero his own footsteps, door and bump', () => {
@@ -42,5 +43,32 @@ describe('hero sounds', () => {
     expect(voiceOf({ kind: 'group', group: 'italie' })).toBe('voiceEnvoy');
     expect(voiceOf({ kind: 'group', group: 'jugoslavie' })).toBe('voiceEnvoy');
     expect(voiceOf({ kind: 'caption' })).toBe('paper');
+  });
+});
+
+describe('unrestLevel (play-test round 6b §3: a restless crowd when factions are furious)', () => {
+  it('is 0 while every faction is above rozzlobení (popularity > 2)', () => {
+    const s = initialState(1);
+    expect(unrestLevel(s)).toBe(0);
+    s.pop.armada = 3;
+    expect(unrestLevel(s)).toBe(0);
+  });
+
+  it('is 0.5 once the worst faction is exactly at 2', () => {
+    const s = initialState(1);
+    s.pop.rolnici = 2;
+    expect(unrestLevel(s)).toBe(0.5);
+    // a non-faction group (e.g. the neighbour) at 2 or below does not count
+    s.pop.rolnici = 7;
+    s.pop.jugoslavie = 0;
+    expect(unrestLevel(s)).toBe(0);
+  });
+
+  it('is 1 once any faction is rebellious or furious (popularity ≤ 1)', () => {
+    const s = initialState(1);
+    s.pop.statkari = 1;
+    expect(unrestLevel(s)).toBe(1);
+    s.pop.statkari = 0;
+    expect(unrestLevel(s)).toBe(1);
   });
 });

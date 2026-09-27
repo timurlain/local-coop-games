@@ -8,6 +8,7 @@ import { InputManager, type DeviceId } from '../../shared/input/manager';
 import { startLoop } from '../../shared/loop';
 import { randomSeed } from '../../shared/rng';
 import { saveJson } from '../../shared/storage';
+import { Ambient } from './audio/ambient';
 import { Samples } from './audio/samples';
 import { exits, HEROES, neighbour, other, type Hero, type RoomId } from './logic/palace';
 import { palaceCommands } from './logic/palace-actions';
@@ -31,7 +32,7 @@ import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
 import { roomView, stripView, type RoomView } from './ui/palace-view';
 import { cardsFor, phaseScreen, type Card, type PhaseScreen } from './ui/screens';
-import { bumpHits, bumpSound, moveHits, moveSounds, voiceOf } from './ui/sounds';
+import { bumpHits, bumpSound, moveHits, moveSounds, unrestLevel, voiceOf } from './ui/sounds';
 import { heroLine, replyLines, type Line } from './ui/speech';
 
 const T = cs.diktator;
@@ -63,6 +64,7 @@ interface Half {
 const input = new InputManager(window);
 const sfx = new Sfx();
 const samples = new Samples(getAudioContext);
+const ambient = new Ambient();
 const flicks = new Map<DeviceId, Flick>();
 
 // Sound effects only, for now (round 6b §1) — music gets its own setting when music arrives.
@@ -159,6 +161,7 @@ function begin(f: SaveFile, first: readonly GameEvent[]): void {
   active = 'zogu';
   screen = 'palace';
   holdAll();
+  ambient.setLevel(unrestLevel(state()));
   dirty = true;
 }
 
@@ -186,6 +189,7 @@ function toTitle(): void {
   seats = NO_SEATS;
   overlayUi = CLOSED;
   screen = 'title';
+  ambient.setLevel(0);
   dirty = true;
 }
 
@@ -250,6 +254,7 @@ function play(cmd: Command, actor: Hero | null = null): void {
     if (!samples.play([{ sample: 'page', delay: 0, rate: 1, gain: 0.8 }])) sfx.play('paper');
     holdAll();
   }
+  ambient.setLevel(unrestLevel(after));
   dirty = true;
 }
 
@@ -470,6 +475,7 @@ function pause(reason: string): void {
   screen = 'pause';
   overlayUi = CLOSED;
   pausedAt = t;
+  ambient.setLevel(0);
   dirty = true;
 }
 
@@ -483,6 +489,7 @@ function pauseOptions(): { label: string; run: () => void }[] {
           if (halves) for (const h of HEROES) halves[h].captions = halves[h].captions.map((c) => ({ ...c, until: c.until + paused }));
           screen = 'palace';
           holdAll();
+          if (file) ambient.setLevel(unrestLevel(state()));
         }
       },
     },
@@ -518,6 +525,8 @@ function update(dt: number): void {
   if (input.anyKeyPressed()) {
     sfx.unlock();
     samples.load();
+    const ctx = getAudioContext();
+    if (ctx) ambient.start(ctx); // idempotent: builds the loop once, after the first unlock
   }
   if (flash.rooms.size > 0 && t > flash.until) {
     flash = { rooms: new Set(), until: 0 };

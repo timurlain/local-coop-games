@@ -2,7 +2,9 @@
 
 import type { SfxName } from '../../../shared/audio';
 import type { SampleHit } from '../audio/samples';
+import { FACTIONS } from '../logic/groups';
 import type { Hero } from '../logic/palace';
+import type { GameState } from '../logic/state';
 import type { Speaker } from './speech';
 
 const ENVOYS: ReadonlySet<string> = new Set(['italie', 'britanie', 'jugoslavie']);
@@ -38,6 +40,18 @@ export function moveHits(h: Hero): SampleHit[] {
 /** Recorded knock for a hero's bump into a wall. Play-test round 6b §2: quieter, along with the footsteps. */
 export function bumpHits(h: Hero): SampleHit[] {
   return [{ sample: h === 'zogu' ? 'zogu-bump' : 'vlcek-bump', delay: 0, rate: 1, gain: 0.5 }];
+}
+
+/**
+ * How restless the crowd is (play-test round 6b §3, "a rebel noise when some of the factions are super unhappy"):
+ * 0 while every faction is above rozzlobení (popularity > 2); 0.5 once the worst is exactly at 2 (rozzlobení);
+ * 1 once any faction is rebellious or furious (popularity ≤ 1).
+ */
+export function unrestLevel(s: GameState): number {
+  const worst = Math.min(...FACTIONS.map((f) => s.pop[f]));
+  if (worst <= 1) return 1;
+  if (worst === 2) return 0.5;
+  return 0;
 }
 
 export function voiceOf(sp: Speaker): SfxName {
