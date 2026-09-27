@@ -1,5 +1,4 @@
 import { cs } from '../../../shared/i18n/cs';
-import { RULES } from '../logic/rules';
 import { backArrows, showsBreadcrumbs } from '../logic/trail';
 import type { Dir, GameState, Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
@@ -63,14 +62,24 @@ function drawArrow(ctx: Ctx, dir: Dir, x: number, y: number, color: string): voi
   });
 }
 
-/** Strip under the frame: player name, room name, breadcrumbs or a toast, health pips. No trap hints (round 4 §1). */
-export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | null): void {
+/**
+ * Strip under the frame: player name, room name, breadcrumbs or a toast, health pips. No trap hints (round 4 §1).
+ * `bot` names a computer's side (spec bot §1, e.g. „Počítač IQ 3"): then the name and label share the upper line
+ * („ČERNÝ · POČÍTAČ IQ 3") and the room name goes under it, both a size smaller, across the name and room slots.
+ */
+export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | null, bot: string | null = null): void {
   r(ctx, UNDER.x, UNDER.y, UNDER.w, UNDER.h, '#0c0c12');
   const p = UNDER_PARTS;
   const name = (spy.id === 0 ? T.white : T.black).toUpperCase();
-  text(ctx, name, p.name.x, p.name.y + 8, spy.id === 0 ? '#f4f4f4' : '#9a9aae', 7);
-
-  text(ctx, T.rooms[state.rooms[spy.room].theme], p.room.x, p.room.y + 8, '#9a9ab0', 6);
+  const nameColor = spy.id === 0 ? '#f4f4f4' : '#9a9aae';
+  const room = T.rooms[state.rooms[spy.room].theme];
+  if (bot) {
+    text(ctx, `${name} · ${bot.toUpperCase()}`, p.name.x, p.name.y + 5, nameColor, 5);
+    text(ctx, room, p.name.x, p.name.y + 10, '#9a9ab0', 5);
+  } else {
+    text(ctx, name, p.name.x, p.name.y + 8, nameColor, 7);
+    text(ctx, room, p.room.x, p.room.y + 8, '#9a9ab0', 6);
+  }
 
   if (!toast) {
     const arrows = breadcrumbArrows(state, spy);
@@ -87,7 +96,7 @@ export function drawUnder(ctx: Ctx, state: GameState, spy: Spy, toast: Toast | n
   }
 
   const pips = p.pips;
-  for (let i = 0; i < RULES.health; i++) {
+  for (let i = 0; i < spy.maxHealth; i++) {
     r(ctx, pips.x + 1 + i * 5, pips.y + 2, 4, 5, i < spy.health ? '#d23c3c' : '#333340');
   }
 }

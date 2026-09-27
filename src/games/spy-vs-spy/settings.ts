@@ -1,7 +1,15 @@
 import { cs } from '../../shared/i18n/cs';
+import { isIq, type Iq } from './bot/iq';
 import {
   DEFAULT_GAME_LENGTH, RULES, isGameLengthMultiplier, isLevel, levelRules, scaledClock, type GameLengthMultiplier,
 } from './logic/rules';
+import type { PlayerId } from './logic/state';
+
+/** One side of the menu (spec bot §1): „Hráč" or „Počítač" with its IQ (kept while „Hráč", for switching back). */
+export interface SideSetting {
+  bot: boolean;
+  iq: Iq;
+}
 
 /** Menu settings, persisted in localStorage. */
 export interface Settings {
@@ -13,7 +21,11 @@ export interface Settings {
   music: boolean;
   /** „Délka hry": multiplies every spy's clock. Default 1 (normální). */
   gameLength: GameLengthMultiplier;
+  /** Bílý, Černý: human or computer. Default both „Hráč", IQ 3. */
+  sides: readonly [SideSetting, SideSetting];
 }
+
+const DEFAULT_IQ: Iq = 3;
 
 /** Round-2 embassy sizes → the level with the same grid (mala 3×3, stredni 4×3, velka 5×4). */
 const LEVEL_OF_SIZE: Readonly<Record<string, number>> = { mala: 2, stredni: 3, velka: 5 };
@@ -32,7 +44,36 @@ export function migrateSettings(raw: unknown): Settings {
   else if (typeof o.size === 'string' && o.size in LEVEL_OF_SIZE) level = LEVEL_OF_SIZE[o.size];
   else if ('size' in o || 'clock' in o) level = LEGACY_LEVEL;
   const gameLength = isGameLengthMultiplier(o.gameLength) ? o.gameLength : DEFAULT_GAME_LENGTH;
-  return { level, muted: o.muted === true, hideAirport: o.hideAirport === true, music: o.music !== false, gameLength };
+  const saved: readonly unknown[] = Array.isArray(o.sides) ? o.sides : [];
+  const sides = [migrateSide(saved[0]), migrateSide(saved[1])] as const;
+  return { level, muted: o.muted === true, hideAirport: o.hideAirport === true, music: o.music !== false, gameLength, sides };
+}
+
+/** One saved side: „Počítač" only if saved as exactly that; an invalid IQ → 3. */
+function migrateSide(raw: unknown): SideSetting {
+  const o = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return { bot: o.bot === true, iq: isIq(o.iq) ? o.iq : DEFAULT_IQ };
+}
+
+/** Which slots need a human to press Akce before the game can start. */
+export function humanSlots(sides: Settings['sides']): PlayerId[] {
+  return ([0, 1] as const).filter((i) => !sides[i].bot);
+}
+
+/** The game can start: every human slot joined; with no human slot, true (any key starts). */
+export function canStart(sides: Settings['sides'], joined: readonly [boolean, boolean]): boolean {
+  return humanSlots(sides).every((i) => joined[i]);
+}
+
+/** Keys that never start the bot-vs-bot demo: menu navigation and the debug toggle. */
+const NOT_A_START: ReadonlySet<string> = new Set(['Tab', 'F1']);
+
+/**
+ * A key press that starts computer against computer from the menu (spec bot §8, „any key"): not while a menu control
+ * (select, checkbox, link) has focus, where the key works that control, and never Tab or F1.
+ */
+export function startsDemo(code: string, focusIsFormControl: boolean): boolean {
+  return !focusIsFormControl && !NOT_A_START.has(code);
 }
 
 export interface LevelStats {

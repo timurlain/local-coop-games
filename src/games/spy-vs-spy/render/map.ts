@@ -1,6 +1,6 @@
 import { cs } from '../../../shared/i18n/cs';
 import { armouryRoom } from '../logic/armoury';
-import { exitVisibleTo } from '../logic/places';
+import { exitVisibleTo, itemRooms } from '../logic/places';
 import { DIRS, OPPOSITE, neighbor, type Dir, type GameState, type Spy } from '../logic/state';
 import { HAND_COLORS } from './colors';
 import { r, text } from './draw';
@@ -41,16 +41,6 @@ export function knownDoors(state: GameState, spy: Spy): KnownDoor[] {
     }
   }
   return out;
-}
-
-/** Visited rooms where a piece of furniture hides a secret or the kufřík (the big map's dots). */
-export function itemRooms(state: GameState, spy: Spy): Set<number> {
-  const rooms = new Set<number>();
-  for (const f of state.furniture) {
-    if (!spy.visited[f.room] || !f.hidden) continue;
-    if (f.hidden.kind === 'secret' || f.hidden.kind === 'kufrik') rooms.add(f.room);
-  }
-  return rooms;
 }
 
 interface GridStyle {

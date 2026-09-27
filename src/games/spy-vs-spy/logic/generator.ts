@@ -10,12 +10,13 @@ const LOOKS_SALT = 0x5eed7e3a;
 
 export function createSpy(
   id: PlayerId, room: number, x: number, roomCount: number, clock: number, stock: Readonly<Record<TrapKind, number>>,
+  maxHealth: number = RULES.health,
 ): Spy {
   const visited = Array<boolean>(roomCount).fill(false);
   visited[room] = true;
   return {
     id, room, x, z: RULES.spawnZ, facing: id === 0 ? 1 : -1,
-    hand: null, clock, health: RULES.health, sinceHit: 0, score: 0,
+    hand: null, clock, health: maxHealth, maxHealth, sinceHit: 0, score: 0,
     mode: 'normal', modeTimer: 0, searchTarget: null, deathCause: null,
     selected: null, trapPress: null, mapOpen: false, placing: null, refuseTimer: 0, stock: { ...stock },
     armouryTimer: 0, stockFlash: null,
@@ -30,6 +31,8 @@ export interface GameOptions {
   hideAirport?: boolean;
   /** „Délka hry": multiplies the level's clock (default 1, normální). */
   gameLength?: GameLengthMultiplier;
+  /** Per-spy maximum health (bot handicap, spec bot §1), indexed by `PlayerId`; default `RULES.health` for both. */
+  maxHealth?: readonly [number, number];
 }
 
 /** A new match on `level` (1-8, spec §4): grid, clock and trap stock come from `RULES.levels`; the clock is scaled
@@ -55,8 +58,8 @@ export function createGame(seed: number, level: number, opts: GameOptions = {}):
   const state: GameState = {
     seed, host, year, level, cols, rows, hideAirport: opts.hideAirport ?? false, rooms, furniture: [], doorTraps: {}, doorOpen: {}, timeBombs: [],
     spies: [
-      createSpy(0, 0, 40, rooms.length, clockSeconds, trapStockPerSpy),
-      createSpy(1, 0, 160, rooms.length, clockSeconds, trapStockPerSpy),
+      createSpy(0, 0, 40, rooms.length, clockSeconds, trapStockPerSpy, opts.maxHealth?.[0] ?? RULES.health),
+      createSpy(1, 0, 160, rooms.length, clockSeconds, trapStockPerSpy, opts.maxHealth?.[1] ?? RULES.health),
     ],
     rng: makeRng(seed), time: 0, tick: 0, result: null,
   };

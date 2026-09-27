@@ -15,6 +15,17 @@ export const cs = {
     waiting: 'čeká…',
     joinHint: 'Každý hráč stiskne svou Akci (F / Enter / A na gamepadu)',
     startHint: 'Oba připojeni — stiskni Akci pro start',
+    /** a human against the computer (spec bot §1): the one human slot is taken */
+    readyHint: 'Připojen — stiskni Akci pro start',
+    /** computer against computer (spec bot §8): nobody joins */
+    demoHint: 'Počítač proti počítači — start i pauza libovolnou klávesou nebo tlačítkem',
+    sideHuman: 'Hráč',
+    sideBot: 'Počítač',
+    /** the computer's levels (spec bot §1), IQ 1 … 5 */
+    iqNames: ['nemotorný', 'začátečník', 'šikovný', 'mazaný', 'mistr špión'] as readonly string[],
+    iqOption: (iq: number) => `IQ ${iq} (${cs.spy.iqNames[iq - 1]})`,
+    /** a computer's side in the menu slot and in the strip under his half */
+    botLabel: (iq: number) => `Počítač IQ ${iq}`,
     devices: {
       kbLeft: 'klávesnice vlevo',
       kbRight: 'klávesnice vpravo',

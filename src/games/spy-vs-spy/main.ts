@@ -7,11 +7,14 @@ import { Music } from '../../shared/music';
 import { randomSeed } from '../../shared/rng';
 import { fitCanvas } from '../../shared/splitscreen';
 import { loadJson, saveJson } from '../../shared/storage';
+import { createBot, type Bot } from './bot/bot';
+import { IQS, botMaxHealth, type Iq } from './bot/iq';
 import { createGame } from './logic/generator';
-import { GAME_LENGTH_MULTIPLIERS, LEVELS, levelRules } from './logic/rules';
+import { GAME_LENGTH_MULTIPLIERS, LEVELS, RULES, levelRules } from './logic/rules';
 import { rankFor } from './logic/score';
-import type { GameEvent, GameState, PlayerId, RemedyKind, Spy, SpyInput } from './logic/state';
+import { NO_INPUT, type GameEvent, type GameState, type PlayerId, type RemedyKind, type Spy, type SpyInput } from './logic/state';
 import { step } from './logic/step';
+import { deathFrames } from './render/death-frames';
 import { laugher, spawnEffects, type EffectQueue } from './render/effects';
 import { formatClock } from './render/hud';
 import { pushToast, toastFor, type ToastQueue } from './render/toast';
@@ -20,7 +23,7 @@ import { escapeCues, escapeOver, renderEscape } from './render/escape';
 import { LAUGH_AT, MOB_AT, VICTORY_DURATION, VICTORY_SKIPPABLE_AFTER, renderVictory } from './render/victory';
 import { TITLE_CARD_TIME, renderTitleCard } from './render/title';
 import { renderGame } from './render/view';
-import { levelReadout, migrateSettings } from './settings';
+import { canStart, humanSlots, levelReadout, migrateSettings, startsDemo, type SideSetting } from './settings';
 
 type Screen = 'menu' | 'title' | 'play' | 'pause' | 'escape' | 'victory' | 'result';
 
@@ -44,6 +47,16 @@ const urlSeed = parseSeed(new URLSearchParams(location.search).get('seed'));
 let screen: Screen = 'menu';
 let slots: [DeviceId | null, DeviceId | null] = [null, null];
 let state: GameState | null = null;
+/** The computer's sides of the running match (spec bot §1), fixed at its start; null for a human's side. */
+let bots: [Bot | null, Bot | null] = [null, null];
+/** Strip labels of the computer's halves („Počítač IQ 3"), null for a human's. */
+let botLabels: [string | null, string | null] = [null, null];
+/** The previous `step`'s events: what the bots saw happen last tick. */
+let lastEvents: readonly GameEvent[] = [];
+/** A menu select changed this tick (a key on a focused select): that key must not also start a bot-vs-bot demo. */
+let menuChanged = false;
+/** Elements whose keys work the menu itself (Enter, Space, arrows), so they never start the demo. */
+const FORM_CONTROLS: readonly string[] = ['SELECT', 'INPUT', 'BUTTON', 'TEXTAREA', 'A'];
 let scale = 1;
 let debug = false;
 let fps = 0;
@@ -135,6 +148,33 @@ function setupMenu(): void {
     music.muted = !musicBox.checked;
     saveJson(SETTINGS_KEY, settings);
   };
+
+  // Hráč / Počítač per side (spec bot §1); the IQ select only for Počítač
+  ([0, 1] as const).forEach((i) => {
+    $(`side-${i}-label`).textContent = i === 0 ? T.white : T.black;
+    const side = $<HTMLSelectElement>(`side-${i}`);
+    const iq = $<HTMLSelectElement>(`iq-${i}`);
+    const saved = settings.sides[i];
+    side.add(new Option(T.sideHuman, 'human', false, !saved.bot));
+    side.add(new Option(T.sideBot, 'bot', false, saved.bot));
+    for (const n of IQS) iq.add(new Option(T.iqOption(n), String(n), false, n === saved.iq));
+    iq.hidden = !saved.bot;
+    const apply = () => {
+      const next: SideSetting = { bot: side.value === 'bot', iq: Number(iq.value) as Iq };
+      settings.sides = i === 0 ? [next, settings.sides[1]] : [settings.sides[0], next];
+      iq.hidden = !next.bot;
+      if (next.bot) slots[i] = null; // a Počítač slot never holds a controller
+      menuChanged = true;
+      renderSlots();
+      saveJson(SETTINGS_KEY, settings);
+    };
+    // let go of the focus after a choice, so the next key starts a bot-vs-bot demo as the hint says (spec bot §8)
+    side.onchange = (e) => {
+      apply();
+      (e.target as HTMLSelectElement).blur();
+    };
+    iq.onchange = side.onchange;
+  });
   renderSlots();
 }
 
@@ -144,13 +184,18 @@ function deviceLabel(d: DeviceId): string {
   return T.devices.pad(Number(d.slice(4)) + 1);
 }
 
+const joined = (): [boolean, boolean] => [slots[0] !== null, slots[1] !== null];
+
 function renderSlots(): void {
   slots.forEach((d, i) => {
     const el = $(`slot-${i}`);
-    el.textContent = `${i === 0 ? T.white : T.black}: ${d ? deviceLabel(d) : T.waiting}`;
-    el.classList.toggle('joined', d !== null);
+    const side = settings.sides[i];
+    el.textContent = `${i === 0 ? T.white : T.black}: ${side.bot ? T.botLabel(side.iq) : d ? deviceLabel(d) : T.waiting}`;
+    el.classList.toggle('joined', side.bot || d !== null);
   });
-  $('menu-hint').textContent = slots[0] && slots[1] ? T.startHint : T.joinHint;
+  const humans = humanSlots(settings.sides).length;
+  const ready = canStart(settings.sides, joined());
+  $('menu-hint').textContent = humans === 0 ? T.demoHint : !ready ? T.joinHint : humans === 2 ? T.startHint : T.readyHint;
 }
 
 function show(id: 'menu' | 'pause' | 'result' | null): void {
@@ -161,9 +206,19 @@ function show(id: 'menu' | 'pause' | 'result' | null): void {
 
 function startGame(): void {
   (document.activeElement as HTMLElement | null)?.blur();
-  state = createGame(urlSeed ?? randomSeed(), settings.level, { hideAirport: settings.hideAirport, gameLength: settings.gameLength });
-  state.spies.forEach((spy, i) => {
-    spy.prev = toSpyInput(input.get(slots[i]!));
+  const seed = urlSeed ?? randomSeed();
+  const sides = settings.sides;
+  // the computer's health handicap at low IQ (spec bot §1); humans always have the full health
+  const health = (side: SideSetting) => (side.bot ? botMaxHealth(side.iq) : RULES.health);
+  state = createGame(seed, settings.level, {
+    hideAirport: settings.hideAirport, gameLength: settings.gameLength, maxHealth: [health(sides[0]), health(sides[1])],
+  });
+  const botFor = (i: PlayerId) => (sides[i].bot ? createBot(i, sides[i].iq, seed) : null);
+  bots = [botFor(0), botFor(1)];
+  botLabels = [bots[0] && T.botLabel(bots[0].iq), bots[1] && T.botLabel(bots[1].iq)];
+  lastEvents = [];
+  state.spies.forEach((spy) => {
+    spy.prev = heldInput(spy.id);
   });
   stepTimers[0] = 0;
   stepTimers[1] = 0;
@@ -178,8 +233,8 @@ function startGame(): void {
 
 /** Title card done (or skipped with Akce): the match starts; held buttons don't count as fresh presses. */
 function beginPlay(): void {
-  state!.spies.forEach((spy, i) => {
-    spy.prev = toSpyInput(input.get(slots[i]!));
+  state!.spies.forEach((spy) => {
+    spy.prev = heldInput(spy.id);
   });
   screen = 'play';
   music.start();
@@ -189,6 +244,8 @@ function toMenu(): void {
   music.stop();
   screen = 'menu';
   state = null;
+  bots = [null, null];
+  lastEvents = [];
   slots = [null, null];
   renderSlots();
   show('menu');
@@ -222,8 +279,17 @@ function finish(s: GameState): void {
   sfx.play(r.kind === 'win' ? 'win' : 'draw');
 }
 
+/** The humans' controllers (a computer's slot holds none), so a lost gamepad pauses only for a human (spec bot §1). */
 const slotDevices = (): DeviceId[] => slots.filter((d): d is DeviceId => d !== null);
-const slotPressed = (key: 'action' | 'pause'): boolean => slotDevices().some((d) => input.pressed(d, key));
+/** Computer against computer: nobody holds a controller, so every one counts (spec bot §8). */
+const noHumans = (): boolean => bots[0] !== null && bots[1] !== null;
+/** A human pressed `key`; with no human in the match, anyone did. */
+const slotPressed = (key: 'action' | 'pause'): boolean =>
+  (noHumans() ? input.devices() : slotDevices()).some((d) => input.pressed(d, key));
+/** Any key (but the F1 debug toggle) or any controller button went down this tick (in play: the menu is closed). */
+const anyPress = (): boolean =>
+  (input.anyKeyPressed() && !input.keyPressed('F1')) ||
+  input.devices().some((d) => input.pressed(d, 'action') || input.pressed(d, 'trap') || input.pressed(d, 'pause'));
 
 // ---------- per-tick update ----------
 
@@ -281,26 +347,62 @@ function updateMenu(): void {
       renderSlots();
     }
   });
+  const changed = menuChanged;
+  menuChanged = false;
+  const humans = humanSlots(settings.sides);
+  if (humans.length === 0) {
+    // computer against computer (spec bot §8): nobody joins, any key or button starts the demo
+    if (!changed && demoStartPressed()) {
+      sfx.unlock();
+      startGame();
+    }
+    return;
+  }
   for (const d of input.devices()) {
     if (!input.pressed(d, 'action')) continue;
     sfx.unlock();
     if (slots.includes(d)) {
-      if (slots[0] && slots[1]) {
+      if (canStart(settings.sides, joined())) {
         startGame();
         return;
       }
       continue;
     }
-    const free = slots.indexOf(null);
-    if (free === -1) continue;
-    slots[free as 0 | 1] = d;
+    // a joining controller takes the first free Hráč slot; a Počítač slot never waits
+    const free = humans.find((i) => slots[i] === null);
+    if (free === undefined) continue;
+    slots[free] = d;
     sfx.play('join');
     renderSlots();
   }
 }
 
+/**
+ * Bot vs bot in the menu (spec bot §8): a key starts the demo only when no menu control has focus (`startsDemo`), a
+ * gamepad button always does. Keyboard „devices" are left out, their keys already went through `startsDemo`; a mouse
+ * click is no key at all.
+ */
+function demoStartPressed(): boolean {
+  const focused = document.activeElement;
+  const inForm = focused !== null && FORM_CONTROLS.includes(focused.tagName);
+  if (input.keysPressed().some((code) => startsDemo(code, inForm))) return true;
+  return input.devices().some((d) =>
+    d.startsWith('pad-') && (input.pressed(d, 'action') || input.pressed(d, 'trap') || input.pressed(d, 'pause')));
+}
+
 function toSpyInput(a: PlayerActions): SpyInput {
   return { moveX: a.moveX, moveY: a.moveY, action: a.action, trap: a.trap };
+}
+
+/** What a side holds at the start of play: a human's controller, nothing for the computer. */
+function heldInput(id: PlayerId): SpyInput {
+  return bots[id] ? { ...NO_INPUT } : toSpyInput(input.get(slots[id]!));
+}
+
+/** This tick's input of a side: a human's controller, or the bot's answer to what he saw last tick. */
+function playInput(id: PlayerId, s: GameState, dt: number): SpyInput {
+  const bot = bots[id];
+  return bot ? bot.think(s, lastEvents, dt) : toSpyInput(input.get(slots[id]!));
 }
 
 function posKey(spy: Spy): string {
@@ -313,14 +415,16 @@ function updatePlay(dt: number): void {
     pause(T.padLost);
     return;
   }
-  if (slotPressed('pause')) {
+  // with no human any key or button pauses (spec bot §8); the bots think only while playing, so a pause leaves no backlog
+  if (noHumans() ? anyPress() : slotPressed('pause')) {
     pause(T.paused);
     return;
   }
   const before: [string, string] = [posKey(s.spies[0]), posKey(s.spies[1])];
-  const inputs: [SpyInput, SpyInput] = [toSpyInput(input.get(slots[0]!)), toSpyInput(input.get(slots[1]!))];
+  const inputs: [SpyInput, SpyInput] = [playInput(0, s, dt), playInput(1, s, dt)];
   const now = performance.now() / 1000;
   const events = step(s, inputs, dt);
+  lastEvents = events;
   for (const e of events) {
     const name = soundFor(e);
     if (name) sfx.play(name);
@@ -453,12 +557,12 @@ function render(): void {
   }
   if (screen === 'escape' && state?.result?.kind === 'win') {
     // the loser's half stays on the frozen match; the winner's half shows the escape
-    renderGame(ctx, scale, state, now / 1000, { on: false, fps }, toasts, effects);
+    renderGame(ctx, scale, state, now / 1000, { on: false, fps }, toasts, effects, botLabels);
     renderEscape(ctx, scale, state.result.winner, escapeT, now / 1000);
   } else if (screen === 'victory' && state?.result?.kind === 'win') {
     renderVictory(ctx, scale, state, state.result.winner, victoryT, now / 1000);
   } else if (state && screen !== 'menu') {
-    renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts, effects);
+    renderGame(ctx, scale, state, now / 1000, { on: debug, fps }, toasts, effects, botLabels);
     if (screen === 'title') renderTitleCard(ctx, scale, state, titleT);
   } else {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -490,3 +594,7 @@ setupMenu();
 resize();
 show('menu');
 startLoop(update, render);
+// The death animations are built on first use; build them now, while the menu idles, so no death waits for them.
+// (No requestIdleCallback in Safari, which we don't target; a timeout does the same job there.)
+if ('requestIdleCallback' in window) requestIdleCallback(() => deathFrames());
+else setTimeout(() => deathFrames(), 500);

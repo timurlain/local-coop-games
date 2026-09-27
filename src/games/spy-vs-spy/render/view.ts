@@ -138,10 +138,13 @@ export interface DebugInfo {
   fps: number;
 }
 
-/** Draws both halves: room (or big map) in the TV frame, the strip under it and the Trapulator. `now` is in seconds. */
+/**
+ * Draws both halves: room (or big map) in the TV frame, the strip under it and the Trapulator. `now` is in seconds.
+ * `bots` labels a computer's half in its strip (spec bot §1), null for a human's.
+ */
 export function renderGame(
   ctx: CanvasRenderingContext2D, scale: number, state: GameState, now: number, debug: DebugInfo,
-  toasts: readonly ToastQueue[], effects: EffectQueue = [],
+  toasts: readonly ToastQueue[], effects: EffectQueue = [], bots: readonly (string | null)[] = [],
 ): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#000000';
@@ -182,7 +185,7 @@ export function renderGame(
       drawCable(ctx);
       drawDevice(ctx, state, viewer, now);
       const queue = toasts[viewer.id];
-      drawUnder(ctx, state, viewer, queue ? currentToast(queue, now) : null);
+      drawUnder(ctx, state, viewer, queue ? currentToast(queue, now) : null, bots[viewer.id] ?? null);
     });
   }
 }

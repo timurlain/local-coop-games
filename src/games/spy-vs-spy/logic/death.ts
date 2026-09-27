@@ -102,7 +102,7 @@ export function updateDead(state: GameState, spy: Spy, dt: number, events: GameE
   if (spy.modeTimer > 0) return;
   spy.mode = 'normal';
   spy.modeTimer = 0;
-  spy.health = RULES.health;
+  spy.health = spy.maxHealth;
   spy.sinceHit = 0;
   spy.deathCause = null;
   // Round 5 §2: back in another room. Until now `spy.room` stayed the room of death, so the death animation and

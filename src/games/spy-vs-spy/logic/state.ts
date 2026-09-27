@@ -183,6 +183,8 @@ export interface Spy {
   /** seconds left */
   clock: number;
   health: number;
+  /** full health for this spy (bot handicap, spec bot §1); humans RULES.health */
+  maxHealth: number;
   /** seconds since the last hit taken; drives strength recovery, reset on hit and on respawn */
   sinceHit: number;
   /** running total from `scoreDeltas` (spec §7); can go negative */
