@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BONES, solvePuppet, type PuppetPose } from '../../src/games/diktator/render/puppet/skeleton';
+import { GROUP_LOOK, LOOKS } from '../../src/games/diktator/render/puppet/looks';
+import { MOOD_FACES, MOODS, POSES, faceForMood, type PoseName } from '../../src/games/diktator/render/puppet/poses';
+import { GROUPS } from '../../src/games/diktator/logic/groups';
 
 const STAND: PuppetPose = { armF: [172, -8], armB: [188, 8], legF: [176, 2], legB: [184, -2] };
 
@@ -31,5 +34,58 @@ describe('solvePuppet', () => {
     expect(j.prop).toBe('glass');
     expect(j.mouthOpen).toBe(true);
     expect(j.face).toBe('shocked');
+  });
+});
+
+describe('poses and moods', () => {
+  const finite = (p: import('../../src/games/diktator/render/puppet/skeleton').PuppetPose) => {
+    const j = solvePuppet(p);
+    for (const v of [j.hip, j.head, j.shoulder, j.armF.hand, j.armB.hand, j.legF.foot, j.legB.foot]) {
+      expect(Number.isFinite(v[0]) && Number.isFinite(v[1])).toBe(true);
+    }
+  };
+
+  it('every named pose solves at several times', () => {
+    for (const name of Object.keys(POSES) as PoseName[]) for (const t of [0, 0.4, 1.7]) finite(POSES[name](t));
+  });
+
+  it('has ten moods, 0 = vzbouření … 9 = nadšení, each solvable', () => {
+    expect(MOODS).toHaveLength(10);
+    for (const m of MOODS) for (const t of [0, 0.9]) finite(m(t));
+  });
+
+  it('shares each face between two neighbouring moods', () => {
+    expect(MOOD_FACES).toEqual(['furious', 'furious', 'grumpy', 'grumpy', 'neutral', 'neutral', 'happy', 'happy', 'ecstatic', 'ecstatic']);
+    expect(faceForMood(9)).toBe('ecstatic');
+    expect(faceForMood(0)).toBe('furious');
+  });
+
+  it("Mother's warning: upper arm forward, forearm raised from the elbow", () => {
+    const j = solvePuppet(POSES.warn(0));
+    expect(j.armF.el[0] - j.shoulder[0]).toBeGreaterThan(BONES.upper * 0.8);
+    expect(j.armF.hand[1] - j.armF.el[1]).toBeGreaterThan(BONES.fore * 0.8);
+    expect(j.prop).toBe('finger');
+  });
+
+  it('the salute touches the head and the fright is only in the face', () => {
+    const j = solvePuppet(POSES.salute(0));
+    expect(Math.hypot(j.armF.hand[0] - j.head[0], j.armF.hand[1] - j.head[1])).toBeLessThan(BONES.head + 2);
+    const f = POSES.shocked(0);
+    expect(f.face).toBe('shocked');
+    expect(f.armF).toEqual(POSES.stand(0).armF);
+  });
+});
+
+describe('looks', () => {
+  it('every group wears a known look', () => {
+    for (const g of GROUPS) expect(LOOKS[GROUP_LOOK[g]]).toBeDefined();
+  });
+
+  it('the Queen Mother wears a dress; the envoys carry their colours', () => {
+    expect(LOOKS.mother.dress).toBe(true);
+    expect(LOOKS.italy.prop).toBe('flagIT');
+    expect(LOOKS.italy.sash).toEqual(['#1f8a3b', '#f4f1e8', '#c8102e']);
+    expect(LOOKS.britain.monocle).toBe(true);
+    expect(LOOKS.yugo.sash).toEqual(['#1d3f8f', '#f4f1e8', '#c8102e']);
   });
 });
