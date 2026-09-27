@@ -5,6 +5,7 @@
 import { makeRng } from '../../../../shared/rng';
 import { HEROES, type Hero } from '../../logic/palace';
 import { tileCentre, type MarchMap } from './map';
+import { createGateGuards, stepFoes, strike } from './foes';
 import { applyRope, walk } from './move';
 import { createPlaces, stepPlaces } from './places';
 import { MARCH } from './rules';
@@ -36,6 +37,7 @@ export function createMarch(map: MarchMap, seed: number, solo: boolean, opts: Ma
     ending: null, arrivedDay: null,
   };
   s.places = createPlaces(map, s.rng);
+  createGateGuards(s);
   return s;
 }
 
@@ -77,6 +79,9 @@ export function stepMarch(
 
   // 2. Negotiation, Vlček's blow, the gendarmes, the optional benefits.
   stepPlaces(s, zin, dt, events);
+  const helperStrikes = s.solo && active === 'zogu';
+  strike(s, vin, helperStrikes ? MARCH.helperCooldown : MARCH.blowCooldown, events);
+  stepFoes(s, dt, events);
 
   // 3. The trail, the day banner and the end.
   if (s.now >= s.trailNext) {
