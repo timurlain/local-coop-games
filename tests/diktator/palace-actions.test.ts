@@ -232,7 +232,7 @@ describe('the seal', () => {
 
   it('cannot be given to a hero who has ended the day', () => {
     let s = day();
-    // velitel walks to the study and ends his day there
+    // velitel walks to the study, ends his day there and goes to bed
     s = play(
       s,
       { type: 'move', hero: 'velitel', dir: 'up' },
@@ -240,7 +240,7 @@ describe('the seal', () => {
       { type: 'move', hero: 'velitel', dir: 'left' },
       { type: 'endDay', hero: 'velitel' },
     );
-    expect(s.palace!.at.velitel).toBe('pracovna');
+    expect(s.palace!.at.velitel).toBe('loznice');
     expect(s.palace!.done.velitel).toBe(true);
     // Zogu walks to the study too and takes the seal
     s = play(s, { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'takeSeal', hero: 'zogu' });
@@ -250,13 +250,44 @@ describe('the seal', () => {
     expect(() => advance(albania, s, { type: 'giveSeal', hero: 'zogu' })).toThrow();
   });
 
-  it("endDay drops a held seal back to the study", () => {
+  it("endDay drops a held seal back to the study, and sends the hero to bed", () => {
     let s = day();
     s = play(s, { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'takeSeal', hero: 'zogu' });
     expect(s.palace!.seal).toBe('zogu');
     const r = advance(albania, s, { type: 'endDay', hero: 'zogu' });
     expect(r.state.palace!.seal).toBeNull();
-    expect(r.events).toEqual([{ type: 'seal', holder: null }, { type: 'heroDone', hero: 'zogu' }]);
+    expect(r.state.palace!.at.zogu).toBe('loznice');
+    expect(r.events).toEqual([
+      { type: 'moved', hero: 'zogu', from: 'pracovna', to: 'loznice' },
+      { type: 'seal', holder: null },
+      { type: 'heroDone', hero: 'zogu' },
+    ]);
+  });
+
+  it("endDay sends the hero straight to bed even without a seal", () => {
+    let s = day();
+    expect(s.palace!.at.velitel).toBe('straznice');
+    const r = advance(albania, s, { type: 'endDay', hero: 'velitel' });
+    expect(r.state.palace!.at.velitel).toBe('loznice');
+    expect(r.events).toEqual([
+      { type: 'moved', hero: 'velitel', from: 'straznice', to: 'loznice' },
+      { type: 'heroDone', hero: 'velitel' },
+    ]);
+  });
+
+  it("a guarding commander follows Zogu to bed when Zogu ends his quarter (both are then done, so the evening starts)", () => {
+    let s = day();
+    s = play(s, { type: 'move', hero: 'velitel', dir: 'up' }, { type: 'move', hero: 'velitel', dir: 'up' }, { type: 'guard' });
+    expect(s.palace!.guarded).toBe(true);
+    expect(s.palace!.at.velitel).toBe(s.palace!.at.zogu);
+    const r = advance(albania, s, { type: 'endDay', hero: 'zogu' });
+    const moved = r.events.filter((e) => e.type === 'moved' && e.to === 'loznice');
+    expect(moved).toEqual([
+      { type: 'moved', hero: 'zogu', from: 'trunni', to: 'loznice' },
+      { type: 'moved', hero: 'velitel', from: 'trunni', to: 'loznice' },
+    ]);
+    // both heroes are now done, so the evening runs and the palace resets for the next quarter
+    expect(['audience', 'revolution', 'ended']).toContain(r.state.phase.kind);
   });
 
   it("guard drops a held seal back to the study", () => {
@@ -276,6 +307,49 @@ describe('the seal', () => {
     expect(r.state.palace!.guarded).toBe(true);
     expect(r.state.palace!.seal).toBeNull();
     expect(r.events).toEqual([{ type: 'guarding' }, { type: 'seal', holder: null }, { type: 'heroDone', hero: 'velitel' }]);
+  });
+});
+
+describe('bedtime (play-test round 6a: a hero out of hours goes to bed)', () => {
+  it('a hero who spends his last hour walking is sent to bed, done, with a toBed event', () => {
+    let s = day();
+    s.palace!.hours.velitel = 1;
+    s.palace!.steps.velitel = 9; // one more step spends the last hour
+    const r = advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' });
+    expect(r.state.palace!.hours.velitel).toBe(0);
+    expect(r.state.palace!.at.velitel).toBe('loznice');
+    expect(r.state.palace!.done.velitel).toBe(true);
+    expect(r.events.some((e) => e.type === 'toBed' && e.hero === 'velitel')).toBe(true);
+    expect(r.events.some((e) => e.type === 'heroDone' && e.hero === 'velitel')).toBe(true);
+  });
+
+  it('Zogu out of hours during the audience is summoned, not sent to bed, and goes to bed right after answering', () => {
+    let s = newGame(albania, 4, undefined, { palace: true }).state;
+    let r = advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' });
+    for (let i = 1; i < 30 && r.state.palace!.hours.zogu > 0; i++) {
+      r = advance(albania, r.state, { type: 'move', hero: 'zogu', dir: i % 2 === 0 ? 'left' : 'right' });
+    }
+    expect(r.state.palace!.hours.zogu).toBe(0);
+    expect(r.state.palace!.at.zogu).toBe('trunni');
+    expect(r.state.palace!.done.zogu).toBe(false);
+    expect(r.events.some((e) => e.type === 'toBed')).toBe(false);
+    const answered = advance(albania, r.state, { type: 'answer', answer: 'no' });
+    expect(answered.state.palace!.at.zogu).toBe('loznice');
+    expect(answered.state.palace!.done.zogu).toBe(true);
+    expect(answered.events.some((e) => e.type === 'toBed' && e.hero === 'zogu')).toBe(true);
+  });
+
+  it('the evening runs once the last hour sends both heroes to bed', () => {
+    let s = day();
+    s.palace!.hours.zogu = 0; // not yet done — the next palace command should send him to bed too
+    s.palace!.hours.velitel = 1;
+    s.palace!.steps.velitel = 9; // one more step spends his last hour too
+    const r = advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' });
+    expect(r.events.filter((e) => e.type === 'toBed').map((e) => (e as { hero: string }).hero).sort()).toEqual(['velitel', 'zogu']);
+    expect(r.events.filter((e) => e.type === 'heroDone')).toHaveLength(2);
+    // the evening runs once both are in bed, resetting the palace for the next quarter (or ending the game)
+    expect(['audience', 'revolution', 'ended']).toContain(r.state.phase.kind);
+    if (r.state.phase.kind === 'audience') expect(r.state.quarter).toBe(2);
   });
 });
 
@@ -353,13 +427,14 @@ describe("the commander's actions", () => {
     expect(() => advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' })).toThrow();
   });
 
-  it("guarding needs Zogu's room and ends the commander's day", () => {
+  it("guarding costs one hour, needs Zogu's room, and ends the commander's day", () => {
     let s = day();
     expect(() => advance(albania, s, { type: 'guard' })).toThrow();
     s = play(s, { type: 'move', hero: 'velitel', dir: 'up' }, { type: 'move', hero: 'velitel', dir: 'up' });
+    const hoursBefore = s.palace!.hours.velitel;
     const r = advance(albania, s, { type: 'guard' });
     expect(r.state.palace!.guarded).toBe(true);
-    expect(r.state.palace!.hours.velitel).toBe(0);
+    expect(r.state.palace!.hours.velitel).toBe(hoursBefore - 1);
     expect(r.state.palace!.done.velitel).toBe(true);
     expect(r.events).toEqual([{ type: 'guarding' }, { type: 'heroDone', hero: 'velitel' }]);
   });

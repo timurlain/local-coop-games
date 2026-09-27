@@ -22,6 +22,12 @@ describe('albania palace layout', () => {
     for (const g of GROUPS) expect(rooms.has(roomOfGroup(L, g))).toBe(true);
     for (const d of albania.decisions) expect(rooms.has(decisionRoom(L, d.id)), d.id).toBe(true);
   });
+
+  it('keeps the bedroom outside the grid, but named', () => {
+    const rooms = new Set(L.grid.flat());
+    expect(rooms.has(L.bedroom)).toBe(false);
+    expect(L.names[L.bedroom]?.length ?? 0).toBeGreaterThan(0);
+  });
 });
 
 describe('navigation', () => {
@@ -37,8 +43,11 @@ describe('navigation', () => {
     expect(exits(L, 'nadvori')).toEqual(['up', 'down', 'left', 'right']);
   });
 
-  it('throws for a room that is not on the grid', () => {
-    expect(() => neighbour(L, 'sklep', 'up')).toThrow();
+  it('is safe for a room outside the grid: no neighbours, no exits, no throw', () => {
+    expect(neighbour(L, 'sklep', 'up')).toBeNull();
+    expect(exits(L, 'sklep')).toEqual([]);
+    expect(neighbour(L, L.bedroom, 'up')).toBeNull();
+    expect(exits(L, L.bedroom)).toEqual([]);
   });
 });
 

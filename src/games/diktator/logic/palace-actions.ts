@@ -180,10 +180,8 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
     }
     case 'guard': {
       if (p.at.velitel !== p.at.zogu) fail(cmd, 'the commander must stand by the king');
-      if (p.done.velitel) fail(cmd, 'velitel has ended the day');
-      if (p.hours.velitel < 1) fail(cmd, 'velitel has no hours left');
+      spendHour(p, 'velitel', cmd);
       p.guarded = true;
-      p.hours.velitel = 0;
       p.done.velitel = true;
       events.push({ type: 'guarding' });
       if (p.seal === 'velitel') {
@@ -206,11 +204,19 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       if (inAudience && hero === 'zogu') fail(cmd, 'the petitioner still waits in the throne room');
       if (p.done[hero]) fail(cmd, `${hero} has already ended the day`);
       p.done[hero] = true;
+      const from = p.at[hero];
+      p.at[hero] = L.bedroom;
+      events.push({ type: 'moved', hero, from, to: L.bedroom });
       if (p.seal === hero) {
         p.seal = null;
         events.push({ type: 'seal', holder: null });
       }
       events.push({ type: 'heroDone', hero });
+      if (hero === 'zogu' && p.guarded) {
+        const guardFrom = p.at.velitel;
+        p.at.velitel = L.bedroom;
+        events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.bedroom });
+      }
       return;
     }
     default:
@@ -236,6 +242,38 @@ export function summonToAudience(sc: Scenario, s: GameState, events: GameEvent[]
     events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.throne });
   }
   events.push({ type: 'summoned' });
+}
+
+/**
+ * A hero with no hours left goes to bed (play-test change, our addition): he is taken to the bedroom and his quarter
+ * ends there (as "Ukončit čtvrtletí": the seal he carries goes back to the study). Zogu while the petitioner waits is
+ * first summoned to the throne room (summonToAudience) and goes to bed after he has answered. A guarding Vlček
+ * follows Zogu to bed too (round 4 rule: he walks with him and, at night, stays awake by his bed).
+ */
+export function sendToBed(sc: Scenario, s: GameState, events: GameEvent[]): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L) return;
+  for (const h of HEROES) {
+    // A guarding Vlček is already done (the guard command ends his day) — skip him, he stays at the king's side.
+    if (p.done[h] || p.hours[h] >= 1) continue;
+    if (h === 'zogu' && s.phase.kind === 'audience') continue;
+    const from = p.at[h];
+    p.at[h] = L.bedroom;
+    events.push({ type: 'moved', hero: h, from, to: L.bedroom });
+    p.done[h] = true;
+    if (p.seal === h) {
+      p.seal = null;
+      events.push({ type: 'seal', holder: null });
+    }
+    events.push({ type: 'toBed', hero: h });
+    events.push({ type: 'heroDone', hero: h });
+    if (h === 'zogu' && p.guarded) {
+      const guardFrom = p.at.velitel;
+      p.at.velitel = L.bedroom;
+      events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.bedroom });
+    }
+  }
 }
 
 /**

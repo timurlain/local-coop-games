@@ -68,6 +68,8 @@ export function notesFor(sc: Scenario, s: GameState, e: GameEvent): Note[] {
       return [{ to: 'both', text: P.guarding }];
     case 'summoned':
       return [{ to: 'both', text: P.summoned }];
+    case 'toBed':
+      return [{ to: 'both', text: P.toBed(T.heroes[e.hero]) }];
     case 'heroDone':
       return [{ to: 'both', text: P.heroDone(T.heroes[e.hero]) }];
     default: {

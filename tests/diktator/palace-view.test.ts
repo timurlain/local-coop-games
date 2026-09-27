@@ -97,6 +97,18 @@ describe('roomView', () => {
   });
 });
 
+describe('roomView — the bedroom (play-test round 6a, our addition)', () => {
+  it('is named, has no groups, and no resident, even with a hero asleep there', () => {
+    const s = day();
+    s.palace!.at.velitel = 'loznice';
+    const v = roomView(albania, s, 'loznice');
+    expect(v.name).toBe('Ložnice');
+    expect(v.crowds).toEqual([]);
+    expect(v.resident).toBeNull();
+    expect(v.heroes).toEqual(['velitel']);
+  });
+});
+
 describe('stripView', () => {
   it('mirrors the grid with rooms and heroes, keeping strength and mood secret', () => {
     const s = day();

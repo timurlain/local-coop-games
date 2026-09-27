@@ -111,6 +111,8 @@ export type GameEvent =
   | { readonly type: 'heroDone'; readonly hero: Hero }
   /** Zogu brought to the waiting petitioner, out of hours (play-test change, our addition). */
   | { readonly type: 'summoned' }
+  /** A hero with no hours left is taken to bed and his quarter ends (play-test change, our addition). */
+  | { readonly type: 'toBed'; readonly hero: Hero }
   | { readonly type: 'ended'; readonly ending: Ending };
 
 export type Command =

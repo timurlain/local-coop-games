@@ -9,7 +9,9 @@ export type FurnitureKind =
   /** A cluster of framed family photographs hung on the wall (play-test wish). */
   | 'familyPhotos'
   /** The playroom's war toys — a young king's toys of choice (play-test 2026-09-27). */
-  | 'wallMap' | 'strategyTable' | 'toyCannon' | 'tinSoldiers';
+  | 'wallMap' | 'strategyTable' | 'toyCannon' | 'tinSoldiers'
+  /** The bedroom (play-test round 6a, our addition): a hero out of hours sleeps here. */
+  | 'bed' | 'nightstand';
 
 export interface Furniture {
   readonly kind: FurnitureKind;
@@ -29,6 +31,8 @@ export interface RoomStyle {
   readonly portrait: boolean;
   readonly shows: RoomShows;
   readonly furniture: readonly Furniture[];
+  /** The bedroom's window shows a night sky instead of daylight (play-test round 6a, our addition). */
+  readonly night?: boolean;
 }
 
 export const ROOM_STYLES: Readonly<Record<RoomId, RoomStyle>> = {
@@ -44,4 +48,8 @@ export const ROOM_STYLES: Readonly<Record<RoomId, RoomStyle>> = {
   statkari: { wall: '#4a3a1e', wainscot: '#35291a', floor: '#3f2e1e', accent: '#d9b45a', windows: 1, portrait: true, shows: null, furniture: [{ kind: 'sofa', x: 300 }, { kind: 'fireplace', x: 430 }] },
   straznice: { wall: '#2a2a2a', wainscot: '#1d1d1d', floor: '#2f2a24', accent: '#c9a44a', windows: 0, portrait: true, shows: 'map', furniture: [{ kind: 'rifleRack', x: 200 }] },
   pokladna: { wall: '#4a3c14', wainscot: '#35290d', floor: '#3a2e1c', accent: '#f0d27a', windows: 0, portrait: false, shows: 'gold', furniture: [{ kind: 'safe', x: 420 }] },
+  loznice: {
+    wall: '#2b3350', wainscot: '#1f2640', floor: '#3a2c22', accent: '#d6c7a0', windows: 1, portrait: false, shows: null,
+    furniture: [{ kind: 'bed', x: 330 }, { kind: 'nightstand', x: 420 }], night: true,
+  },
 };

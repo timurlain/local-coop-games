@@ -58,8 +58,15 @@ function drawBackground(ctx: CanvasRenderingContext2D, st: RoomStyle): void {
   }
   for (let i = 0; i < st.windows; i++) {
     const x = 60 + i * 150;
-    ctx.fillStyle = '#9fb4c6';
+    ctx.fillStyle = st.night ? '#1b2340' : '#9fb4c6';
     ctx.beginPath(); ctx.moveTo(x, 110); ctx.lineTo(x, 50); ctx.arc(x + 20, 50, 20, Math.PI, 0); ctx.lineTo(x + 40, 110); ctx.closePath(); ctx.fill();
+    if (st.night) {
+      // A few stars in the night sky.
+      ctx.fillStyle = '#efe4c4';
+      for (const [dx, sy] of [[8, 60], [22, 44], [32, 72], [14, 90]] as const) {
+        ctx.beginPath(); ctx.arc(x + dx, sy, 1, 0, Math.PI * 2); ctx.fill();
+      }
+    }
     ctx.strokeStyle = st.accent; ctx.lineWidth = 2; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x + 20, 30); ctx.lineTo(x + 20, 110); ctx.moveTo(x, 75); ctx.lineTo(x + 40, 75);
     ctx.strokeStyle = st.accent; ctx.lineWidth = 2; ctx.stroke();
@@ -165,6 +172,19 @@ function drawFurniture(ctx: CanvasRenderingContext2D, f: Furniture, st: RoomStyl
       ctx.beginPath(); ctx.arc(x - 6, y - 7, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#2a2a2a';
       for (const [bx, by] of [[x + 16, y - 3], [x + 23, y - 3], [x + 19.5, y - 9]] as const) { ctx.beginPath(); ctx.arc(bx, by, 3.2, 0, Math.PI * 2); ctx.fill(); }
+      break;
+    case 'bed':
+      // A wooden bed frame with a white pillow and a dark-red blanket, ~120 × 40 at the floor.
+      box(ctx, x - 60, y - 40, 120, 40, '#6a4a2a');
+      ctx.fillStyle = '#efe4c4'; ctx.fillRect(x - 54, y - 36, 26, 16);
+      ctx.fillStyle = '#7a2430'; ctx.fillRect(x - 28, y - 30, 82, 26);
+      break;
+    case 'nightstand':
+      box(ctx, x - 16, y - 24, 32, 24, '#5a3e22');
+      // A lit candle, flickering like the stove flame.
+      ctx.fillStyle = '#e8e2d0'; ctx.fillRect(x - 2, y - 32, 4, 8);
+      ctx.fillStyle = `rgba(255,180,60,${0.55 + 0.35 * Math.sin(t * 7)})`;
+      ctx.beginPath(); ctx.moveTo(x - 2.5, y - 32); ctx.quadraticCurveTo(x, y - 40, x + 2.5, y - 32); ctx.fill();
       break;
     case 'column': box(ctx, x - 10, 20, 20, FLOOR_Y - 20, '#d8ccb0'); box(ctx, x - 14, 14, 28, 8, '#cfc2a4'); break;
     case 'fountain':
@@ -475,7 +495,13 @@ export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number, 
     puppetAt(ctx, 395, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.talk(t)), LOOKS[v.petitioner!], 'neutral'));
   }
   if (v.plotMarker) drawPlotMarker(ctx, v.plotMarker);
-  if (opts.heroes ?? true) drawHeroes(ctx, v.heroes, null, t, 1, v.resident === 'mother' ? ['velitel'] : []);
+  // The bedroom (play-test round 6a, our addition): a guarding Vlček stands awake by the bed rather than sleeping.
+  const awake = v.id === 'loznice' ? v.heroes.find((h) => h !== 'zogu') : undefined;
+  if (awake) puppetAt(ctx, 250, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS[awake], 'neutral'));
+  if (opts.heroes ?? true) {
+    const heroes = awake ? v.heroes.filter((h) => h !== awake) : v.heroes;
+    drawHeroes(ctx, heroes, null, t, 1, v.resident === 'mother' ? ['velitel'] : []);
+  }
   ctx.fillStyle = '#efe4c4';
   ctx.font = '13px Georgia, serif';
   ctx.fillText(v.name, 10, 11);

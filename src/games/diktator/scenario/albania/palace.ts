@@ -25,6 +25,7 @@ export const PALACE: PalaceLayout = {
     statkari: 'Salon statkářů',
     straznice: 'Strážnice',
     pokladna: 'Pokladna',
+    loznice: 'Ložnice',
   },
   start: { zogu: 'pracovna', velitel: 'straznice' },
   throne: 'trunni',
@@ -32,6 +33,7 @@ export const PALACE: PalaceLayout = {
   mother: 'matka',
   envoys: 'vyslanci',
   guardroom: 'straznice',
+  bedroom: 'loznice',
   groupRoom: { armada: 'armada', rolnici: 'rolnici', statkari: 'statkari', policie: 'straznice' },
   decisionRoom: {
     d25: 'armada',

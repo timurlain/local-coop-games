@@ -265,8 +265,8 @@ Zog has 3 hours and the commander has 3. The audience is free; Zog answers it in
 **Walking costs time (play-test change, 2026-09-27; our addition).** Every 10th step between rooms costs an hour, and a
 hero with no hours left cannot walk any more; the HUD shows the steps left until the next hour. If Zog runs out of
 hours while the petitioner still waits elsewhere, the guards bring him to the throne room, so a quarter never gets stuck
-without its audience. **The guard follows the king:** once the commander guards Zog (his last hours), he walks with Zog
-into every room for the rest of the quarter; the night's assassination coin is 75 % as before.
+without its audience. **The guard follows the king:** once the commander guards Zog (1 hour), he walks with Zog into
+every room and at night stays awake by the king's bed; the night's assassination coin is 75 %.
 
 | Who | Action | Effect |
 |---|---|---|
@@ -275,7 +275,7 @@ into every room for the rest of the quarter; the night's assassination coin is 7
 | Zog | Receive envoys (1 h) | The envoys say how much a loan could bring (the original formula shown as a hint). |
 | Commander | Investigate a room (1 h) | Reveals that room's plot and ally. Always possible, costs no money. |
 | Commander | Police report (1 h, guardroom) | Reveals **every** plot, ally, `low` and `str`, as the original report. Costs 1 unit of money and has the original preconditions: treasury > 0, police popularity > low, police strength > low. |
-| Commander | Guard the king (his last hour) | This quarter, the 50 % survival coin in an assassination becomes 75 %. (Our addition; `rules.ts`.) |
+| Commander | Guard the king (1 h) | This quarter, the 50 % survival coin in an assassination becomes 75 %. (Our addition; `rules.ts`.) |
 | Either | Seal a decision (free; needs the seal, in the right room) | Carries out one decision. Only one per quarter. |
 | Either | Pick up or hand over the seal (free) | Handing over works only in the same room. |
 

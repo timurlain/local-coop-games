@@ -82,6 +82,11 @@ describe('notesFor', () => {
     expect(notesFor(albania, s, { type: 'budget', income: 60, costs: 60 })).toEqual([{ to: 'both', text: T.events.budget(60, 60) }]);
     expect(notesFor(albania, s, { type: 'moved', hero: 'zogu', from: 'trunni', to: 'pracovna' })).toEqual([]);
   });
+
+  it('tells both halves when a hero is sent to bed', () => {
+    const s = day();
+    expect(notesFor(albania, s, { type: 'toBed', hero: 'velitel' })).toEqual([{ to: 'both', text: P.toBed('Vlček') }]);
+  });
 });
 
 describe('HUD', () => {

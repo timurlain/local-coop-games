@@ -116,6 +116,24 @@ describe('drawRoom (canvas smoke test)', () => {
   });
 });
 
+describe('drawRoom: the bedroom (play-test round 6a, canvas smoke test)', () => {
+  it('draws the bedroom with Zogu asleep and a guarding Vlček awake by the bed, without throwing', () => {
+    const originalPath2D = globalThis.Path2D;
+    (globalThis as { Path2D: unknown }).Path2D = FakePath2D;
+    try {
+      const s = newGame(albania, 1, undefined, { palace: true }).state;
+      s.palace!.at.zogu = 'loznice';
+      s.palace!.at.velitel = 'loznice';
+      const view = roomView(albania, s, 'loznice');
+      const ctx = createFakeCtx();
+      expect(() => drawRoom(ctx, view, 0.5)).not.toThrow();
+      expect(ctx.depth).toBe(0);
+    } finally {
+      (globalThis as { Path2D: unknown }).Path2D = originalPath2D;
+    }
+  });
+});
+
 describe('drawRoom: the treasury (canvas smoke test)', () => {
   it('draws the Pokladna at a debt, empty, and several treasury sizes without throwing, balancing save/restore', () => {
     const originalPath2D = globalThis.Path2D;

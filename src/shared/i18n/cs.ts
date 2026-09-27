@@ -208,7 +208,7 @@ export const cs = {
       envoys: 'Přijmout vyslance (1 h)',
       investigate: (group: string) => `Prověřit: ${group} (1 h)`,
       policeReport: 'Hlášení tajné policie (1 h, 1 tis.)',
-      guard: 'Hlídat krále (zbytek dne, chodí s ním)',
+      guard: 'Hlídat krále (1 h, pak chodí s ním)',
       takeSeal: 'Vzít královskou pečeť',
       giveSeal: (to: string) => `Předat pečeť: ${to}`,
       seal: (title: string) => `Zapečetit: ${title}`,
@@ -250,8 +250,10 @@ export const cs = {
       plot: (group: string, text: string) => `${group} — ${text}!`,
       reportRead: 'Hlášení tajné policie:',
       reportLimits: (low: number, threshold: number) => `Nepřátelé: nálada ${low} a níž. Revoluce: společná síla ${threshold} a víc.`,
-      guarding: 'Vlček dnes v noci hlídá krále — chodí všude s ním.',
+      guarding: 'Vlček dnes v noci hlídá krále — chodí s ním a bdí u jeho postele.',
       heroDone: (who: string) => `${who} končí čtvrtletí.`,
+      /** A hero out of hours goes to bed (play-test change, our addition). */
+      toBed: (who: string) => `${who} už nemá čas — jde spát do ložnice.`,
       evening: (date: string) => `Večer — ${date}`,
       quietNight: 'Noc proběhla klidně.',
       /** The evening's news as a gazette (play-test wish, plan 5). */

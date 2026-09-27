@@ -27,6 +27,8 @@ export interface PalaceLayout {
   readonly mother: RoomId;
   readonly envoys: RoomId;
   readonly guardroom: RoomId;
+  /** A hero out of hours goes here (play-test change, our addition): outside the grid, not reachable by walking. */
+  readonly bedroom: RoomId;
   readonly groupRoom: Readonly<Record<RoomGroupId, RoomId>>;
   /** Where a decision is sealed; decisions not listed are sealed in the study. */
   readonly decisionRoom: Readonly<Record<string, RoomId>>;
@@ -69,17 +71,20 @@ const STEP: Readonly<Record<Direction, readonly [number, number]>> = {
   right: [0, 1],
 };
 
-function cellOf(L: PalaceLayout, room: RoomId): readonly [number, number] {
+/** Null for a room outside the grid (e.g. the bedroom): it has no cell and so no neighbours. */
+function cellOf(L: PalaceLayout, room: RoomId): readonly [number, number] | null {
   for (let r = 0; r < L.grid.length; r++) {
     const c = L.grid[r].indexOf(room);
     if (c >= 0) return [r, c];
   }
-  throw new Error(`room ${room} is not in the palace`);
+  return null;
 }
 
-/** The room one step away, or null at a wall. */
+/** The room one step away, or null at a wall (or from a room outside the grid). */
 export function neighbour(L: PalaceLayout, room: RoomId, dir: Direction): RoomId | null {
-  const [r, c] = cellOf(L, room);
+  const cell = cellOf(L, room);
+  if (!cell) return null;
+  const [r, c] = cell;
   const [dr, dc] = STEP[dir];
   return L.grid[r + dr]?.[c + dc] ?? null;
 }
