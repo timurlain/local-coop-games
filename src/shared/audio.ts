@@ -31,7 +31,7 @@ function tone(c: AudioContext, { freq, to, dur, type = 'square', vol = 0.15, del
   if (to !== undefined) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
   gain.gain.setValueAtTime(vol, t0);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  osc.connect(gain).connect(c.destination);
+  osc.connect(gain).connect(effectsOut(c));
   osc.start(t0);
   osc.stop(t0 + dur);
 }
@@ -56,7 +56,7 @@ function noise(c: AudioContext, { dur, vol = 0.3, delay = 0, lowpass = 2000 }: N
   const gain = c.createGain();
   gain.gain.setValueAtTime(vol, t0);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  src.connect(filter).connect(gain).connect(c.destination);
+  src.connect(filter).connect(gain).connect(effectsOut(c));
   src.start(t0);
   src.stop(t0 + dur);
 }
@@ -217,6 +217,29 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
 };
 
 let shared: AudioContext | null = null;
+let effectsGain: GainNode | null = null;
+/** 0..1, applied to `effectsGain` whenever it exists. Default 1: Spy vs Spy (which never touches this) is unchanged. */
+let effectsVolume = 1;
+
+/**
+ * The master effects gain, connected to `c.destination`; every synth tone/noise and every recorded sample plays
+ * through it, so one gain change scales all of them. Created on demand (the same node every time, for a given
+ * context — there is only ever one shared context in practice).
+ */
+export function effectsOut(c: AudioContext): AudioNode {
+  if (effectsGain === null) {
+    effectsGain = c.createGain();
+    effectsGain.gain.value = effectsVolume;
+    effectsGain.connect(c.destination);
+  }
+  return effectsGain;
+}
+
+/** Sets the effects volume (round-6b play-test setting); clamped 0..1, applied immediately if the node exists. */
+export function setEffectsVolume(v: number): void {
+  effectsVolume = Math.max(0, Math.min(1, v));
+  if (effectsGain !== null) effectsGain.gain.value = effectsVolume;
+}
 
 /** The one AudioContext shared by effects and music; null until `unlockAudio()` ran (or without audio support). */
 export function getAudioContext(): AudioContext | null {
@@ -231,6 +254,7 @@ export function unlockAudio(): AudioContext | null {
     } catch {
       return null; // no audio support: everything stays silent
     }
+    effectsOut(shared); // create the gain node up front, alongside the context
   }
   void shared.resume();
   return shared;

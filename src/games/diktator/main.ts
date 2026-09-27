@@ -3,7 +3,7 @@
 // shared overlay) ⇄ pause.
 
 import { cs } from '../../shared/i18n/cs';
-import { getAudioContext, Sfx } from '../../shared/audio';
+import { getAudioContext, setEffectsVolume, Sfx } from '../../shared/audio';
 import { InputManager, type DeviceId } from '../../shared/input/manager';
 import { startLoop } from '../../shared/loop';
 import { randomSeed } from '../../shared/rng';
@@ -14,6 +14,7 @@ import { palaceCommands } from './logic/palace-actions';
 import { deserialize, newSave, recordTurn, retryFromYear, type SaveFile } from './logic/save';
 import type { Command, GameEvent, GameState } from './logic/state';
 import { advance, newGame, quarterLabel } from './logic/turn';
+import { loadSettings, nextEffects, saveSettings } from './settings';
 import { STAGE_H, STAGE_W } from './render/rooms/crowd';
 import { drawHalf, type StageAnim } from './render/rooms/stage';
 import { albania } from './scenario/albania';
@@ -63,6 +64,21 @@ const input = new InputManager(window);
 const sfx = new Sfx();
 const samples = new Samples(getAudioContext);
 const flicks = new Map<DeviceId, Flick>();
+
+// Sound effects only, for now (round 6b §1) — music gets its own setting when music arrives.
+let settings = loadSettings();
+setEffectsVolume(settings.effects);
+
+function cycleEffectsVolume(): void {
+  settings = { ...settings, effects: nextEffects(settings.effects) };
+  setEffectsVolume(settings.effects);
+  saveSettings(settings);
+  dirty = true;
+}
+
+function effectsVolumeOption(): { label: string; run: () => void } {
+  return { label: P.effectsVolume(Math.round(settings.effects * 100)), run: cycleEffectsVolume };
+}
 
 let screen: Screen = 'title';
 let pauseReason = '';
@@ -272,6 +288,7 @@ function titleOptions(): { label: string; run: () => void }[] {
   const opts = [{ label: P.join.newGame, run: startNew }];
   if (savedGame()) opts.push({ label: P.join.continueGame, run: continueSaved });
   opts.push({ label: P.join.textMode, run: () => { window.location.href = './text.html'; } });
+  opts.push(effectsVolumeOption());
   return opts;
 }
 
@@ -470,6 +487,7 @@ function pauseOptions(): { label: string; run: () => void }[] {
       },
     },
     { label: P.pause.menu, run: toTitle },
+    effectsVolumeOption(),
   ];
 }
 

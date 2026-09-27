@@ -287,6 +287,8 @@ export const cs = {
       /** The Pokladna's gold at a glance (play-test wish, our addition). */
       debt: (n: number) => `dluh ${n.toLocaleString('cs-CZ')} tis.`,
       emptyTreasury: 'prázdno',
+      /** Play-test round 6b §1: one knob for the sound effects, scaled down against the (still-to-come) music. */
+      effectsVolume: (pct: number) => (pct === 0 ? 'Zvuky: vypnuto' : `Zvuky: ${pct} %`),
       join: {
         title: 'Diktátor',
         slot: (hero: string, device: string) => `${hero}: ${device}`,

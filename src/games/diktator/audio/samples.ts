@@ -1,5 +1,6 @@
 // Recorded sounds (Kenney CC0) played through the shared AudioContext. Lazy: decoded after the first user gesture.
 
+import { effectsOut } from '../../../shared/audio';
 import zoguStep1 from '../assets/sounds/zogu-step-1.mp3';
 import zoguStep2 from '../assets/sounds/zogu-step-2.mp3';
 import zoguStep3 from '../assets/sounds/zogu-step-3.mp3';
@@ -85,7 +86,7 @@ export class Samples {
       source.playbackRate.value = h.rate;
       const gain = c.createGain();
       gain.gain.value = h.gain;
-      source.connect(gain).connect(c.destination);
+      source.connect(gain).connect(effectsOut(c));
       source.start(c.currentTime + h.delay);
     }
     return true;
