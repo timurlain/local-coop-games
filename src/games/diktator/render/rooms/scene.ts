@@ -4,6 +4,7 @@
 // and the visiting heroes on the left. Stage units 480 × 200, y down; the caller scales the context.
 
 import type { Hero } from '../../logic/palace';
+import { cs } from '../../../../shared/i18n/cs';
 import { FIGURE_HEIGHT, solvePuppet } from '../puppet/skeleton';
 import { drawPuppet } from '../puppet/draw';
 import { LOOKS } from '../puppet/looks';
@@ -210,6 +211,95 @@ function drawPortrait(ctx: CanvasRenderingContext2D, st: RoomStyle, mood: number
   }
 }
 
+const P = cs.diktator.palace;
+
+/** A plate behind text so it reads on top of the gold (spec: the amount label stays readable). Approximates the
+ * text's width from its length rather than `measureText` (a small dark plate only has to roughly fit). */
+function textPlate(ctx: CanvasRenderingContext2D, cx: number, y: number, text: string, color: string): void {
+  ctx.font = '11px Georgia, serif';
+  const w = text.length * 6.2;
+  ctx.fillStyle = 'rgba(20,15,8,0.7)';
+  ctx.fillRect(cx - w / 2 - 4, y - 11, w + 8, 15);
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.fillText(text, cx, y);
+  ctx.textAlign = 'left';
+}
+
+/** The Pokladna's gold, readable at a glance (play-test wish, our addition): an empty floor and a cobweb when
+ * there is nothing (or a debt) in the treasury, else coin stacks that grow with the amount, topped with money
+ * sacks past 480. The safe (furniture) sits at x ≈ 420. */
+function drawTreasury(ctx: CanvasRenderingContext2D, treasury: number, st: RoomStyle): void {
+  if (treasury <= 0) {
+    // A cobweb in the safe's top-left corner.
+    const cx = 400, cy = FLOOR_Y - 50;
+    ctx.strokeStyle = '#9a9a90';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const r of [6, 11, 16]) {
+      ctx.moveTo(cx + r, cy);
+      ctx.arc(cx, cy, r, 0, Math.PI / 2);
+    }
+    for (const a of [0, Math.PI / 8, Math.PI / 4, (3 * Math.PI) / 8, Math.PI / 2]) {
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 16 * Math.cos(a), cy + 16 * Math.sin(a));
+    }
+    ctx.stroke();
+    const label = treasury < 0 ? P.debt(Math.abs(treasury)) : P.emptyTreasury;
+    textPlate(ctx, 300, FLOOR_Y - 10, label, '#c8102e');
+    return;
+  }
+  const stacks = Math.min(12, Math.ceil(treasury / 40));
+  let topY = FLOOR_Y;
+  for (let i = 0; i < stacks; i++) {
+    const back = i >= 6;
+    const col = i % 6;
+    const x = 250 + col * 22 + (back ? 6 : 0);
+    const base = back ? FLOOR_Y - 8 : FLOOR_Y;
+    const coins = Math.min(8, Math.max(1, Math.round((treasury - i * 40) / 5)));
+    for (let c = 0; c < coins; c++) {
+      const cy = base - c * 3;
+      topY = Math.min(topY, cy - 2.5);
+      ctx.beginPath();
+      ctx.ellipse(x, cy, 7, 2.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = st.accent;
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  if (treasury > 480) {
+    const sacks = Math.min(4, Math.floor((treasury - 480) / 150) + 1);
+    const sy = FLOOR_Y - 8 - 34;
+    topY = Math.min(topY, sy - 16);
+    for (let i = 0; i < sacks; i++) {
+      const sx = 250 + i * 30;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 12, 16, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#8a6a3a';
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx - 6, sy - 12);
+      ctx.lineTo(sx + 6, sy - 12);
+      ctx.strokeStyle = '#5a4020';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(sx, sy + 2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = st.accent;
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  textPlate(ctx, 300, topY - 8, `${treasury.toLocaleString('cs-CZ')} tis.`, '#f7e9b0');
+}
+
 function drawSpecial(ctx: CanvasRenderingContext2D, v: RoomView, st: RoomStyle, t: number): void {
   if (v.rebelFires !== null) {
     // the guardroom's wall map of the mountains, one campfire per point of rebel strength
@@ -223,14 +313,7 @@ function drawSpecial(ctx: CanvasRenderingContext2D, v: RoomView, st: RoomStyle, 
     }
     ctx.fillStyle = INK; ctx.font = '9px Georgia, serif'; ctx.fillText('Hory', 306, 40);
   }
-  if (v.treasury !== null) {
-    const h = Math.max(2, Math.min(70, v.treasury / 10));
-    ctx.fillStyle = st.accent;
-    ctx.beginPath(); ctx.moveTo(250, FLOOR_Y); ctx.quadraticCurveTo(300, FLOOR_Y - h * 2, 350, FLOOR_Y); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.fillStyle = '#f7e9b0'; ctx.font = '11px Georgia, serif';
-    ctx.fillText(`${v.treasury.toLocaleString('cs-CZ')} tis.`, 262, FLOOR_Y - h - 6);
-  }
+  if (v.treasury !== null) drawTreasury(ctx, v.treasury, st);
   if (v.sealLying) {
     box(ctx, 290, FLOOR_Y - 46, 20, 12, '#6a4a2a');
     ctx.fillStyle = '#b01e24'; ctx.beginPath(); ctx.arc(300, FLOOR_Y - 50, 6, 0, Math.PI * 2); ctx.fill();

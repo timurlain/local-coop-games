@@ -116,6 +116,25 @@ describe('drawRoom (canvas smoke test)', () => {
   });
 });
 
+describe('drawRoom: the treasury (canvas smoke test)', () => {
+  it('draws the Pokladna at a debt, empty, and several treasury sizes without throwing, balancing save/restore', () => {
+    const originalPath2D = globalThis.Path2D;
+    (globalThis as { Path2D: unknown }).Path2D = FakePath2D;
+    try {
+      for (const treasury of [-120, 0, 35, 300, 900, 5000]) {
+        const s = newGame(albania, 1, undefined, { palace: true }).state;
+        s.treasury = treasury;
+        const view = roomView(albania, s, 'pokladna');
+        const ctx = createFakeCtx();
+        expect(() => drawRoom(ctx, view, 0.5), `treasury=${treasury}`).not.toThrow();
+        expect(ctx.depth, `treasury=${treasury}`).toBe(0);
+      }
+    } finally {
+      (globalThis as { Path2D: unknown }).Path2D = originalPath2D;
+    }
+  });
+});
+
 describe('drawHalf and the new room details (canvas smoke test)', () => {
   it('slides, bumps and draws the petitioner and a plot marker without throwing, balancing save/restore', () => {
     const originalPath2D = globalThis.Path2D;

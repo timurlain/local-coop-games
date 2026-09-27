@@ -254,6 +254,9 @@ export const cs = {
       steps: (left: number) => `do další hodiny ${left} kroků`,
       noWalking: 'Už nemáš čas chodit.',
       summoned: 'Stráž přivádí Zogua k žadateli do trůnního sálu.',
+      /** The Pokladna's gold at a glance (play-test wish, our addition). */
+      debt: (n: number) => `dluh ${n.toLocaleString('cs-CZ')} tis.`,
+      emptyTreasury: 'prázdno',
       join: {
         title: 'Diktátor',
         slot: (hero: string, device: string) => `${hero}: ${device}`,
