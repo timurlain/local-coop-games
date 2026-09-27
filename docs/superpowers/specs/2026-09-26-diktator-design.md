@@ -319,6 +319,9 @@ the item costs no hour, and only the first player to act on it gets it.
 | **Easter egg** | 1928: a Mickey Mouse film reel (a short silent gag plays). 1928: a mouldy dish (penicillin, "keep it!"). The king's ashtray counter ("dnes už 200. cigareta"). 1939: little Leka's cradle. | flavour, or a tiny effect |
 | **Toy** | Vlček's tin soldiers from the Czechoslovak Legion; the princesses' gramophone plays a 1930s tune. | flavour |
 
+- **Searching (play-test wish, 2026-09-27).** Either hero may choose "Prohledat hernu" (search the playroom, 1 hour):
+  it reveals this quarter's item if there is one, otherwise he finds something harmless (a lost tin soldier, a
+  marble, a drawing by the princesses) — a small line, no effect. Visiting alone still shows the strip's star.
 - **Data.** Items live in `scenario/albania/playroom.ts`, each with a date window, a condition, and effects in the same format as the other records.
 - **Trivia and the chronicle.** Trivia only asks about articles that have already been shown, so the chronicle doubles as a study guide.
 - **Order.** Seasonal items are dated. The others are drawn from a pool, using the seed.
