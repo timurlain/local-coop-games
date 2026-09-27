@@ -79,11 +79,10 @@ describe('replyLines', () => {
     ]);
   });
 
-  it('lets the gendarme read the police report as two waiting lines', () => {
+  it('the police report yields no waiting lines: it shows as a dossier over the room instead (play-test round 6a)', () => {
     const { replies } = run(day(), { type: 'policeReport', hero: 'velitel' }, 'velitel');
-    expect(replies.actor).toHaveLength(2);
-    expect(replies.actor[0].speaker).toEqual({ kind: 'group', group: 'policie' });
-    expect(replies.actor[1].speaker).toEqual({ kind: 'group', group: 'policie' });
+    expect(replies.actor).toEqual([]);
+    expect(replies.other).toEqual([]);
   });
 
   it('tells the other half, as a caption, that a hero has finished; the actor said it himself', () => {

@@ -111,13 +111,9 @@ export function replyLines(sc: Scenario, before: GameState, after: GameState, ev
       notes.forEach((n, i) => mine.push({ speaker: { kind: 'group', group: LENDERS[i] }, text: n.text }));
       continue;
     }
-    if (e.type === 'policeReport') {
-      const texts = notes.map((n) => n.text);
-      const limits = texts.pop()!;
-      mine.push({ speaker: { kind: 'group', group: 'policie' }, text: texts.join('\n') });
-      mine.push({ speaker: { kind: 'group', group: 'policie' }, text: limits });
-      continue;
-    }
+    // The police report shows as a dossier over the room instead of waiting lines (play-test round 6a, our
+    // addition); the hero's own "Hlášení!" line (heroLine) still plays.
+    if (e.type === 'policeReport') continue;
     for (const n of notes) {
       const ownDeed = (e.type === 'heroDone' || e.type === 'guarding') && (e.type === 'guarding' ? actor === 'velitel' : e.hero === actor);
       if (n.to === actor || (n.to === 'both' && !ownDeed)) {

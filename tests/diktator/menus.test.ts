@@ -59,6 +59,14 @@ describe('heroMenu — audience', () => {
     expect(m.items.some((i) => i.command.type === 'move')).toBe(false);
   });
 
+  it('offers the free re-read label once a report was read this quarter (play-test round 6a)', () => {
+    let s = day();
+    s = advance(albania, s, { type: 'policeReport', hero: 'velitel' }).state;
+    const m = heroMenu(albania, s, 'velitel');
+    expect(m.items.some((i) => i.label === P.policeReportAgain)).toBe(true);
+    expect(m.items.some((i) => i.label === P.policeReport)).toBe(false);
+  });
+
   it('tells a hero who has ended his day that he waits for the other', () => {
     const s = advance(albania, audience(), { type: 'endDay', hero: 'velitel' }).state;
     const m = heroMenu(albania, s, 'velitel');

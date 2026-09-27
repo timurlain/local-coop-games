@@ -83,7 +83,8 @@ export type GameEvent =
   | { readonly type: 'petition'; readonly id: string }
   | { readonly type: 'answered'; readonly id: string; readonly answer: 'yes' | 'no' | 'goAway' }
   | { readonly type: 'forcedNo'; readonly id: string }
-  | { readonly type: 'policeReport'; readonly report: PoliceSnapshot }
+  /** `again`: the same report re-read for free this quarter (play-test round 6a, our addition). */
+  | { readonly type: 'policeReport'; readonly report: PoliceSnapshot; readonly again?: true }
   | { readonly type: 'policeReportRefused'; readonly reason: 'noMoney' | 'policeHostile' }
   | { readonly type: 'decided'; readonly id: string }
   | { readonly type: 'decisionUnaffordable'; readonly id: string }

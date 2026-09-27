@@ -5,6 +5,7 @@ import { cs } from '../../../shared/i18n/cs';
 import type { Hero, RoomId } from '../logic/palace';
 import { STAGE_H, STAGE_W } from '../render/rooms/crowd';
 import type { Bubble } from './bubbles';
+import type { DossierModel } from './dossier';
 import type { HeroHud } from './hud';
 import type { StripCell } from './palace-view';
 
@@ -218,6 +219,73 @@ export function renderHourglasses(hero: Hero, hud: HeroHud): void {
   label.className = 'hourglass-label';
   label.textContent = hud.stepsLeft !== null ? P.steps(hud.stepsLeft) : hud.done ? '' : P.noWalking;
   layer.replaceChildren(row, label);
+}
+
+/** The police report as a full dossier over the room (play-test round 6a, our addition): covers the canvas box
+ * exactly. `confirm` shows the "close, for free next time" prompt (`onPick(0)` = close, `onPick(1)` = keep
+ * reading); `focus` picks which of the two is highlighted. */
+export function renderDossier(hero: Hero, model: DossierModel | null, confirm: boolean, focus: number, onPick: (i: number) => void): void {
+  const box = $(`#half-${hero} .stage-box`);
+  const canvas = $<HTMLCanvasElement>('.stage', box);
+  const el = $('.dossier', box);
+  if (!model) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  el.hidden = false;
+  el.style.left = `${canvas.offsetLeft}px`;
+  el.style.top = `${canvas.offsetTop}px`;
+  el.style.width = `${canvas.clientWidth}px`;
+  el.style.height = `${canvas.clientHeight}px`;
+  const paper = document.createElement('div');
+  paper.className = 'dossier-paper';
+  const stamp = document.createElement('div');
+  stamp.className = 'dossier-stamp';
+  stamp.textContent = 'PŘÍSNĚ TAJNÉ';
+  const h = document.createElement('h3');
+  h.textContent = model.title;
+  const sub = document.createElement('p');
+  sub.className = 'dossier-subtitle';
+  sub.textContent = model.subtitle;
+  const table = document.createElement('div');
+  table.className = 'dossier-rows';
+  for (const r of model.rows) {
+    const row = document.createElement('div');
+    row.className = 'dossier-row';
+    const name = document.createElement('span');
+    name.className = 'dossier-name';
+    name.textContent = r.name;
+    const strength = document.createElement('span');
+    strength.className = 'dossier-strength';
+    strength.textContent = r.strength === null ? '—' : '■'.repeat(r.strength) + '□'.repeat(9 - r.strength);
+    const pop = document.createElement('span');
+    pop.className = 'dossier-pop';
+    pop.textContent = `${'■'.repeat(r.popularity)}${'□'.repeat(9 - r.popularity)} (${r.mood})`;
+    row.append(name, strength, pop);
+    if (r.plot !== null) {
+      const plot = document.createElement('span');
+      plot.className = 'dossier-plot';
+      plot.textContent = r.plot;
+      row.append(plot);
+    }
+    table.append(row);
+  }
+  const footer = document.createElement('div');
+  footer.className = 'dossier-footer';
+  footer.append(...model.footer.map(para));
+  paper.append(stamp, h, sub, table, footer);
+  if (confirm) {
+    const prompt = document.createElement('div');
+    prompt.className = 'dossier-confirm';
+    prompt.append(para(P.dossierClose));
+    const ol = document.createElement('ol');
+    ol.className = 'menu';
+    menuList(ol, [{ label: P.dossierCloseYes, detail: '' }, { label: P.dossierCloseNo, detail: '' }], focus, onPick);
+    prompt.append(ol);
+    paper.append(prompt);
+  }
+  el.replaceChildren(paper);
 }
 
 export interface OverlayModel {

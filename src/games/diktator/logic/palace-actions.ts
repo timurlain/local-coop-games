@@ -172,6 +172,11 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
     case 'policeReport': {
       if (requireHero(cmd, cmd.hero) !== 'velitel') fail(cmd, 'only the commander asks the police');
       if (p.at.velitel !== L.guardroom) fail(cmd, 'the police report is read in the guardroom');
+      if (p.report !== null) {
+        // Already read this quarter (play-test round 6a, our addition): free to re-read, same snapshot.
+        events.push({ type: 'policeReport', report: p.report, again: true });
+        return;
+      }
       spendHour(p, 'velitel', cmd);
       policeReport(s, events);
       const reported = events.find((e) => e.type === 'policeReport');
@@ -302,10 +307,10 @@ export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[
       }
       if (room === L.envoys) out.push({ type: 'envoys' });
     }
-  } else if (hasHour) {
-    if (factionsIn(sc, room).length > 0) out.push({ type: 'investigate' });
-    if (room === L.guardroom) out.push({ type: 'policeReport', hero });
-    if (room === p.at.zogu) out.push({ type: 'guard' });
+  } else {
+    if (hasHour && factionsIn(sc, room).length > 0) out.push({ type: 'investigate' });
+    if (room === L.guardroom && (hasHour || p.report !== null)) out.push({ type: 'policeReport', hero });
+    if (hasHour && room === p.at.zogu) out.push({ type: 'guard' });
   }
   if (p.seal === hero && !s.decisionTaken) {
     for (const d of availableDecisions(sc, s)) if (decisionRoom(L, d.id) === room) out.push({ type: 'decide', hero, decision: d.id });

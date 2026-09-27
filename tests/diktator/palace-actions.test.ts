@@ -113,7 +113,11 @@ describe('steps cost hours', () => {
 
   it('a hero with no hours left cannot move, and palaceCommands lists no move for him', () => {
     let s = day();
-    for (let i = 0; i < 3; i++) s = play(s, { type: 'policeReport', hero: 'velitel' });
+    // walking back and forth drains his hours (a second/third police report is free once read this quarter, so it
+    // no longer drains hours — play-test round 6a)
+    for (let i = 0; i < 30 && s.palace!.hours.velitel > 0 && !s.palace!.done.velitel; i++) {
+      s = play(s, { type: 'move', hero: 'velitel', dir: i % 2 === 0 ? 'up' : 'down' });
+    }
     expect(s.palace!.hours.velitel).toBe(0);
     expect(() => advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' })).toThrow();
     expect(palaceCommands(albania, s, 'velitel').some((c) => c.type === 'move')).toBe(false);
@@ -417,9 +421,23 @@ describe("the commander's actions", () => {
     expect(() => advance(albania, s, { type: 'policeReport', hero: 'zogu' })).toThrow();
   });
 
+  it('re-reading the same report this quarter is free and returns the same snapshot (play-test round 6a)', () => {
+    const s = day();
+    const first = advance(albania, s, { type: 'policeReport', hero: 'velitel' });
+    expect(first.events[0]).toEqual({ type: 'policeReport', report: first.state.palace!.report });
+    const second = advance(albania, first.state, { type: 'policeReport', hero: 'velitel' });
+    expect(second.state.palace!.hours.velitel).toBe(first.state.palace!.hours.velitel);
+    expect(second.state.treasury).toBe(first.state.treasury);
+    expect(second.events).toEqual([{ type: 'policeReport', report: first.state.palace!.report, again: true }]);
+    // the menu offers the free re-read, worded differently
+    expect(palaceCommands(albania, first.state, 'velitel')).toContainEqual({ type: 'policeReport', hero: 'velitel' });
+  });
+
   it('hours run out', () => {
     let s = day();
-    for (let i = 0; i < 3; i++) s = play(s, { type: 'policeReport', hero: 'velitel' });
+    for (let i = 0; i < 30 && s.palace!.hours.velitel > 0 && !s.palace!.done.velitel; i++) {
+      s = play(s, { type: 'move', hero: 'velitel', dir: i % 2 === 0 ? 'up' : 'down' });
+    }
     expect(s.palace!.hours.velitel).toBe(0);
     expect(() => advance(albania, s, { type: 'policeReport', hero: 'velitel' })).toThrow();
     // play-test round 4: walking now costs hours too, so with none left he cannot move either (was "moving is

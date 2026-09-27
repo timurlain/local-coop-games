@@ -20,7 +20,11 @@ import { albania } from './scenario/albania';
 import { bubblesFor, stageView } from './ui/bubbles';
 import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
 import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
-import { fitStage, renderBubbles, renderHalf, renderHourglasses, renderOverlay, renderStrip, renderTop, stageCanvas, type OverlayModel } from './ui/dom';
+import {
+  fitStage, renderBubbles, renderDossier, renderHalf, renderHourglasses, renderOverlay, renderStrip, renderTop, stageCanvas,
+  type OverlayModel,
+} from './ui/dom';
+import { dossierModel, type DossierModel } from './ui/dossier';
 import { Flick } from './ui/flick';
 import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
@@ -47,6 +51,12 @@ interface Half {
   /** The view actually drawn and anchored on: keeps the petitioner while a line of his still waits. */
   stage: RoomView;
   menu: HeroMenu;
+  /** The police report as a full dossier over this half's room (play-test round 6a, our addition). */
+  dossier: DossierModel | null;
+  /** The "close it? (free next time)" prompt is up; the first press while the dossier is open only raises it. */
+  confirmClose: boolean;
+  /** Which of the confirm prompt's two choices is highlighted (0 = Zavřít, 1 = Číst dál). */
+  dossierFocus: number;
 }
 
 const input = new InputManager(window);
@@ -97,6 +107,9 @@ function buildHalves(s: GameState, keep: Record<Hero, Half> | null): Record<Hero
       view,
       stage: prev?.stage ?? view,
       menu,
+      dossier: prev?.dossier ?? null,
+      confirmClose: prev?.confirmClose ?? false,
+      dossierFocus: prev?.dossierFocus ?? 0,
     };
   }
   return out;
@@ -187,6 +200,12 @@ function play(cmd: Command, actor: Hero | null = null): void {
       if (e.hero === 'zogu' && e.to === sc.palace!.throne && after.phase.kind === 'audience') {
         next.zogu.dialogue = { ...next.zogu.dialogue, ui: { open: true, focus: 0 } };
       }
+    }
+    if (e.type === 'policeReport') {
+      // The report replaces the room as a full dossier (play-test round 6a): only the commander reads it.
+      next.velitel.dossier = dossierModel(sc, e.report, after.quarter);
+      next.velitel.confirmClose = false;
+      next.velitel.dossierFocus = 0;
     }
     if (e.type === 'decided') sfx.play('stamp');
     if (e.type === 'aidGranted' || e.type === 'swissTransfer') {
@@ -339,6 +358,16 @@ function chooseShared(i: number): void {
   dirty = true;
 }
 
+/** The dossier's confirm prompt: 0 closes it (free to re-read this quarter), 1 keeps reading. */
+function pickDossier(hero: Hero, i: number): void {
+  if (!halves) return;
+  const half = halves[hero];
+  if (i === 0) half.dossier = null;
+  half.confirmClose = false;
+  half.dossierFocus = 0;
+  dirty = true;
+}
+
 function choosePalace(hero: Hero, i: number): void {
   if (!halves) return;
   const item = halves[hero].menu.items[i];
@@ -369,6 +398,25 @@ function updatePalace(): void {
     if (!hero) continue;
     for (const intent of intentsOf(d)) {
       const half = halves![hero];
+      // The dossier takes every intent once its hero's own "Hlášení!" line has been dismissed (talking).
+      if (half.dossier && half.dialogue.queue.length === 0) {
+        if (!half.confirmClose) {
+          // The first press while the dossier is up only raises the "close it?" prompt; it never closes.
+          half.confirmClose = true;
+          dirty = true;
+          continue;
+        }
+        if (intent.kind === 'dir') {
+          half.dossierFocus = half.dossierFocus === 0 ? 1 : 0;
+          sfx.play('click');
+          dirty = true;
+        } else if (intent.kind === 'action') {
+          pickDossier(hero, half.dossierFocus);
+        } else if (intent.kind === 'close') {
+          pickDossier(hero, 1); // Esc = Číst dál
+        }
+        continue;
+      }
       const talking = half.dialogue.queue.length > 0;
       if (intent.kind === 'close' && !talking && !(half.dialogue.ui.open && !half.menu.modal)) return pause(P.pause.title);
       const oldStage = half.stage;
@@ -544,6 +592,7 @@ function renderDom(): void {
       keys: keysFor(isSolo(seats) ? (seats.zogu ?? seats.velitel) : seats[h]),
     });
     renderHourglasses(h, hud);
+    renderDossier(h, half.dossier, half.confirmClose, half.dossierFocus, (i) => pickDossier(h, i));
     renderBubbles(h, bubblesFor(half.dialogue, half.captions.map((c) => c.text), half.menu, half.stage, h), (i) => {
       choosePalace(h, i);
       dirty = true;

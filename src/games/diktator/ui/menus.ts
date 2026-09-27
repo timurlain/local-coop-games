@@ -62,7 +62,7 @@ function itemsFor(sc: Scenario, s: GameState, cmd: Command): MenuItem[] {
       return faction ? [item(P.investigate(sc.groupNames[faction]), cmd)] : [];
     }
     case 'policeReport':
-      return [item(P.policeReport, cmd)];
+      return [item(p.report !== null ? P.policeReportAgain : P.policeReport, cmd)];
     case 'guard':
       return [item(P.guard, cmd)];
     case 'takeSeal':

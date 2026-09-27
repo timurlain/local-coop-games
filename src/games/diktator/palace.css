@@ -42,6 +42,31 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 .hourglasses .hourglass-row svg { display: block; }
 .hourglasses .hourglass-label { font-size: 0.7em; color: var(--cream); white-space: nowrap; }
 
+.dossier { position: absolute; overflow: hidden; }
+.dossier[hidden] { display: none; }
+.dossier-paper {
+  position: absolute; inset: 0; overflow-y: auto; background: #efe4c4; color: #1a1410;
+  font-family: ui-monospace, 'Poiret One', Georgia, serif; padding: 10px 14px; box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35);
+}
+.dossier-stamp {
+  position: absolute; top: 8%; right: 6%; color: var(--red); border: 3px solid var(--red); padding: 2px 10px;
+  font-weight: 700; letter-spacing: 1px; transform: rotate(-18deg); opacity: 0.75; pointer-events: none;
+}
+.dossier-paper h3 { font-family: 'Limelight', Georgia, serif; font-weight: 400; margin: 0 0 2px; font-size: 1.3em; }
+.dossier-subtitle { margin: 0 0 8px; font-style: italic; color: #5a4632; }
+.dossier-rows { display: flex; flex-direction: column; gap: 3px; font-size: 0.85em; }
+.dossier-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; border-bottom: 1px dotted #8a6a24; padding: 2px 0; }
+.dossier-name { font-weight: 700; min-width: 8em; }
+.dossier-strength, .dossier-pop { letter-spacing: 1px; }
+.dossier-plot { color: var(--red); font-weight: 700; }
+.dossier-footer { margin-top: 8px; font-size: 0.82em; color: #5a4632; }
+.dossier-footer p { margin: 2px 0; }
+.dossier-confirm {
+  position: absolute; inset: 0; background: rgba(20, 15, 8, 0.82); color: var(--cream); display: flex;
+  flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center;
+}
+.dossier-confirm ol { width: min(260px, 90%); }
+
 .bubbles { position: absolute; inset: 0; pointer-events: none; }
 .bubble {
   position: absolute; pointer-events: auto; background: #fbf6e6; color: #1a1410; border: 2px solid #1a1410;

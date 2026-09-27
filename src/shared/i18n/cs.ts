@@ -208,6 +208,7 @@ export const cs = {
       envoys: 'Přijmout vyslance (1 h)',
       investigate: (group: string) => `Prověřit: ${group} (1 h)`,
       policeReport: 'Hlášení tajné policie (1 h, 1 tis.)',
+      policeReportAgain: 'Znovu přečíst hlášení (zdarma)',
       guard: 'Hlídat krále (1 h, pak chodí s ním)',
       takeSeal: 'Vzít královskou pečeť',
       giveSeal: (to: string) => `Předat pečeť: ${to}`,
@@ -250,6 +251,13 @@ export const cs = {
       plot: (group: string, text: string) => `${group} — ${text}!`,
       reportRead: 'Hlášení tajné policie:',
       reportLimits: (low: number, threshold: number) => `Nepřátelé: nálada ${low} a níž. Revoluce: společná síla ${threshold} a víc.`,
+      /** The police report as a full dossier over the room (play-test round 6a, our addition). */
+      dossierTitle: (date: string) => `Tajná zpráva — ${date}`,
+      dossierSubtitle: (isKing: boolean) => (isKing ? 'Tajná policie Jeho Veličenstva' : 'Tajná policie Jeho Excelence'),
+      dossierNoPlot: 'bez spiknutí',
+      dossierClose: 'Zavřít hlášení? Znovu ho přečteš ve strážnici zdarma.',
+      dossierCloseYes: 'Zavřít',
+      dossierCloseNo: 'Číst dál',
       guarding: 'Vlček dnes v noci hlídá krále — chodí s ním a bdí u jeho postele.',
       heroDone: (who: string) => `${who} končí čtvrtletí.`,
       /** A hero out of hours goes to bed (play-test change, our addition). */
