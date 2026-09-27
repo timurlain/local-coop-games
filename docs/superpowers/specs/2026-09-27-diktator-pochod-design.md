@@ -138,16 +138,20 @@ place has a radius of **70 units**.
 | 2 | Peshkopi | barracks | (65, 27) | 8 s | +1 barracks, +20 gold | 3–4 guards |
 | 3 | Zerqan | village | (58, 29) | 5 s | +1 village | ring 4–6 s |
 | 4 | Bulqizë | bey's tower | (53, 27) | 5 s | +1 tower | bribe 30/40/50 |
-| 5 | Kukës | barracks | (65, 5) | 8 s | +1 barracks, +20 gold | 4–5 guards |
+| 5 | Kukës | barracks | (64, 6) | 8 s | +1 barracks, +20 gold | 4–5 guards |
 | 6 | Lumë | bey's tower | (58, 7) | 5 s | +1 tower | bribe 30/40/50 |
-| 7 | Burgajet (Zogu's castle) | home | (46, 19) | 4 s | +1 village, +40 gold | — |
-| 8 | Burrel | barracks | (43, 23) | 8 s | +1 barracks, +20 gold | 2–3 guards |
-| 9 | Selitë | bey's tower | (38, 17) | 5 s | +1 tower | bribe 30/40/50 |
+| 7 | Burgajet (Zogu's castle) | home | (47, 19) | 4 s | +1 village, +40 gold | — |
+| 8 | Burrel | barracks | (44, 23) | 8 s | +1 barracks, +20 gold | 2–3 guards |
+| 9 | Selitë | bey's tower | (43, 14) | 5 s | +1 tower | bribe 30/40/50 |
 | 10 | Klos (Mat gorge) | village | (36, 31) | 5 s | +1 village | ring 4–6 s |
 | 11 | Krujë (the castle) | barracks | (20, 23) | 8 s | +1 barracks, +20 gold | 3–4 guards |
 | 12 | Prezë | bey's tower | (16, 30) | 5 s | +1 tower | bribe 30/40/50 |
 | G | Tirana | goal | (10, 35) | — | ends the march | — |
 
+- The tiles are now fixed by the drawn grid (plan `2026-09-27-diktator-pochod.md`, Task 1). Four moved from the
+  first sketch: Kukës (65, 5) → (64, 6), off the river bank so its gate guards stand on dry land; Burgajet and Burrel
+  by one tile east, onto the drawn roads east of the Burrel bridge; Selitë (38, 17) → (43, 14), because the Mat and
+  the lake of Ulza run through the old tile.
 - There are 4 "village" places (Burgajet counts as one), 4 towers and 4 barracks. Two of each, with arrival on
   24 December, reproduce the original start values exactly (§8.2).
 - **Seeded variants** are drawn once at creation from the seed: each tower's bribe, each barracks' guard count, and
@@ -164,6 +168,29 @@ of it, far too coarse for the play map. It is used where its look matters:
   scaled down);
 - as the **style reference** for the play map: sepia paper, hachured mountains, blue rivers, a dashed road, and place
   names in an atlas lettering (Poiret One).
+
+### 4.5 Optional benefits (owner request, 2026-09-27)
+
+The owner asked: „allowing some optional benefits would be great". Four small side benefits lie off the main road.
+Each is a **detour**: it costs time, and time is police strength (§8.1). None is ever required, and each maps onto
+exactly one line of the result card.
+
+| Benefit | Where (tile) | How | Gives | Cap |
+|---|---|---|---|---|
+| **Skryté zásoby** (hidden supply caches) | 3 small chests off the road: by the border south of Maqellarë (75, 40); in the highlands west of the Kukës road (60, 13); in the forest south of the Mat gorge (28, 35) | either hero steps within 40 units of one | +15 gold each (so, through the gold left, the treasury) | +45 gold in all; the treasury stays within 200–400 |
+| **Dobrovolníci z Martaneshe** (volunteers from a friendly village) | Martanesh (52, 38), a hidden village south of Bulqizë | Zogu negotiates 4 s | the bodyguard (`guard`) starts at 5 instead of 4; two more peasants walk in the column | +1 |
+| **Koně z Homeshe** (a bey's stable lends horses) | Homesh (56, 34), south of Zerqan | Zogu negotiates 3 s | both heroes walk 25 % faster for 2 days (44 s of the march clock) | once; no line in the regime, only an earlier arrival |
+| **Italský posel** (an Italian messenger on the road) | walks the Durrës road west of Prezë, (10, 29) ↔ (2, 28), at 40 units/s, and waits while Zogu stands with him | Zogu negotiates 2 s | Itálie popularity 8 instead of 7 | +1 |
+
+- Benefit places use the negotiation rules of §6.4 (radius 70, the ring, the gendarmes' doubled sight while
+  negotiating). They are not villages, towers or barracks and never count in the 4/4 tallies.
+- They are found by exploring: the stable, Martanesh and the messenger stand on the map with a name, the caches as
+  small chests. The mini-map shows only the 12 places.
+- **Balance.** A march without benefits maps exactly as before, so the historical march still reproduces
+  `RULES.start` (§8.2). The benefits change only `guard` (at most 5), `pop.italie` (at most 8) and the gold (the
+  treasury clamp still holds).
+- `StartingRegime` gains an optional `guard`, which `initialState` uses in place of `RULES.start.guard`.
+- The result card adds one line per benefit won (§2.9), for example „Dobrovolníci z Martaneshe → tělesná stráž 5".
 
 ## 5. Roles and controls
 
@@ -199,8 +226,10 @@ from `makeRng(marchSeed)` (`shared/rng`). Tuning constants live in `minigames/ma
 lives in `scenario/albania/march-map.ts`.
 
 ```ts
-export interface MarchInput { readonly moveX: number; readonly moveY: number; readonly action: boolean } // = ArenaInput
-export function createMarch(map: MarchMap, seed: number, solo: boolean): MarchState;
+/** `action`: Action went down this tick (Vlček's blow); `held`: Action is held (Zogu negotiates). The arena's
+ * ArenaInput gains an optional `held` for this. */
+export interface MarchInput { readonly moveX: number; readonly moveY: number; readonly action: boolean; readonly held: boolean }
+export function createMarch(map: MarchMap, seed: number, solo: boolean, opts?: MarchOptions): MarchState;
 export function stepMarch(s: MarchState, dt: number, inputs: Partial<Record<Hero, MarchInput>>, active: Hero): MarchEvent[];
 export function marchResult(s: MarchState): MarchResult | null; // after the ending animation
 ```
@@ -247,8 +276,9 @@ it always produces the same state.
 ### 6.5 Gendarmes (Noli's patrols)
 
 - **Spawning.** A spawn is tried every 8 + `randInt(5)` s (8–12 s). The patrol spawns only if fewer than **6**
-  gendarmes are alive. Its start is a random patrol-route start that lies **600–1400 units** from the camera centre,
-  so it is off screen but near; if no start qualifies, the spawn is skipped.
+  gendarmes are alive, and it is trimmed so that no more than 6 are ever alive. Its start is a random patrol-route
+  end (either end; the patrol walks towards the other) that lies **600–1400 units** from the camera centre, so it is
+  off screen but near; if no end qualifies, the spawn is skipped.
 - **Patrol size:** 1 gendarme on 13–16 Dec, 2 on 17–20 Dec, 3 on 21–24 Dec. The members walk in a line, 24 units apart.
 - **States:**
   - `patrol`: walk the route back and forth.
@@ -301,6 +331,11 @@ export interface MarchResult {
   readonly gold: number;              // gold left, ≥ 0
   readonly arrivedDay: number | null; // 13..24, or null = after Christmas
   readonly trail: readonly (readonly [number, number])[]; // Zogu's path, sampled every 0.5 s (result card)
+  // Optional benefits (§4.5):
+  readonly caches: number;            // 0..3 caches taken (their gold is already in `gold`)
+  readonly volunteers: boolean;       // Martanesh joined → guard 5
+  readonly messenger: boolean;        // the Italian messenger → Itálie popularity 8
+  readonly horses: boolean;           // the Homesh horses were lent (card line only)
 }
 ```
 
@@ -363,8 +398,13 @@ export interface MarchResult {
 | `str.armada` | 4 + barracks | 4–8 | 6 |
 | `str.povstalci` | clamp(4, 8, 8 − ⌊captured / 4⌋) | 4–8 | 6 |
 | `pop.policie`, `str.policie` | by arrival, see below | 5–8 / 4–8 | 7 / 6 |
-| `treasury` | clamp(200, 400, 100 + gold) | 200–400 | 300 |
-| everything else | not set (the `RULES.start` default applies) | — | `str.rolnici` 6, `pop.povstalci` 0, the foreign powers 7, `str.jugoslavie` 6, income 60, costs 60, guard 4 |
+| `treasury` | clamp(200, 400, 100 + gold) — gold includes the caches' +15 each (§4.5) | 200–400 | 300 |
+| `pop.italie` | 7 + 1 if the Italian messenger was won (§4.5), else not set | 7–8 (cap 8) | 7 |
+| `guard` | 4 + 1 if the Martanesh volunteers joined (§4.5), else not set | 4–5 (cap 5) | 4 |
+| everything else | not set (the `RULES.start` default applies) | — | `str.rolnici` 6, `pop.povstalci` 0, `pop.britanie` 7, `pop.jugoslavie` 7, `str.jugoslavie` 6, income 60, costs 60 |
+
+Benefit caps (§4.5): caches at most +45 gold (and the treasury clamp above), the messenger at most +1 Itálie
+popularity, the volunteers at most +1 bodyguard; the horses give no regime value at all.
 
 Police, by arrival (spare = 24 − arrivedDay):
 
@@ -378,8 +418,8 @@ Police, by arrival (spare = 24 − arrivedDay):
 ### 8.2 Reconciliation with the current start values
 
 - **The historical march reproduces the original start exactly.** Two villages, two towers and two barracks, 8 gendarmes
-  captured, gold back at 200, and arrival on 24 December give pop 7 and str 6 everywhere, with treasury 300. This
-  equals `RULES.start`, which is also the quick start (tested, §10).
+  captured, gold back at 200, arrival on 24 December and no optional benefits give pop 7 and str 6 everywhere, with
+  treasury 300. This equals `RULES.start`, which is also the quick start (tested, §10).
   - Example: bribes 2 × 40 = −80, Burgajet +40, two barracks +40 → gold 200 → treasury 300.
 - **The treasury range is 200–400, not the old 800–1 200.** The old range was ±20 % around the original 1 000, before
   the play-test budget change. The start is now a 300 reserve with income 60 = costs 60, so the balance only moves by
@@ -421,6 +461,9 @@ Vitest, pure modules only (`tests/diktator/march/*.test.ts`):
 - **Blows:** the cooldown; the nearest target in reach; two hits knock out; `captured` counts gendarmes but not gate
   guards.
 - **Solo helper:** it follows, intercepts and strikes; the helper Zogu never negotiates.
+- **Optional benefits (§4.5):** a cache gives 15 gold once, to either hero; Martanesh, Homesh and the messenger are won
+  by negotiating; the horses speed both heroes by 25 % for exactly 44 s of the march clock; the messenger walks his
+  road and waits while Zogu stands with him; the result carries the benefits; the regime caps (Itálie 8, guard 5).
 - **Determinism:** the same seed and the same inputs give the same state and result; seeded variants lie within their
   ranges.
 - **Mapping:** every output stays within its range for all tallies (exhaustive over villages, towers and barracks
