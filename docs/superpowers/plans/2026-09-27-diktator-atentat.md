@@ -832,6 +832,8 @@ export type SpotWeapon = 'newspaperPistol' | 'appleGrenade' | 'bouquetBomb' | 'c
   - When set, `drawPuppet` does not draw the front hand. Instead it draws a small coat-coloured lapel flap over the wrist, so the hand looks tucked in.
   - Add `handInCoatWalk` too: the walking pose, but with the front arm as in `handInCoat`. The gunman walks with his hand hidden.
 
+- [ ] **Step 2b: Carried props.** Add `PropKind`s `'newspaper'` (a folded paper held at the hand), `'basket'` (a small wicker basket with red apples hanging from the hand) and `'bouquet'` (flowers wrapped in paper, held up). Draw them in `draw.ts` like the existing props; they are carried via `look.prop` when the pose has no prop of its own. Include them in the smoke test.
+
 - [ ] **Step 3: Tests.**
   - `POSES.handInCoat` solves to finite joints.
   - The drawing smoke test (in the existing `tests/diktator/puppet.test.ts`, or `scene.test.ts` if the fake canvas lives there; reuse that fake ctx) draws a look with `scarf`, `glasses` and `bag` in `handInCoat`, `handInCoatWalk` and `stand`, grey and not grey, with no throw and balanced `save`/`restore`.
@@ -927,7 +929,7 @@ export const ARENA_H = 540;
      - mess: army greens with cap-heavy hats.
 
      On top of that come the person's hat, scarf, glasses and bag (the Task 3 fields).
-     - The gunman uses `handInCoatWalk`/`handInCoat`. While `glancing`, his head turns: add a small `head` offset.
+     - People with `handInCoat` (the `coatRevolver` gunman and a few innocents) use `handInCoatWalk`/`handInCoat`; others carry their `carry` prop (via `look.prop`). Anyone `glancing` turns the head: add a small `head` offset.
      - Innocents walk (`POSES.walk`) or stand (`stand`/`talk`).
      - A person with `protestUntil > t` shows a small comic bubble with one of the protests, chosen by `id % protests.length`.
   5. **The fuse:** a rope across the top (y 24, x 40–920) that burns from the right. The remaining part is `fuse / seconds`. A flickering spark sits at its end, with the label `P.fuse`.
