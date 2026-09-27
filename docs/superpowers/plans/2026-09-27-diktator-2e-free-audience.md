@@ -2,12 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A quarter no longer opens with Zogu locked in front of the petitioner. He starts in his study and may walk and act. The petitioner waits in the throne room; the quarter cannot end until Zogu has answered him there. Mother's advice about the petition is asked in her own room. The petitioner stands further back so bubbles don't cover him. F/WASD always plays Zogu and Enter/arrows always plays Kovář.
+**Goal:** A quarter no longer opens with Zogu locked in front of the petitioner. He starts in his study and may walk and act. The petitioner waits in the throne room; the quarter cannot end until Zogu has answered him there. Mother's advice about the petition is asked in her own room. The petitioner stands further back so bubbles don't cover him. F/WASD always plays Zogu and Enter/arrows always plays Vlček.
 
 **Why (play-test, 2026-09-27):**
 - "Can we start the next quarter with both players not directly in front of the audience? … never let the game continue without it."
 - "I tried moving Zogu with WASD and it never did anything." Zogu could not move during the audience.
-- "When I pressed F it controlled Kovář." Seats were assigned by join order.
+- "When I pressed F it controlled Vlček." Seats were assigned by join order.
 - "Send to mother for advice — who goes?" The answer is Zogu, who walks to her.
 - The petitioner should step back so the bubbles do not overlap his hands.
 
@@ -218,7 +218,7 @@ describe('audience in the palace', () => {
 
 ```ts
 describe('seats', () => {
-  it('always gives the left keyboard to Zogu and the right one to Kovář', () => {
+  it('always gives the left keyboard to Zogu and the right one to Vlček', () => {
     expect(join(NO_SEATS, 'kb-right')).toEqual({ zogu: null, velitel: 'kb-right' });
     expect(join(join(NO_SEATS, 'kb-right'), 'kb-left')).toEqual({ zogu: 'kb-left', velitel: 'kb-right' });
   });
@@ -253,7 +253,7 @@ describe('seats', () => {
 - [ ] **Step 2: Implement:**
 
 ```ts
-/** The left keyboard (F, WASD) always plays Zogu and the right one (Enter, arrows) always plays Kovář;
+/** The left keyboard (F, WASD) always plays Zogu and the right one (Enter, arrows) always plays Vlček;
  * a gamepad takes the free hero, Zogu first. A device joins once. */
 export function join(seats: Seats, d: DeviceId): Seats {
   if (seats.zogu === d || seats.velitel === d) return seats;
@@ -282,6 +282,6 @@ export function heroOf(seats: Seats, d: DeviceId, active: Hero): Hero | null {
   - Wherever solo play takes "the one device" from `seats.zogu`, it must use `seats.zogu ?? seats.velitel` (for example `keysFor(isSolo(seats) ? … : seats[h])`). Grep `seats.zogu` in `main.ts` and fix each spot.
   - The title's mouse fallback (`if no seats, join kb-left`) stays.
 
-- [ ] **Step 4: `cs.ts`:** set `palace.join.hint` to `'F nebo W A S D hraje za Zogua, Enter nebo šipky za Kováře, gamepad dostane volnou postavu. Každý hráč stiskne svou Akci. Kdo hraje sám, ovládá oba — Tab / Back přepíná.'`. Keep any `clickFirst` prefix that is already there.
+- [ ] **Step 4: `cs.ts`:** set `palace.join.hint` to `'F nebo W A S D hraje za Zogua, Enter nebo šipky za Vlčka, gamepad dostane volnou postavu. Každý hráč stiskne svou Akci. Kdo hraje sám, ovládá oba — Tab / Back přepíná.'`. Keep any `clickFirst` prefix that is already there.
 
-- [ ] **Step 5:** Run `npm test`, `npx tsc --noEmit` and `npm run build`, then commit: `feat(diktator): F plays Zogu, Enter plays Kovář — fixed keyboard seats`.
+- [ ] **Step 5:** Run `npm test`, `npx tsc --noEmit` and `npm run build`, then commit: `feat(diktator): F plays Zogu, Enter plays Vlček — fixed keyboard seats`.
