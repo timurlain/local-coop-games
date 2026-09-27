@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { GAME_LENGTH_MULTIPLIERS, LEVELS, RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { formatMinutes, levelReadout, levelStats, migrateSettings } from '../../src/games/spy-vs-spy/settings';
 
+/** Both sides „Hráč", IQ 3 remembered for a switch to „Počítač". */
+const HUMANS = [{ bot: false, iq: 3 }, { bot: false, iq: 3 }];
+
 describe('level readout (spec §4)', () => {
   it('counts rooms, traps of both spies and minutes per level', () => {
     expect(LEVELS.map((l) => levelStats(l))).toEqual([
@@ -52,14 +55,14 @@ describe('migrateSettings', () => {
   });
 
   it('uses the defaults for nothing saved', () => {
-    expect(migrateSettings({})).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false, music: true, gameLength: 1 });
-    expect(migrateSettings(null)).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false, music: true, gameLength: 1 });
-    expect(migrateSettings('junk')).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false, music: true, gameLength: 1 });
+    expect(migrateSettings({})).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
+    expect(migrateSettings(null)).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
+    expect(migrateSettings('junk')).toEqual({ level: RULES.defaultLevel, muted: false, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
   });
 
   it('keeps a saved level and mute', () => {
     expect(migrateSettings({ level: 7, muted: true, hideAirport: true, music: false, gameLength: 2 }))
-      .toEqual({ level: 7, muted: true, hideAirport: true, music: false, gameLength: 2 });
+      .toEqual({ level: 7, muted: true, hideAirport: true, music: false, gameLength: 2, sides: HUMANS });
   });
 
   it('keeps a saved „Délka hry" of any allowed multiplier', () => {
@@ -94,9 +97,9 @@ describe('migrateSettings', () => {
   });
 
   it('maps round-2 sizes to the level with the same grid', () => {
-    expect(migrateSettings({ size: 'mala', clock: 300, muted: true })).toEqual({ level: 2, muted: true, hideAirport: false, music: true, gameLength: 1 });
-    expect(migrateSettings({ size: 'stredni', clock: 480 })).toEqual({ level: 3, muted: false, hideAirport: false, music: true, gameLength: 1 });
-    expect(migrateSettings({ size: 'velka', clock: 720 })).toEqual({ level: 5, muted: false, hideAirport: false, music: true, gameLength: 1 });
+    expect(migrateSettings({ size: 'mala', clock: 300, muted: true })).toEqual({ level: 2, muted: true, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
+    expect(migrateSettings({ size: 'stredni', clock: 480 })).toEqual({ level: 3, muted: false, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
+    expect(migrateSettings({ size: 'velka', clock: 720 })).toEqual({ level: 5, muted: false, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
   });
 
   it('falls back to level 3 for any other round-2 setting', () => {
@@ -106,7 +109,25 @@ describe('migrateSettings', () => {
 
   it('prefers a saved level over leftover round-2 keys and drops the old keys', () => {
     const s = migrateSettings({ level: 8, size: 'mala', clock: 300 });
-    expect(s).toEqual({ level: 8, muted: false, hideAirport: false, music: true, gameLength: 1 });
-    expect(Object.keys(s).sort()).toEqual(['gameLength', 'hideAirport', 'level', 'music', 'muted']);
+    expect(s).toEqual({ level: 8, muted: false, hideAirport: false, music: true, gameLength: 1, sides: HUMANS });
+    expect(Object.keys(s).sort()).toEqual(['gameLength', 'hideAirport', 'level', 'music', 'muted', 'sides']);
+  });
+
+  it('makes both sides „Hráč" with IQ 3 when nothing (or no valid sides) was saved', () => {
+    expect(migrateSettings({}).sides).toEqual(HUMANS);
+    for (const sides of [null, 'x', [], { 0: { bot: true, iq: 2 } }]) {
+      expect(migrateSettings({ sides }).sides, JSON.stringify(sides)).toEqual(HUMANS);
+    }
+  });
+
+  it('validates each side on its own: a bad IQ falls back to 3, anything else to „Hráč"', () => {
+    expect(migrateSettings({ sides: [{ bot: true, iq: 9 }, 'x'] }).sides).toEqual([{ bot: true, iq: 3 }, { bot: false, iq: 3 }]);
+    expect(migrateSettings({ sides: [{ bot: 'yes', iq: 2 }, { iq: 2.5 }] }).sides).toEqual([{ bot: false, iq: 2 }, { bot: false, iq: 3 }]);
+  });
+
+  it('keeps a valid choice across a save/reload cycle', () => {
+    const saved = migrateSettings({ sides: [{ bot: false, iq: 5 }, { bot: true, iq: 1 }] });
+    expect(saved.sides).toEqual([{ bot: false, iq: 5 }, { bot: true, iq: 1 }]);
+    expect(migrateSettings(JSON.parse(JSON.stringify(saved))).sides).toEqual(saved.sides);
   });
 });
