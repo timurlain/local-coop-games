@@ -31,7 +31,7 @@ export interface HeroMenu {
   /** Lines above the items: the petition during the audience, or why there is nothing to do. */
   readonly body: readonly string[];
   readonly items: readonly MenuItem[];
-  /** The audience: Zogu's menu stays open until he answers. */
+  /** A menu that cannot be closed (none today: since plan 2e Zogu may walk away from the audience). */
   readonly modal: boolean;
 }
 
@@ -50,14 +50,9 @@ function itemsFor(sc: Scenario, s: GameState, cmd: Command): MenuItem[] {
       return [item(T[cmd.answer], cmd, detail)];
     }
     case 'advice':
-      return [
-        item(
-          cmd.decision === undefined
-            ? P.adviceAudience(petitionById(sc, (s.phase as { petition: string }).petition).title)
-            : P.adviceDecision(decisionById(sc, cmd.decision).title),
-          cmd,
-        ),
-      ];
+      if (cmd.decision !== undefined) return [item(P.adviceDecision(decisionById(sc, cmd.decision).title), cmd)];
+      if (s.phase.kind !== 'audience') return [];
+      return [item(P.adviceAudience(petitionById(sc, s.phase.petition).title), cmd)];
     case 'talk':
       return [item(P.talk(sc.groupNames[groupsInRoom(L, p.at.zogu)[0]]), cmd)];
     case 'envoys':
