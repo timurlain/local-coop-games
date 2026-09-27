@@ -297,7 +297,7 @@ export function drawRoom(ctx: CanvasRenderingContext2D, v: RoomView, t: number, 
     puppetAt(ctx, 380, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.stand(t)), LOOKS[v.resident!], 'neutral'));
   }
   if (v.petitioner) {
-    puppetAt(ctx, 330, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.talk(t)), LOOKS[v.petitioner!], 'neutral'));
+    puppetAt(ctx, 395, FLOOR_Y, 1, -1, () => drawPuppet(ctx, solvePuppet(POSES.talk(t)), LOOKS[v.petitioner!], 'neutral'));
   }
   if (v.plotMarker) drawPlotMarker(ctx, v.plotMarker);
   if (opts.heroes ?? true) drawHeroes(ctx, v.heroes, null, t, 1, v.resident === 'mother' ? ['velitel'] : []);

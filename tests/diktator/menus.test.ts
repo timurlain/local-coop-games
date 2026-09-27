@@ -23,21 +23,30 @@ function walk(s: GameState, hero: Hero, dirs: readonly Direction[]): GameState {
 }
 
 describe('heroMenu — audience', () => {
-  it('keeps Zogu in a modal audience with the answers first, money on "Ano", once he stands in the throne room', () => {
+  it('offers Zogu the audience, no longer modal, with the answers first, money on "Ano", once he stands in the throne room', () => {
     const s = palaceAudience();
     const m = heroMenu(albania, s, 'zogu');
     const pet = petitionById(albania, (s.phase as { petition: string }).petition);
-    expect(m.modal).toBe(true);
+    expect(m.modal).toBe(false);
     expect(m.title).toBe(P.audienceTitle(albania.groupNames[pet.from]));
     expect(m.body[0]).toContain(pet.title);
     expect(m.items.slice(0, 3).map((i) => i.label)).toEqual([T.yes, T.no, T.goAway]);
     expect(m.items[0].detail.startsWith('Peníze: ')).toBe(true);
+    expect(m.items.some((i) => i.command.type === 'advice')).toBe(false);
   });
 
   it("offers advice about the petition once Zogu stands in Mother's room", () => {
     const atMother = advance(albania, audience(), { type: 'move', hero: 'zogu', dir: 'left' }).state;
     const m = heroMenu(albania, atMother, 'zogu');
-    expect(m.items.some((i) => i.label === P.adviceAudience)).toBe(true);
+    const pet = petitionById(albania, (atMother.phase as { petition: string }).petition);
+    expect(m.items.some((i) => i.label === P.adviceAudience(pet.title))).toBe(true);
+  });
+
+  it('tells Zogu the petitioner waits in the throne room, with no way to end the day, while he stands in the study', () => {
+    const m = heroMenu(albania, audience(), 'zogu');
+    const pet = petitionById(albania, (audience().phase as { petition: string }).petition);
+    expect(m.body).toEqual([P.petitionerWaits(albania.groupNames[pet.from])]);
+    expect(m.items.some((i) => i.label === T.endDay)).toBe(false);
   });
 
   it('lets the commander act freely during the audience', () => {

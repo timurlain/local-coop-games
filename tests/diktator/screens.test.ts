@@ -3,6 +3,7 @@ import { cs } from '../../src/shared/i18n/cs';
 import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import type { GameEvent, GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
+import { petitionById } from '../../src/games/diktator/logic/audience';
 import { cardsFor, phaseScreen } from '../../src/games/diktator/ui/screens';
 import { palaceDay } from './helpers';
 
@@ -21,6 +22,8 @@ describe('cardsFor', () => {
     expect(cards[0].title).toBe(T.quarter(1925, 1));
     expect(cards[0].lines).toContain(T.events.budget(60, 60));
     expect(cards[0].button).toBe(P.toPalace);
+    const pet = petitionById(albania, (state.phase as { petition: string }).petition);
+    expect(cards[0].lines[cards[0].lines.length - 1]).toBe(P.petitionerWaits(albania.groupNames[pet.from]));
   });
 
   it('shows no card for a command inside the day', () => {
@@ -47,7 +50,7 @@ describe('cardsFor', () => {
   it('reports the evening news as a headline, not a line, and skips the quiet-night line when there is news', () => {
     const before = day();
     const after: GameState = structuredClone(before);
-    after.phase = { kind: 'audience', petition: '', suggested: false };
+    after.phase = { kind: 'audience', petition: albania.petitions[0].id, suggested: false };
     after.quarter = before.quarter + 1;
     const events: GameEvent[] = [
       { type: 'heroDone', hero: 'zogu' },
@@ -62,7 +65,7 @@ describe('cardsFor', () => {
   it('falls back to the quiet-night line when the evening has neither news nor other lines', () => {
     const before = day();
     const after: GameState = structuredClone(before);
-    after.phase = { kind: 'audience', petition: '', suggested: false };
+    after.phase = { kind: 'audience', petition: albania.petitions[0].id, suggested: false };
     after.quarter = before.quarter + 1;
     const events: GameEvent[] = [
       { type: 'heroDone', hero: 'zogu' },
@@ -114,7 +117,7 @@ describe('cardsFor', () => {
     const before = day();
     before.phase = { kind: 'punish', faction: 'armada', chosen: 'policie' };
     const after: GameState = structuredClone(before);
-    after.phase = { kind: 'audience', petition: '', suggested: false };
+    after.phase = { kind: 'audience', petition: albania.petitions[0].id, suggested: false };
     after.quarter = before.quarter + 1;
     const events: GameEvent[] = [
       { type: 'punished', faction: 'armada', ally: 'policie' },

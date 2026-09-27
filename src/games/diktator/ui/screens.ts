@@ -3,6 +3,7 @@
 // ending). Pure.
 
 import { cs } from '../../../shared/i18n/cs';
+import { petitionById } from '../logic/audience';
 import { STRENGTH_GROUPS, type StrengthGroupId } from '../logic/groups';
 import type { Scenario } from '../logic/scenario';
 import { score } from '../logic/score';
@@ -93,7 +94,10 @@ export function cardsFor(sc: Scenario, before: GameState | null, events: readonl
   }
   if (qi >= 0) {
     const tail = events.slice(qi);
-    cards.push({ title: dateOf(after.quarter), lines: lines(sc, tail), news: newsOf(sc, tail), date: dateOf(after.quarter), button: P.toPalace });
+    const l = lines(sc, tail);
+    const withWait =
+      after.phase.kind === 'audience' ? [...l, P.petitionerWaits(sc.groupNames[petitionById(sc, after.phase.petition).from])] : l;
+    cards.push({ title: dateOf(after.quarter), lines: withWait, news: newsOf(sc, tail), date: dateOf(after.quarter), button: P.toPalace });
   }
   return cards;
 }

@@ -50,7 +50,14 @@ function itemsFor(sc: Scenario, s: GameState, cmd: Command): MenuItem[] {
       return [item(T[cmd.answer], cmd, detail)];
     }
     case 'advice':
-      return [item(cmd.decision === undefined ? P.adviceAudience : P.adviceDecision(decisionById(sc, cmd.decision).title), cmd)];
+      return [
+        item(
+          cmd.decision === undefined
+            ? P.adviceAudience(petitionById(sc, (s.phase as { petition: string }).petition).title)
+            : P.adviceDecision(decisionById(sc, cmd.decision).title),
+          cmd,
+        ),
+      ];
     case 'talk':
       return [item(P.talk(sc.groupNames[groupsInRoom(L, p.at.zogu)[0]]), cmd)];
     case 'envoys':
@@ -85,7 +92,7 @@ export function heroMenu(sc: Scenario, s: GameState, hero: Hero): HeroMenu {
   const p = s.palace;
   const L = sc.palace;
   if (!p || !L) throw new Error('heroMenu needs palace mode');
-  if (s.phase.kind === 'audience' && hero === 'zogu') {
+  if (s.phase.kind === 'audience' && hero === 'zogu' && p.at.zogu === L.throne) {
     const answers = validCommands(sc, s).filter((c) => c.type === 'answer');
     const items = [...answers, ...palaceCommands(sc, s, hero)].flatMap((c) => itemsFor(sc, s, c));
     const pet = petitionById(sc, s.phase.petition);
@@ -93,10 +100,14 @@ export function heroMenu(sc: Scenario, s: GameState, hero: Hero): HeroMenu {
       title: P.audienceTitle(sc.groupNames[pet.from]),
       body: [`${T.audienceAsk(T.address(s.quarter >= CORONATION_QUARTER))} ${pet.title}?`],
       items,
-      modal: true,
+      modal: false,
     };
   }
   const items = palaceCommands(sc, s, hero).flatMap((c) => itemsFor(sc, s, c));
-  const body = p.done[hero] ? [P.waiting(T.heroes[other(hero)])] : items.length === 0 ? [P.noActions] : [];
+  const otherBody = p.done[hero] ? [P.waiting(T.heroes[other(hero)])] : items.length === 0 ? [P.noActions] : [];
+  const body =
+    s.phase.kind === 'audience' && hero === 'zogu'
+      ? [P.petitionerWaits(sc.groupNames[petitionById(sc, s.phase.petition).from]), ...otherBody]
+      : otherBody;
   return { title: L.names[p.at[hero]], body, items, modal: false };
 }

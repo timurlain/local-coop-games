@@ -47,7 +47,7 @@ export function anchorFor(sp: Speaker, view: RoomView, own: Hero): Anchor | null
       if (!view.heroes.includes(sp.hero)) return null;
       return sp.hero === own ? { x: 90, y: head() } : { x: 145, y: head(0.92) };
     case 'petitioner':
-      return view.petitioner ? { x: 330, y: head() } : null;
+      return view.petitioner ? { x: 395, y: head() } : null;
     case 'resident':
       return view.resident ? { x: 380, y: head() } : null;
     case 'group': {
@@ -76,7 +76,7 @@ export function bubblesFor(d: Dialogue, captions: readonly string[], menu: HeroM
     out.push({
       kind: 'choice',
       anchor: anchorFor({ kind: 'hero', hero: own }, view, own) ?? { x: 90, y: head() },
-      right: view.petitioner ? 312 : 470,
+      right: view.petitioner ? 372 : 470,
       title: menu.title,
       body: menu.body,
       items: menu.items.map((i) => ({ label: i.label, detail: i.detail })),

@@ -20,7 +20,7 @@ describe('anchorFor', () => {
     expect(anchorFor({ kind: 'hero', hero: 'zogu' }, v, 'zogu')).toEqual({ x: 90, y: 69 });
     expect(anchorFor({ kind: 'hero', hero: 'velitel' }, v, 'zogu')).toEqual({ x: 145, y: 77 });
     expect(anchorFor({ kind: 'hero', hero: 'velitel' }, roomView(albania, audience(), 'trunni'), 'zogu')).toBeNull();
-    expect(anchorFor({ kind: 'petitioner' }, v, 'zogu')).toEqual({ x: 330, y: 69 });
+    expect(anchorFor({ kind: 'petitioner' }, v, 'zogu')).toEqual({ x: 395, y: 69 });
   });
 
   it('finds each envoy and the crowd; a group not in the room becomes a caption', () => {
@@ -63,15 +63,16 @@ describe('stageView', () => {
 });
 
 describe('bubblesFor', () => {
-  it('shows Zogu’s audience as a choice bubble over him', () => {
+  it('shows Zogu’s audience as a choice bubble over him, once opened — the audience is no longer modal', () => {
     const s = palaceAudience();
-    const b = bubblesFor(QUIET, [], heroMenu(albania, s, 'zogu'), roomView(albania, s, 'trunni'), 'zogu');
+    const open = { ui: { open: true, focus: 0 }, queue: [] };
+    const b = bubblesFor(open, [], heroMenu(albania, s, 'zogu'), roomView(albania, s, 'trunni'), 'zogu');
     expect(b).toHaveLength(1);
     expect(b[0].kind).toBe('choice');
     if (b[0].kind === 'choice') {
       expect(b[0].anchor).toEqual({ x: 90, y: 69 });
       expect(b[0].items.length).toBeGreaterThan(2);
-      expect(b[0].right).toBe(312);
+      expect(b[0].right).toBe(372);
     }
   });
 
