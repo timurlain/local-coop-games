@@ -167,8 +167,12 @@ function setupMenu(): void {
       renderSlots();
       saveJson(SETTINGS_KEY, settings);
     };
-    side.onchange = apply;
-    iq.onchange = apply;
+    // let go of the focus after a choice, so the next key starts a bot-vs-bot demo as the hint says (spec bot §8)
+    side.onchange = (e) => {
+      apply();
+      (e.target as HTMLSelectElement).blur();
+    };
+    iq.onchange = side.onchange;
   });
   renderSlots();
 }
