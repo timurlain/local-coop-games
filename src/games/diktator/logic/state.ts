@@ -102,6 +102,8 @@ export type GameEvent =
   | { readonly type: 'moved'; readonly hero: Hero; readonly from: string; readonly to: string }
   | { readonly type: 'seal'; readonly holder: Hero | null }
   | { readonly type: 'wish'; readonly group: StrengthGroupId; readonly decision: string | null }
+  /** How a group feels, in its own proverb, before it states its wish (play-test change, our addition). */
+  | { readonly type: 'feeling'; readonly group: StrengthGroupId; readonly mood: number }
   | { readonly type: 'advised'; readonly subject: 'petition' | 'decision'; readonly id: string }
   | { readonly type: 'envoys'; readonly offers: Readonly<Record<LenderId, number | null>> }
   | { readonly type: 'investigated'; readonly faction: FactionId; readonly plot: Plot }

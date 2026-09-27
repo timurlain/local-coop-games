@@ -60,12 +60,13 @@ describe('replyLines', () => {
     expect(replies.actor[0]).toEqual({ speaker: { kind: 'petitioner' }, text: S.refused });
   });
 
-  it('lets the room’s group tell its wish', () => {
+  it('lets the room’s group say how it feels, then tell its wish', () => {
     let s = day();
     for (const dir of ['down', 'left', 'left'] as const) s = advance(albania, s, { type: 'move', hero: 'zogu', dir }).state;
     const { replies } = run(s, { type: 'talk' }, 'zogu');
-    expect(replies.actor).toHaveLength(1);
+    expect(replies.actor).toHaveLength(2);
     expect(replies.actor[0].speaker).toEqual({ kind: 'group', group: 'armada' });
+    expect(replies.actor[1].speaker).toEqual({ kind: 'group', group: 'armada' });
   });
 
   it('lets each envoy state his own offer', () => {

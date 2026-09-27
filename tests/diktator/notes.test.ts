@@ -40,6 +40,12 @@ describe('notesFor', () => {
     expect(notesFor(albania, day(), { type: 'wish', group: 'rolnici', decision: null })[0].text).toBe(P.wishNone('Rolníci'));
   });
 
+  it('gives Zogu a group’s feeling as a mood word and an Albanian proverb', () => {
+    const text = notesFor(albania, day(), { type: 'feeling', group: 'rolnici', mood: 3 })[0].text;
+    expect(text).toContain('nespokojení');
+    expect(text).toContain(P.proverbs[1]);
+  });
+
   it('gives Zogu Mother’s advice on both answers of the petition', () => {
     const s = audience();
     const id = (s.phase as { petition: string }).petition;

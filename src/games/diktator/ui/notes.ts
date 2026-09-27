@@ -36,6 +36,8 @@ export function notesFor(sc: Scenario, s: GameState, e: GameEvent): Note[] {
       return [{ to: 'both', text: e.holder ? P.sealHolder(T.heroes[e.holder]) : P.sealLies }];
     case 'wish':
       return [{ to: 'zogu', text: e.decision ? P.wish(name(e.group), decisionById(sc, e.decision).title) : P.wishNone(name(e.group)) }];
+    case 'feeling':
+      return [{ to: 'zogu', text: P.feeling(name(e.group), P.moodWords[e.mood], P.proverbs[Math.floor(e.mood / 2)]) }];
     case 'advised': {
       if (e.subject === 'decision') {
         const d = decisionById(sc, e.id);

@@ -229,6 +229,17 @@ export const cs = {
       sealLies: 'Pečeť leží v pracovně.',
       wish: (group: string, title: string) => `${group}: „Přejeme si: ${title}.“`,
       wishNone: (group: string) => `${group}: „Nic si nepřejeme.“`,
+      /** Real Albanian proverbs, in Czech, by mood band (0–1, 2–3, 4–5, 6–7, 8–9). */
+      proverbs: [
+        'Hora se s horou nesetká, ale člověk s člověkem ano.', // Mali me mal s'takohen, njeriu me njeri takohet.
+        'Vlk mění srst, ale ne povahu.', // Ujku qimen e ndërron, por zakonin s'e harron.
+        'Kdo se spálil o kaši, fouká i do jogurtu.', // Kush digjet nga qulli, i fryn edhe kosit.
+        'Pomalu, pomalu — i vejce se dá do chůze.', // Ngadalë-ngadalë edhe veza ecën.
+        'Dobré slovo otevře i železné dveře.', // Fjala e mirë hap derën e hekurt.
+      ] as readonly string[],
+      /** Mood adjectives fit for "Jsme ___" (moods[] reads badly there, e.g. "Jsme reptají"). */
+      moodWords: ['vzbouření', 'zuřiví', 'rozzlobení', 'nespokojení', 'nejistí', 'vlažní', 'klidní', 'spokojení', 'oddaní', 'nadšení'] as readonly string[],
+      feeling: (group: string, mood: string, proverb: string) => `${group}: „Jsme ${mood}. Jak se u nás říká: ${proverb}“`,
       adviceYes: (text: string) => `Matka o „ano“: ${text}`,
       adviceNo: (text: string) => `Matka o „ne“: ${text}`,
       adviceOn: (title: string, text: string) => `Matka o „${title}“: ${text}`,

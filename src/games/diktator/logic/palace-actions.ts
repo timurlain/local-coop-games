@@ -126,6 +126,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       if (groups.length === 0) fail(cmd, 'nobody to talk to here');
       spendHour(p, 'zogu', cmd);
       const group = groups[0];
+      events.push({ type: 'feeling', group, mood: s.pop[group] });
       const decision = wishFor(sc, s, group);
       p.wishes[group] = decision;
       events.push({ type: 'wish', group, decision });

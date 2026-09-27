@@ -280,11 +280,14 @@ describe('the seal', () => {
 });
 
 describe("Zogu's actions", () => {
-  it('talking to the army names the decision it would welcome most', () => {
+  it('talking to the army says how it feels, then names the decision it would welcome most', () => {
     const s = play(day(), { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'move', hero: 'zogu', dir: 'left' }, { type: 'move', hero: 'zogu', dir: 'down' });
     expect(s.palace!.at.zogu).toBe('armada');
     const r = advance(albania, s, { type: 'talk' });
-    expect(r.events).toEqual([{ type: 'wish', group: 'armada', decision: 'd25' }]);
+    expect(r.events).toEqual([
+      { type: 'feeling', group: 'armada', mood: s.pop.armada },
+      { type: 'wish', group: 'armada', decision: 'd25' },
+    ]);
     expect(r.state.palace!.hours.zogu).toBe(2);
   });
 

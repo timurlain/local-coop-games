@@ -68,6 +68,7 @@ function hasMoney(e: { readonly cost?: number; readonly monthly?: number; readon
 function speakerOf(sc: Scenario, after: GameState, actor: Hero, e: GameEvent): Speaker {
   switch (e.type) {
     case 'wish': return { kind: 'group', group: e.group };
+    case 'feeling': return { kind: 'group', group: e.group };
     case 'advised': return after.palace && sc.palace && after.palace.at[actor] === sc.palace.mother ? { kind: 'resident' } : { kind: 'caption' };
     case 'policeReport':
     case 'policeReportRefused': return { kind: 'group', group: 'policie' };
