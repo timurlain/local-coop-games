@@ -444,6 +444,8 @@ the places (the mini-map), the arena fade from the title, and the solo helper.
 
 ## 12. Decisions to confirm
 
+**Confirmed by the owner on 2026-09-27** ("ok, let's plan and implement it"): all defaults below stand.
+
 1. **The view:** a top-down atlas map with small side-view puppet standees (scale 0.34, about 31 px), not
    side-scrolling and not new top-down tokens.
 2. **The treasury range is 200–400** (100 + gold left, start gold 200), replacing parent §6's 800–1 200.
