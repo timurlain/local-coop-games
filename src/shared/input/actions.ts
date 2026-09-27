@@ -5,9 +5,11 @@ export interface PlayerActions {
   action: boolean;
   trap: boolean;
   pause: boolean;
+  /** Gamepad Back/Select (button 8). Keyboards have no binding: a game that needs it reads its own key (Diktátor: Tab). */
+  back: boolean;
 }
 
-export const IDLE: Readonly<PlayerActions> = { moveX: 0, moveY: 0, action: false, trap: false, pause: false };
+export const IDLE: Readonly<PlayerActions> = { moveX: 0, moveY: 0, action: false, trap: false, pause: false, back: false };
 
 /** KeyboardEvent.code values — physical keys, so any keyboard layout works. */
 export interface KeyBinding {
@@ -45,6 +47,7 @@ export function keyboardActions(keys: ReadonlySet<string>, b: KeyBinding): Playe
     action: any(b.action),
     trap: any(b.trap),
     pause: any(b.pause),
+    back: false,
   };
 }
 
@@ -53,7 +56,7 @@ export interface PadSnapshot {
   buttons: readonly { pressed: boolean }[];
 }
 
-/** Standard mapping: 0 = A, 2 = X, 9 = Start, 12-15 = D-pad up/down/left/right. */
+/** Standard mapping: 0 = A, 2 = X, 8 = Back, 9 = Start, 12-15 = D-pad up/down/left/right. */
 export function gamepadActions(pad: PadSnapshot): PlayerActions {
   const btn = (i: number) => pad.buttons[i]?.pressed ?? false;
   const ax = pad.axes[0] ?? 0;
@@ -64,5 +67,6 @@ export function gamepadActions(pad: PadSnapshot): PlayerActions {
     action: btn(0),
     trap: btn(2),
     pause: btn(9),
+    back: btn(8),
   };
 }
