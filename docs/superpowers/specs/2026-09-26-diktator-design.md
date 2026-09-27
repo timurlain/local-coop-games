@@ -306,6 +306,26 @@ character you are not controlling stays in his room.
 
 The evening starts when both players have spent all their hours, or when both press "Konec čtvrtletí" (end the quarter).
 
+### 5.3a Sadije's tour (learning mode; user decision 2026-09-27)
+
+The Queen Mother is **Sadije Toptani** (1876–1934), of the old Tirana family Toptani — Tirana is her home town, she
+lives at court with her son, becomes Queen Mother on 1 September 1928 and personally watches over the royal kitchen so
+nobody can poison him. She dies on 25 November 1934; from 1934-Q4 Zogu's sister **Adile** keeps her room. The game calls
+her by name ("Královna matka Sadije"; in her bubbles "Sadije").
+
+Before the first quarter (after the welcome and the march) Sadije shows both players the palace — **they walk, she
+leads**:
+- The title offers "S prohlídkou" / "Bez prohlídky" (tour / no tour); the tour can be skipped at any time (pause menu).
+- Sadije waits in the next room of the tour; the strip highlights that room and a bubble says where to go and with
+  which keys. The players walk there themselves (both heroes, each in his half).
+- In each room Sadije explains it in one or two short bubbles (who lives there, what can be done) and asks the players
+  to try one thing: Zogu talks to the officers, Vlček reads the police report, Zogu takes the seal, etc. Hours are not
+  spent during the tour.
+- Order: study (seal, decisions) → throne room (petitions) → Mother's room (advice) → officers / peasants / landowners
+  (talk, moods) → guardroom (police, guarding) → envoys' salon (loans) → treasury (money) → library (the map, rebels) →
+  playroom → courtyard. Then the first quarter's card and the game proper.
+- Afterwards, in the first quarter, short one-time hints appear the first time a player can do something new.
+
 ### 5.4 The playroom (Herna)
 
 The playroom is usually empty and quiet. In about **one quarter in three** it holds something, and the palace strip
