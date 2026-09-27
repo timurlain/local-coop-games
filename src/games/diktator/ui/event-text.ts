@@ -22,7 +22,8 @@ export function eventText(sc: Scenario, e: GameEvent): string | null {
     case 'aidRefused':
       return e.reason === 'tooEarly' ? E.aidTooEarly(name(e.lender)) : e.reason === 'used' ? E.aidUsed(name(e.lender)) : E.aidUnpopular(name(e.lender));
     case 'swissTransfer': return E.swiss(e.amount);
-    case 'assassination': return e.survived ? E.assassinationSurvived(name(e.faction)) : null;
+    case 'assassination': return e.foiled ? T.atentat.foiled(name(e.faction)) : e.survived ? E.assassinationSurvived(name(e.faction)) : null;
+    case 'attempt': return null;
     case 'warThreat': return E.warThreat;
     case 'invasion': return e.won ? E.invasionWon(e.home, e.enemy) : E.invasionLost(e.home, e.enemy);
     case 'news': return `📰 ${sc.news.find((n) => n.id === e.id)!.title}`;

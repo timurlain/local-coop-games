@@ -54,4 +54,9 @@ export const RULES = {
   guardedCoin: 4,
   /** Yearly, permanent income penalty per tariff in force (our addition, play-test change; tariffs plan). */
   tariffPenaltyPerYear: 1,
+  /** Atentát difficulty (spec 2026-09-27-diktator-atentat-design §4; our addition). */
+  attempt: {
+    baseSeconds: 40, guardedBonus: 15, strengthStep: 2, strongFrom: 5, minSeconds: 25, maxSeconds: 60,
+    baseCrowd: 10, maxCrowd: 20, maxWrong: 3, wrongPenalty: 6, loyalPolice: 7,
+  },
 } as const;

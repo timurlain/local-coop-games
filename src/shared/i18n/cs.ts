@@ -200,6 +200,10 @@ export const cs = {
     /** The ten mood levels 0–9 (spec §5.2), lowest first. */
     moods: ['vzbouření', 'zuřiví', 'rozzlobení', 'reptají', 'nejistí', 'vlažní', 'klidní', 'spokojení', 'oddaní', 'nadšení'] as readonly string[],
     heroes: { zogu: 'Zogu', velitel: 'Vlček' },
+    /** Atentát: find the gunman (spec 2026-09-27-diktator-atentat-design). */
+    atentat: {
+      foiled: (group: string) => `Vlček zadržel střelce (${group}). Král je v bezpečí!`,
+    },
     /** The library's historical map, 1921 (play-test wish, 2026-09-27). */
     map: {
       italy: 'ITÁLIE',

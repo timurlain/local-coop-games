@@ -4,7 +4,7 @@ import { initialState } from '../../src/games/diktator/logic/state';
 describe('initialState (L140–L244)', () => {
   it('uses the original starting values', () => {
     const s = initialState(42);
-    expect(s.version).toBe(5); // bumped for palace steps (play-test round 4)
+    expect(s.version).toBe(6); // bumped for the attempt phase
     expect(s.palace).toBeNull();
     expect(s.quarter).toBe(0);
     expect(s.treasury).toBe(300); // starting reserve 300, not the original 1000 (our addition, play-test change)

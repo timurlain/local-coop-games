@@ -13,9 +13,24 @@ export type Ending =
   | { readonly kind: 'escaped'; readonly via: 'plane' | 'mountains' }
   | { readonly kind: 'survived' };
 
+/** Where an attempt happens (v1 places; more come with the art). */
+export type PlaceId = 'trziste' | 'dustojnici';
+
+/** How hard "Najdi střelce" is, fixed when the attempt strikes. */
+export interface AttemptDifficulty {
+  /** The fuse, seconds. */
+  readonly seconds: number;
+  /** Attributes of the gunman the police tip names, 0–3. */
+  readonly clues: number;
+  /** People in the crowd, gunman included. */
+  readonly crowd: number;
+  readonly maxWrong: number;
+}
+
 export type Phase =
   | { readonly kind: 'audience'; readonly petition: string; readonly suggested: boolean }
   | { readonly kind: 'day' }
+  | { readonly kind: 'attempt'; readonly faction: FactionId; readonly place: PlaceId; readonly difficulty: AttemptDifficulty; readonly seed: number }
   | { readonly kind: 'revolution'; readonly faction: FactionId }
   | { readonly kind: 'chooseAlly'; readonly faction: FactionId }
   | { readonly kind: 'punish'; readonly faction: FactionId; readonly chosen: StrengthGroupId | null }
@@ -29,7 +44,7 @@ export interface StartingRegime {
 }
 
 export interface GameState {
-  readonly version: 5;
+  readonly version: 6;
   readonly seed: number;
   rng: RngState;
   /** 0 before the first turn; 1 = 1925-Q1 … 57 = 1939-Q1. The original's `mth`. */
@@ -91,7 +106,8 @@ export type GameEvent =
   | { readonly type: 'aidGranted'; readonly lender: LenderId; readonly amount: number }
   | { readonly type: 'aidRefused'; readonly lender: LenderId; readonly reason: AidRefusal }
   | { readonly type: 'swissTransfer'; readonly amount: number }
-  | { readonly type: 'assassination'; readonly faction: FactionId; readonly survived: boolean }
+  | { readonly type: 'assassination'; readonly faction: FactionId; readonly survived: boolean; readonly foiled?: true }
+  | { readonly type: 'attempt'; readonly faction: FactionId; readonly place: PlaceId }
   | { readonly type: 'warThreat' }
   | { readonly type: 'invasion'; readonly home: number; readonly enemy: number; readonly won: boolean }
   | { readonly type: 'news'; readonly id: string }
@@ -129,6 +145,7 @@ export type Command =
   | { readonly type: 'fight' }
   | { readonly type: 'ally'; readonly group: StrengthGroupId }
   | { readonly type: 'punish'; readonly punish: boolean }
+  | { readonly type: 'attemptResult'; readonly found: boolean }
   // palace mode only (plan 2a)
   | { readonly type: 'move'; readonly hero: Hero; readonly dir: Direction }
   | { readonly type: 'takeSeal'; readonly hero: Hero }
@@ -153,7 +170,7 @@ function record<K extends string>(keys: readonly K[], v: (k: K) => number): Reco
 export function initialState(seed: number, regime: StartingRegime = {}): GameState {
   const st = RULES.start;
   return {
-    version: 5,
+    version: 6,
     seed,
     rng: makeRng(seed),
     quarter: 0,

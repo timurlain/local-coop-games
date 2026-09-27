@@ -1,5 +1,6 @@
 import { answerPetition, drawPetition, suggestOther } from './audience';
-import { assassination } from './assassination';
+import { assassination, attemptStrikes, survivesUnfound } from './assassination';
+import { attemptDifficulty, attemptPlace } from './attempt';
 import { STRENGTH_GROUPS, type StrengthGroupId } from './groups';
 import { availableDecisions, takeDecision } from './decision';
 import { rngDice, type Dice } from './dice';
@@ -53,7 +54,22 @@ function nextQuarter(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[]
 }
 
 function evening(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[]): void {
-  if (assassination(s, dice, events)) return end(s, { kind: 'killed', cause: 'assassination' }, events);
+  if (s.palace) {
+    const faction = attemptStrikes(s, dice);
+    if (faction) {
+      const place = attemptPlace(faction);
+      s.phase = { kind: 'attempt', faction, place, difficulty: attemptDifficulty(s, faction), seed: dice.int(0x7fffffff) };
+      events.push({ type: 'attempt', faction, place });
+      return;
+    }
+  } else if (assassination(s, dice, events)) {
+    return end(s, { kind: 'killed', cause: 'assassination' }, events);
+  }
+  afterAttempt(sc, s, dice, events);
+}
+
+/** The evening after the attempt (or without one): war, plots, news, revolution, the next quarter. */
+function afterAttempt(sc: Scenario, s: GameState, dice: Dice, events: GameEvent[]): void {
   const w = war(s, dice, events);
   if (w === 'killed') return end(s, { kind: 'killed', cause: 'war' }, events);
   if (w === 'escaped') return end(s, { kind: 'escaped', via: 'plane' }, events);
@@ -139,6 +155,22 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
       else throw invalid();
       break;
     }
+    case 'attempt': {
+      if (cmd.type !== 'attemptResult') throw invalid();
+      if (cmd.found) {
+        events.push({ type: 'assassination', faction: phase.faction, survived: true, foiled: true });
+        s.plots[phase.faction] = { kind: 'none' };
+      } else {
+        const survived = survivesUnfound(s, dice);
+        events.push({ type: 'assassination', faction: phase.faction, survived });
+        if (!survived) {
+          end(s, { kind: 'killed', cause: 'assassination' }, events);
+          break;
+        }
+      }
+      afterAttempt(sc, s, dice, events);
+      break;
+    }
     case 'revolution': {
       if (cmd.type === 'flee') end(s, flee(s, dice, events), events);
       else if (cmd.type === 'fight') {
@@ -206,6 +238,8 @@ export function validCommands(sc: Scenario, s: GameState): Command[] {
       if (!s.decisionTaken) for (const d of availableDecisions(sc, s)) cmds.push({ type: 'decide', decision: d.id });
       return cmds;
     }
+    case 'attempt':
+      return [{ type: 'attemptResult', found: true }, { type: 'attemptResult', found: false }];
     case 'revolution':
       return [{ type: 'flee' }, { type: 'fight' }];
     case 'chooseAlly':
