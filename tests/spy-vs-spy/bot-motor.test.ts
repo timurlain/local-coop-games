@@ -111,6 +111,32 @@ describe('motor: legs and hands (spec bot §6)', () => {
     expect(s.timeBombs).toHaveLength(1);
   });
 
+  it('place with no stock of that kind presses nothing and is done (failed)', () => {
+    const s = openGame();
+    const spy = s.spies[0];
+    spy.stock.pruzina = 0;
+    spy.selected = 'bomba';
+    const motor = createMotor(5, makeRng(13));
+    const r = run(s, motor, { kind: 'place', trap: 'pruzina', at: pieceView(s, 0) }, 3);
+    expect(motor.done()).toBe(true);
+    expect(r.inputs.every((i) => !pressed(i))).toBe(true);
+    for (const t of ['trapSet', 'searchStart', 'refused'] as const) expect(mine(r.events, t)).toHaveLength(0);
+    expect(spy.selected).toBe('bomba');
+  });
+
+  it('a refused placement is pressed once, not as an endless head shake, and is done', () => {
+    const s = openGame();
+    const f = firstFurniture(s, 0);
+    f.trap = { kind: 'pruzina', owner: 0 };
+    const motor = createMotor(5, makeRng(14));
+    const intent: Intent = { kind: 'place', trap: 'bomba', at: pieceView(s, 0) };
+    const events: GameEvent[] = [];
+    for (let k = 0; k < 3 / DT; k++) events.push(...step(s, [motor.drive(botView(s, 0, false), intent, DT), NO_INPUT], DT));
+    expect(mine(events, 'refused')).toHaveLength(1);
+    expect(mine(events, 'trapSet')).toHaveLength(0);
+    expect(motor.done()).toBe(true);
+  });
+
   it('openMap opens the map once, holds it 0.6 s, and it closes afterwards', () => {
     const s = openGame();
     const motor = createMotor(5, makeRng(7));
@@ -185,6 +211,29 @@ describe('motor: legs and hands (spec bot §6)', () => {
     // Released 0.8 s after the left one was first given (not reset by each repeat).
     expect(firstLeft * DT).toBeGreaterThanOrEqual(IQ_PARAMS[1].reaction - DT - 1e-9);
     expect(firstLeft * DT).toBeLessThan(IQ_PARAMS[1].reaction + DT);
+  });
+
+  it('a negative dt does not run his clock backwards', () => {
+    const s = openGame();
+    const motor = createMotor(5, makeRng(15));
+    const intent: Intent = { kind: 'walkTo', x: 150, z: 20 };
+    motor.drive(botView(s, 0, false), intent, DT);
+    motor.drive(botView(s, 0, false), intent, -10);
+    let first = -1;
+    for (let k = 1; k < 60 && first < 0; k++) if (pressed(motor.drive(botView(s, 0, false), intent, DT))) first = k;
+    expect(first).toBeGreaterThan(0);
+    expect(first * DT).toBeLessThan(IQ_PARAMS[5].reaction + 2 * DT);
+  });
+
+  it('a fight drops a walk still pending: it never reaches the keys and spends no rng draw', () => {
+    const s = openGame();
+    const rng = makeRng(16);
+    const motor = createMotor(1, rng);
+    const still: SpyInput = { ...NO_INPUT };
+    for (let k = 0; k < 10; k++) motor.drive(botView(s, 0, false), { kind: 'walkTo', x: 190, z: 20 }, DT);
+    for (let k = 0; k < 120; k++) expect(pressed(motor.drive(botView(s, 0, false), { kind: 'fight', input: still }, DT))).toBe(false);
+    expect(rng.s).toBe(makeRng(16).s);
+    expect(motor.done()).toBe(true);
   });
 
   it('fight input passes through the same delay', () => {

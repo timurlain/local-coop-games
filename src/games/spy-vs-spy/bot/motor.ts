@@ -21,7 +21,11 @@ export type Intent =
 export interface Motor {
   /** The input for this tick. Decisions are delayed by `iq.reaction` of game time before they reach the keys. */
   drive(view: BotView, intent: Intent, dt: number): SpyInput;
-  /** true when the last intent has been carried out (searched, placed, went through, arrived). */
+  /**
+   * true when the last intent has been carried out (searched, placed, went through, arrived) — or has failed for good
+   * (no stock of the trap, a refused or ignored Akce). It latches while the same intent keeps being given: to repeat
+   * an action (search the same piece again), the brain must give a different intent in between.
+   */
   done(): boolean;
 }
 
@@ -106,8 +110,10 @@ export function createMotor(iq: Iq, rng: RngState): Motor {
     if (intent.kind !== 'fight') {
       queue = [];
       if (key === activeKey) return;
-    } else if (queue.length > 0 && queue[queue.length - 1].at === time) {
-      queue.pop();
+    } else {
+      // A fight drops any walk still pending (it would only waste a slip draw), and dt = 0 collapses.
+      queue = queue.filter((e) => e.intent.kind === 'fight');
+      if (queue.length > 0 && queue[queue.length - 1].at === time) queue.pop();
     }
     queue.push({ intent, key, at: time });
   }
@@ -128,18 +134,20 @@ export function createMotor(iq: Iq, rng: RngState): Motor {
   const tapTrap = (): boolean => !last.trap;
   const pressAkce = (): boolean => !last.action;
 
-  /** Taps the trap key until `want` is in hand; null when it is (or can never be, with no stock of it). */
+  /** Taps the trap key until `want` is in hand; null when it is. (A `place` with no stock of `want` never gets here:
+   *  `observe` finishes it first.) */
   function cycle(self: SelfView, want: TrapKind | null): SpyInput | null {
-    if (self.selected === want || (want !== null && self.stock[want] <= 0)) return last.trap ? { ...NO_INPUT } : null;
+    if (self.selected === want) return last.trap ? { ...NO_INPUT } : null;
     return { ...NO_INPUT, trap: tapTrap() };
   }
 
-  /** Stands in reach of the target with `want` in hand, then Akce. */
+  /** Stands in reach of the target with `want` in hand, then Akce — once per intent (`observe` then finishes it, so a
+   *  refusal is not repeated as an endless head shake). */
   function reachAndAct(self: SelfView, want: TrapKind | null, there: boolean, point: { x: number; z: number }): SpyInput {
     const hand = cycle(self, want);
     const walk = there ? { ...NO_INPUT } : steer(self, point.x, point.z);
     if (hand !== null) return { ...walk, trap: hand.trap };
-    if (!there || self.trapPress !== null) return walk;
+    if (!there || self.trapPress !== null || pressedAkce) return walk;
     const action = pressAkce();
     if (action) pressedAkce = true;
     return { ...walk, action };
@@ -155,10 +163,14 @@ export function createMotor(iq: Iq, rng: RngState): Motor {
         if (self.room !== startRoom || self.mode === 'escaped') finished = true;
         break;
       case 'search':
-        if (pressedAkce && self.mode !== 'normal') finished = true;
+        // The view after the press: searching (or dead from a trap) — or the press was ignored; either way, over.
+        if (pressedAkce) finished = true;
         break;
       case 'place':
-        if (self.stock[active.trap] < startStock) finished = true;
+        // Placed (stock −1); none of it to put in hand; or the one press was refused/ignored (not placing now).
+        if (self.stock[active.trap] < startStock || self.stock[active.trap] <= 0 || (pressedAkce && !self.placing)) {
+          finished = true;
+        }
         break;
       case 'openMap':
         if (self.mapOpen && mapSince === null) mapSince = time;
@@ -184,7 +196,11 @@ export function createMotor(iq: Iq, rng: RngState): Motor {
           const p = doorPoint(dir);
           return steer(self, p.x, p.z);
         }
-        if (!door.open) return reachAndAct(self, null, true, doorPoint(dir));
+        if (!door.open) {
+          // No once-only cap at a door: it may close again before he is through, and Akce there never refuses.
+          pressedAkce = false;
+          return reachAndAct(self, null, true, doorPoint(dir));
+        }
         // Open: into the wall, kept centred on the door along it.
         const p = doorPoint(dir);
         const centre = steer(self, p.x, p.z);
@@ -221,6 +237,7 @@ export function createMotor(iq: Iq, rng: RngState): Motor {
 
   return {
     drive(view, intent, dt) {
+      dt = Math.max(0, dt);
       time += dt;
       decide(intent);
       // Only his own time counts: a dt = 0 call advances nothing and repeats the last keys.
