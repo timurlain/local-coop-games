@@ -149,6 +149,27 @@ describe('steps cost hours', () => {
   });
 });
 
+describe('the guard follows the king', () => {
+  it('after guard, the commander follows every room change Zogu makes, at no cost to himself', () => {
+    let s = day();
+    s = play(s, { type: 'move', hero: 'velitel', dir: 'up' }, { type: 'move', hero: 'velitel', dir: 'up' });
+    expect(s.palace!.at.velitel).toBe(s.palace!.at.zogu);
+    s = play(s, { type: 'guard' });
+    expect(s.palace!.guarded).toBe(true);
+    const stepsBefore = s.palace!.steps.velitel; // walking to Zogu's side already spent some of his own steps
+
+    const r1 = advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' });
+    expect(r1.events.filter((e) => e.type === 'moved')).toHaveLength(2);
+    expect(r1.state.palace!.at.velitel).toBe(r1.state.palace!.at.zogu);
+    expect(r1.state.palace!.steps.velitel).toBe(stepsBefore); // following costs him nothing
+
+    const r2 = advance(albania, r1.state, { type: 'move', hero: 'zogu', dir: 'right' });
+    expect(r2.events.filter((e) => e.type === 'moved')).toHaveLength(2);
+    expect(r2.state.palace!.at.velitel).toBe(r2.state.palace!.at.zogu);
+    expect(r2.state.palace!.steps.velitel).toBe(stepsBefore);
+  });
+});
+
 describe('the seal', () => {
   it('is taken in the study and given only in the same room', () => {
     let s = day();

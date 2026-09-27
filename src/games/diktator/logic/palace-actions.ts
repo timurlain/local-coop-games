@@ -96,6 +96,11 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
         p.steps[cmd.hero] = 0;
         p.hours[cmd.hero] -= 1;
       }
+      if (cmd.hero === 'zogu' && p.guarded) {
+        const guardFrom = p.at.velitel;
+        p.at.velitel = to;
+        events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to });
+      }
       return;
     }
     case 'takeSeal': {
@@ -224,6 +229,11 @@ export function summonToAudience(sc: Scenario, s: GameState, events: GameEvent[]
   p.at.zogu = L.throne;
   p.seen[L.throne] = true;
   events.push({ type: 'moved', hero: 'zogu', from, to: L.throne });
+  if (p.guarded) {
+    const guardFrom = p.at.velitel;
+    p.at.velitel = L.throne;
+    events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.throne });
+  }
   events.push({ type: 'summoned' });
 }
 

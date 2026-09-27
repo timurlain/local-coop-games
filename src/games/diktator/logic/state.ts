@@ -136,7 +136,8 @@ export type Command =
   | { readonly type: 'envoys' }
   /** The commander, in a faction's room, 1 hour. */
   | { readonly type: 'investigate' }
-  /** The commander, in Zogu's room, his remaining hours. */
+  /** The commander, in Zogu's room, his remaining hours; this quarter the commander stays at the king's side:
+   * he follows every room change. */
   | { readonly type: 'guard' };
 
 function record<K extends string>(keys: readonly K[], v: (k: K) => number): Record<K, number> {
