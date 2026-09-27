@@ -20,7 +20,7 @@ import { albania } from './scenario/albania';
 import { bubblesFor, stageView } from './ui/bubbles';
 import { CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
 import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
-import { fitStage, renderBubbles, renderHalf, renderOverlay, renderStrip, renderTop, stageCanvas, type OverlayModel } from './ui/dom';
+import { fitStage, renderBubbles, renderHalf, renderHourglasses, renderOverlay, renderStrip, renderTop, stageCanvas, type OverlayModel } from './ui/dom';
 import { Flick } from './ui/flick';
 import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
@@ -534,14 +534,16 @@ function renderDom(): void {
   renderStrip(stripView(sc, s), flash.rooms);
   for (const h of HEROES) {
     const half = halves[h];
+    const hud = heroHud(sc, s, h);
     renderHalf(h, {
-      hud: heroHud(sc, s, h),
+      hud,
       talking: half.dialogue.queue.length > 0,
       open: half.dialogue.ui.open || half.menu.modal,
       inactive: isSolo(seats) && active !== h,
       solo: isSolo(seats),
       keys: keysFor(isSolo(seats) ? (seats.zogu ?? seats.velitel) : seats[h]),
     });
+    renderHourglasses(h, hud);
     renderBubbles(h, bubblesFor(half.dialogue, half.captions.map((c) => c.text), half.menu, half.stage, h), (i) => {
       choosePalace(h, i);
       dirty = true;

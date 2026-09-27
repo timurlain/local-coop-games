@@ -12,8 +12,11 @@ const T = cs.diktator;
 export interface HeroHud {
   readonly name: string;
   readonly room: string;
-  /** Remaining hours as filled dots, spent ones hollow: '●●○'. */
+  /** Remaining hours as filled dots, spent ones hollow: '●●○'. Kept for tests; the stage now draws the hourglasses. */
   readonly hours: string;
+  /** Hours left and the hero's total for the quarter (play-test round 6a: the stage's hourglasses). */
+  readonly hoursLeft: number;
+  readonly hoursTotal: number;
   readonly seal: boolean;
   readonly done: boolean;
   /** Steps left before the next hour is spent (play-test round 4); null once he has no hour left to spend it in. */
@@ -29,6 +32,8 @@ export function heroHud(sc: Scenario, s: GameState, hero: Hero): HeroHud {
     name: T.heroes[hero],
     room: sc.palace.names[p.at[hero]],
     hours: '●'.repeat(left) + '○'.repeat(total - left),
+    hoursLeft: left,
+    hoursTotal: total,
     seal: p.seal === hero,
     done: p.done[hero],
     stepsLeft: p.hours[hero] >= 1 ? RULES.palace.stepsPerHour - p.steps[hero] : null,

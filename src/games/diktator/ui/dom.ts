@@ -87,10 +87,10 @@ export interface HalfModel {
 export function renderHalf(hero: Hero, m: HalfModel): void {
   const root = $(`#half-${hero}`);
   root.classList.toggle('inactive', m.inactive);
-  const hud = [m.hud.name, m.hud.room, `${P.hours} ${m.hud.hours}`];
+  // Hours and steps left now live on the stage as hourglasses (play-test round 6a); the side panel keeps
+  // name, room and the seal only.
+  const hud = [m.hud.name, m.hud.room];
   if (m.hud.seal) hud.push(`✉ ${P.sealMark}`);
-  if (m.hud.stepsLeft !== null) hud.push(P.steps(m.hud.stepsLeft));
-  if (!m.hud.done && m.hud.stepsLeft === null) hud.push(P.noWalking);
   $('.hud', root).replaceChildren(...hud.map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
   const hint = m.talking ? P.hintTalk : m.open ? P.hintOpen : P.hintClosed;
   const line = m.solo ? `${hint} · ${P.soloHint}` : hint;
@@ -173,6 +173,51 @@ export function renderBubbles(hero: Hero, bubbles: readonly Bubble[], onChoose: 
       el.style.setProperty('--tail', `${Math.min(Math.max(ax - left, 16), w - 16)}px`);
     }
   }
+}
+
+const HG_NS = 'http://www.w3.org/2000/svg';
+
+function hgEl<K extends keyof SVGElementTagNameMap>(name: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
+  const el = document.createElementNS(HG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el as SVGElementTagNameMap[K];
+}
+
+/** One hourglass, 24 × 36 viewBox: a full one has sand in the top bulb, an empty (spent) one only at the bottom,
+ * greyed. */
+function hourglassSvg(full: boolean, sizePx: number): SVGSVGElement {
+  const frame = full ? '#d9b45a' : '#8a8a8a';
+  const sand = full ? '#e8c56a' : '#9a9a90';
+  const svg = hgEl('svg', { viewBox: '0 0 24 36', width: sizePx, height: sizePx });
+  svg.append(
+    hgEl('rect', { x: 2, y: 1, width: 20, height: 3, fill: frame }),
+    hgEl('rect', { x: 2, y: 32, width: 20, height: 3, fill: frame }),
+    hgEl('path', { d: 'M4,4 L20,4 L12,18 Z M4,33 L20,33 L12,18 Z', fill: 'none', stroke: frame, 'stroke-width': 1.5 }),
+    hgEl('path', full ? { d: 'M6,6 L18,6 L12,17 Z', fill: sand } : { d: 'M6,32 L18,32 L12,21 Z', fill: sand }),
+  );
+  return svg;
+}
+
+/** Renders a half's remaining-hours hourglasses over its canvas' top-left corner (play-test round 6a: "make the
+ * hours remaining three hourglass figures... so he sees them immediately"), with the steps-left line under them. */
+export function renderHourglasses(hero: Hero, hud: HeroHud): void {
+  const box = $(`#half-${hero} .stage-box`);
+  const canvas = $<HTMLCanvasElement>('.stage', box);
+  const layer = $('.hourglasses', box);
+  const ch = canvas.clientHeight;
+  const ox = canvas.offsetLeft;
+  const oy = canvas.offsetTop;
+  const size = ch * 0.07;
+  layer.style.left = `${ox + ch * 0.02}px`;
+  layer.style.top = `${oy + ch * 0.06}px`;
+  layer.style.fontSize = `${Math.max(10, ch * 0.045)}px`;
+  const row = document.createElement('div');
+  row.className = 'hourglass-row';
+  for (let i = 0; i < hud.hoursTotal; i++) row.append(hourglassSvg(i < hud.hoursLeft, size));
+  const label = document.createElement('div');
+  label.className = 'hourglass-label';
+  label.textContent = hud.stepsLeft !== null ? P.steps(hud.stepsLeft) : hud.done ? '' : P.noWalking;
+  layer.replaceChildren(row, label);
 }
 
 export interface OverlayModel {

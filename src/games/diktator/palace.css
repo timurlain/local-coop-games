@@ -37,6 +37,11 @@ body { font-family: 'Poiret One', Georgia, serif; font-weight: 700; font-size: 1
 .hint .hint-context, .hint .hint-keys { display: block; }
 .hint .hint-keys { color: var(--gold); }
 
+.hourglasses { position: absolute; pointer-events: none; display: flex; flex-direction: column; gap: 2px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
+.hourglasses .hourglass-row { display: flex; gap: 3px; }
+.hourglasses .hourglass-row svg { display: block; }
+.hourglasses .hourglass-label { font-size: 0.7em; color: var(--cream); white-space: nowrap; }
+
 .bubbles { position: absolute; inset: 0; pointer-events: none; }
 .bubble {
   position: absolute; pointer-events: auto; background: #fbf6e6; color: #1a1410; border: 2px solid #1a1410;

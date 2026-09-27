@@ -93,7 +93,7 @@ describe('HUD', () => {
   it('shows the hero, his room, his hours as dots and the seal', () => {
     const s = day();
     expect(heroHud(albania, s, 'velitel')).toEqual({
-      name: 'Vlček', room: 'Strážnice', hours: '●●●', seal: false, done: false, stepsLeft: 10,
+      name: 'Vlček', room: 'Strážnice', hours: '●●●', hoursLeft: 3, hoursTotal: 3, seal: false, done: false, stepsLeft: 10,
     });
     const spent = advance(albania, s, { type: 'policeReport', hero: 'velitel' }).state;
     expect(heroHud(albania, spent, 'velitel').hours).toBe('●●○');
