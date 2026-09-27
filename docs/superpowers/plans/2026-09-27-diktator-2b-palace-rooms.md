@@ -189,9 +189,9 @@ describe('solvePuppet', () => {
   });
 
   it('puts the hand on an IK target given relative to the hip (the salute to the temple)', () => {
-    const j = solvePuppet({ ...STAND, reachF: [8, 47], bendF: -1 });
-    expect(j.armF.hand[0] - j.hip[0]).toBeCloseTo(8, 4);
-    expect(j.armF.hand[1] - j.hip[1]).toBeCloseTo(47, 4);
+    const j = solvePuppet({ ...STAND, reachF: [7, 46], bendF: -1 });
+    expect(j.armF.hand[0] - j.hip[0]).toBeCloseTo(7, 4);
+    expect(j.armF.hand[1] - j.hip[1]).toBeCloseTo(46, 4);
   });
 
   it('lifts the whole figure by bob and carries face, prop and mouth through', () => {
@@ -411,7 +411,7 @@ export const POSES = {
   },
   talk: (t: number) => ({ ...STAND, head: 4, armF: [120 + Math.sin(t * 5) * 12, -40], mouthOpen: Math.sin(t * 12) > 0 }) satisfies PuppetPose,
   bow: () => ({ ...STAND, lean: 32, head: 12, armF: [158, -12], armB: [150, -10], legF: [172, 10], legB: [178, 8] }) satisfies PuppetPose,
-  salute: () => ({ ...STAND, head: -2, reachF: [8, 47], bendF: -1 }) satisfies PuppetPose,
+  salute: () => ({ ...STAND, head: -2, reachF: [7, 46], bendF: -1 }) satisfies PuppetPose,
   point: () => ({ ...STAND, lean: 4, armF: [92, 0], head: 2 }) satisfies PuppetPose,
   shocked: () => ({ ...STAND, lean: -3, head: -6, face: 'shocked' }) satisfies PuppetPose,
   /** Wagging a finger at you: upper arm forward, forearm up from the elbow, index finger up, shaking. */
