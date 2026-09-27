@@ -9,7 +9,9 @@ export type SfxName =
   | 'grumble'
   | 'umbrella' | 'hiss' | 'snip'
   | 'salvage' | 'resupply'
-  | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine';
+  | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine'
+  | 'stepZogu' | 'stepKovar' | 'doorZogu' | 'doorKovar' | 'bumpZogu' | 'bumpKovar'
+  | 'voiceZogu' | 'voiceKovar' | 'voiceMother' | 'voiceCrowd' | 'voiceEnvoy';
 
 interface ToneOpts {
   freq: number;
@@ -65,6 +67,11 @@ function clickClack(c: AudioContext, delay: number): void {
   noise(c, { dur: 0.03, vol: 0.18, delay, lowpass: 7000 });
   tone(c, { freq: 1300, dur: 0.03, delay: delay + 0.09, type: 'square', vol: 0.12 });
   noise(c, { dur: 0.035, vol: 0.2, delay: delay + 0.09, lowpass: 6000 });
+}
+
+/** A short "voice": three syllable blips around `base` Hz, like the talking boxes of old RPGs. */
+function blips(c: AudioContext, base: number, type: OscillatorType, vol: number): void {
+  [1, 1.12, 0.94].forEach((k, i) => tone(c, { freq: base * k, dur: 0.06, delay: i * 0.08, type, vol }));
 }
 
 const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
@@ -182,6 +189,31 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     noise(c, { dur: 3, vol: 0.25, lowpass: 450 });
     for (let i = 0; i < 6; i++) tone(c, { freq: 140 + (i % 3) * 30, dur: 0.25, delay: 0.3 + i * 0.4, type: 'sawtooth', vol: 0.08 });
   },
+  /** Diktátor (plan 2d): Zogu's heavy, slow boots — two low thumps. */
+  stepZogu: (c) => [0, 0.22].forEach((delay) => {
+    tone(c, { freq: 90, to: 50, dur: 0.09, type: 'sine', vol: 0.3, delay });
+    noise(c, { dur: 0.05, vol: 0.1, delay, lowpass: 400 });
+  }),
+  /** Kovář's quick steps with a spur's jingle. */
+  stepKovar: (c) => {
+    [0, 0.1, 0.2].forEach((delay) => noise(c, { dur: 0.03, vol: 0.08, delay, lowpass: 1200 }));
+    [0.02, 0.12].forEach((delay) => tone(c, { freq: 3200, to: 2800, dur: 0.05, delay, type: 'triangle', vol: 0.05 }));
+  },
+  /** Zogu's door: a slow, low creak. */
+  doorZogu: (c) => { tone(c, { freq: 150, to: 110, dur: 0.25, type: 'triangle', vol: 0.12, delay: 0.3 }); noise(c, { dur: 0.15, vol: 0.08, delay: 0.3, lowpass: 600 }); },
+  /** Kovář's door: a quick latch. */
+  doorKovar: (c) => {
+    tone(c, { freq: 900, dur: 0.02, type: 'square', vol: 0.08, delay: 0.25 });
+    tone(c, { freq: 600, dur: 0.03, type: 'square', vol: 0.08, delay: 0.3 });
+    noise(c, { dur: 0.03, vol: 0.1, delay: 0.25, lowpass: 4000 });
+  },
+  bumpZogu: (c) => tone(c, { freq: 80, to: 50, dur: 0.1, type: 'sine', vol: 0.2 }),
+  bumpKovar: (c) => tone(c, { freq: 160, to: 110, dur: 0.07, type: 'sine', vol: 0.15 }),
+  voiceZogu: (c) => blips(c, 150, 'square', 0.06),
+  voiceKovar: (c) => blips(c, 230, 'square', 0.06),
+  voiceMother: (c) => blips(c, 420, 'triangle', 0.08),
+  voiceCrowd: (c) => { blips(c, 180, 'sawtooth', 0.04); blips(c, 260, 'sawtooth', 0.03); },
+  voiceEnvoy: (c) => blips(c, 300, 'sine', 0.08),
 };
 
 let shared: AudioContext | null = null;
