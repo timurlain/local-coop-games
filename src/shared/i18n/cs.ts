@@ -254,7 +254,7 @@ export const cs = {
         title: 'Diktátor',
         slot: (hero: string, device: string) => `${hero}: ${device}`,
         waiting: 'stiskni Akci…',
-        hint: 'Každý hráč stiskne Akci (F, Enter nebo A). První hraje Zogua, druhý Vlčka. Hraješ-li sám, ovládáš oba — Tab / Back přepíná.',
+        hint: 'F nebo W A S D hraje za Zogua, Enter nebo šipky za Vlčka, gamepad dostane volnou postavu. Každý hráč stiskne svou Akci. Kdo hraje sám, ovládá oba — Tab / Back přepíná.',
         /** Play-test wish: keyboard input needs a window click first (browser focus). */
         clickFirst: 'Nejdřív klikni myší do okna hry, pak hraj klávesnicí.',
         newGame: 'Nová hra',

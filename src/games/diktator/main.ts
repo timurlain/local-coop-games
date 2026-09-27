@@ -523,7 +523,7 @@ function renderDom(): void {
       open: half.dialogue.ui.open || half.menu.modal,
       inactive: isSolo(seats) && active !== h,
       solo: isSolo(seats),
-      keys: keysFor(isSolo(seats) ? seats.zogu : seats[h]),
+      keys: keysFor(isSolo(seats) ? (seats.zogu ?? seats.velitel) : seats[h]),
     });
     renderBubbles(h, bubblesFor(half.dialogue, half.captions.map((c) => c.text), half.menu, half.stage, h), (i) => {
       choosePalace(h, i);

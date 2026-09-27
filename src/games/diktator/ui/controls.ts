@@ -85,16 +85,20 @@ export interface Seats {
 
 export const NO_SEATS: Seats = { zogu: null, velitel: null };
 
-/** The first device to join plays Zogu, the second Vlček; a device joins once. */
+/** The left keyboard (F, WASD) always plays Zogu and the right one (Enter, arrows) always plays Vlček;
+ * a gamepad takes the free hero, Zogu first. A device joins once. */
 export function join(seats: Seats, d: DeviceId): Seats {
   if (seats.zogu === d || seats.velitel === d) return seats;
+  if (d === 'kb-left') return seats.zogu === null ? { ...seats, zogu: d } : seats;
+  if (d === 'kb-right') return seats.velitel === null ? { ...seats, velitel: d } : seats;
   if (seats.zogu === null) return { ...seats, zogu: d };
   if (seats.velitel === null) return { ...seats, velitel: d };
   return seats;
 }
 
+/** Exactly one device joined: it steers both heroes (Tab / Back switches). */
 export function isSolo(seats: Seats): boolean {
-  return seats.zogu !== null && seats.velitel === null;
+  return (seats.zogu === null) !== (seats.velitel === null);
 }
 
 export function seatedDevices(seats: Seats): DeviceId[] {
@@ -103,7 +107,7 @@ export function seatedDevices(seats: Seats): DeviceId[] {
 
 /** The hero this device steers now: its own seat, or in solo play whichever hero the player switched to. */
 export function heroOf(seats: Seats, d: DeviceId, active: Hero): Hero | null {
-  if (isSolo(seats)) return seats.zogu === d ? active : null;
+  if (isSolo(seats)) return seats.zogu === d || seats.velitel === d ? active : null;
   if (seats.zogu === d) return 'zogu';
   if (seats.velitel === d) return 'velitel';
   return null;

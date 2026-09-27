@@ -74,24 +74,31 @@ describe('keysFor', () => {
 });
 
 describe('seats', () => {
-  it('seats the first device as Zogu and the second as Vlček, once each', () => {
-    let s = join(NO_SEATS, 'kb-left');
-    expect(s).toEqual({ zogu: 'kb-left', velitel: null });
+  it('always gives the left keyboard to Zogu and the right one to Vlček', () => {
+    expect(join(NO_SEATS, 'kb-right')).toEqual({ zogu: null, velitel: 'kb-right' });
+    expect(join(join(NO_SEATS, 'kb-right'), 'kb-left')).toEqual({ zogu: 'kb-left', velitel: 'kb-right' });
+  });
+
+  it('gives a gamepad the free hero, Zogu first', () => {
+    expect(join(NO_SEATS, 'pad-0')).toEqual({ zogu: 'pad-0', velitel: null });
+    expect(join({ zogu: 'kb-left', velitel: null }, 'pad-1')).toEqual({ zogu: 'kb-left', velitel: 'pad-1' });
+    expect(join({ zogu: 'pad-0', velitel: null }, 'kb-left')).toEqual({ zogu: 'pad-0', velitel: null });
+  });
+
+  it('joins a device once and lists the seated devices', () => {
+    const s = join(join(NO_SEATS, 'kb-left'), 'pad-0');
     expect(join(s, 'kb-left')).toBe(s);
-    s = join(s, 'pad-0');
-    expect(s).toEqual({ zogu: 'kb-left', velitel: 'pad-0' });
-    expect(join(s, 'kb-right')).toBe(s);
     expect(seatedDevices(s)).toEqual(['kb-left', 'pad-0']);
   });
 
-  it('lets a solo player steer the active hero; two players steer their own', () => {
-    const solo = join(NO_SEATS, 'pad-0');
+  it('one device alone steers both heroes; two players steer their own', () => {
+    const solo = join(NO_SEATS, 'kb-right');
     expect(isSolo(solo)).toBe(true);
-    expect(heroOf(solo, 'pad-0', 'velitel')).toBe('velitel');
+    expect(heroOf(solo, 'kb-right', 'zogu')).toBe('zogu');
     expect(heroOf(solo, 'kb-left', 'zogu')).toBeNull();
-    const duo = join(solo, 'kb-right');
+    const duo = join(solo, 'kb-left');
     expect(isSolo(duo)).toBe(false);
-    expect(heroOf(duo, 'pad-0', 'velitel')).toBe('zogu');
+    expect(heroOf(duo, 'kb-left', 'velitel')).toBe('zogu');
     expect(heroOf(duo, 'kb-right', 'zogu')).toBe('velitel');
   });
 });
