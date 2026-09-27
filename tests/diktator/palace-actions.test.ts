@@ -5,11 +5,12 @@ import { albania } from '../../src/games/diktator/scenario/albania';
 import type { Command, GameState } from '../../src/games/diktator/logic/state';
 import { palaceCommands } from '../../src/games/diktator/logic/palace-actions';
 import { formPlots } from '../../src/games/diktator/logic/plot';
+import { palaceAudience, palaceDay } from './helpers';
 
 describe('palace mode', () => {
   it('newGame with palace starts a palace day; classic mode has none', () => {
     const palace = newGame(albania, 4, undefined, { palace: true }).state;
-    expect(palace.palace?.at).toEqual({ zogu: 'trunni', velitel: 'straznice' });
+    expect(palace.palace?.at).toEqual({ zogu: 'pracovna', velitel: 'straznice' });
     expect(palace.phase.kind).toBe('audience');
     expect(newGame(albania, 4).state.palace).toBeNull();
   });
@@ -39,37 +40,53 @@ function play(s: GameState, ...cmds: Command[]): GameState {
 
 /** A palace game past its first audience, in the day phase. */
 function day(seed = 4): GameState {
-  return play(newGame(albania, seed, undefined, { palace: true }).state, { type: 'answer', answer: 'no' });
+  return palaceDay(seed);
 }
 
 describe('audience in the palace', () => {
-  it('Zogu cannot leave the throne room during the audience; the commander can move', () => {
+  it('opens with Zogu in his study, free to move; the commander too', () => {
     const s = newGame(albania, 4, undefined, { palace: true }).state;
-    expect(() => advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' })).toThrow();
-    const r = advance(albania, s, { type: 'move', hero: 'velitel', dir: 'up' });
-    expect(r.state.palace!.at.velitel).toBe('vyslanci');
-    expect(r.events).toEqual([{ type: 'moved', hero: 'velitel', from: 'straznice', to: 'vyslanci' }]);
-    expect(r.state.palace!.seen.vyslanci).toBe(true);
+    expect(s.palace!.at).toEqual({ zogu: 'pracovna', velitel: 'straznice' });
+    expect(s.phase.kind).toBe('audience');
+    const r = advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' });
+    expect(r.state.palace!.at.zogu).toBe('matka');
   });
 
-  it("Mother's advice about the petition costs Zogu an hour and keeps the audience open", () => {
+  it('answering needs Zogu in the throne room', () => {
     const s = newGame(albania, 4, undefined, { palace: true }).state;
-    const r = advance(albania, s, { type: 'advice' });
+    expect(() => advance(albania, s, { type: 'answer', answer: 'no' })).toThrow();
+    expect(validCommands(albania, s).some((c) => c.type === 'answer')).toBe(false);
+    const there = palaceAudience();
+    expect(validCommands(albania, there).some((c) => c.type === 'answer')).toBe(true);
+    expect(advance(albania, there, { type: 'answer', answer: 'no' }).state.phase.kind).toBe('day');
+  });
+
+  it("Mother's advice about the petition is asked in her room and costs Zogu an hour", () => {
+    const s = newGame(albania, 4, undefined, { palace: true }).state;
+    expect(() => advance(albania, s, { type: 'advice' })).toThrow();
+    const atMother = advance(albania, s, { type: 'move', hero: 'zogu', dir: 'left' }).state;
+    const r = advance(albania, atMother, { type: 'advice' });
     expect(r.state.phase.kind).toBe('audience');
     expect(r.state.palace!.hours.zogu).toBe(2);
     expect(r.events).toEqual([{ type: 'advised', subject: 'petition', id: (s.phase as { petition: string }).petition }]);
   });
 
-  it('Zogu cannot end the day during the audience, nor can anything be sealed then', () => {
+  it('Zogu cannot end his quarter while the petitioner waits; the commander can', () => {
     const s = newGame(albania, 4, undefined, { palace: true }).state;
     expect(() => advance(albania, s, { type: 'endDay', hero: 'zogu' })).toThrow();
-    expect(() => advance(albania, s, { type: 'decide', decision: 'd31', hero: 'zogu' })).toThrow();
-  });
-
-  it('the commander may end his day during the audience', () => {
-    const s = newGame(albania, 4, undefined, { palace: true }).state;
+    expect(palaceCommands(albania, s, 'zogu').some((c) => c.type === 'endDay')).toBe(false);
     const r = advance(albania, s, { type: 'endDay', hero: 'velitel' });
     expect(r.state.palace!.done.velitel).toBe(true);
+    expect(r.state.phase.kind).toBe('audience');
+  });
+
+  it('a decision may be sealed before the audience', () => {
+    let s = newGame(albania, 4, undefined, { palace: true }).state;
+    s = advance(albania, s, { type: 'takeSeal', hero: 'zogu' }).state;
+    const d = palaceCommands(albania, s, 'zogu').find((c) => c.type === 'decide');
+    expect(d).toBeDefined();
+    const r = advance(albania, s, d!);
+    expect(r.state.decisionTaken || r.events.some((e) => e.type === 'decisionUnaffordable')).toBe(true);
     expect(r.state.phase.kind).toBe('audience');
   });
 });
@@ -280,7 +297,7 @@ describe('ending the day', () => {
     s = play(s, { type: 'endDay', hero: 'velitel' });
     if (s.phase.kind === 'audience') {
       expect(s.quarter).toBe(2);
-      expect(s.palace!.at).toEqual({ zogu: 'trunni', velitel: 'straznice' });
+      expect(s.palace!.at).toEqual({ zogu: 'pracovna', velitel: 'straznice' });
       expect(s.palace!.hours).toEqual({ zogu: 3, velitel: 3 });
     } else {
       expect(['revolution', 'ended']).toContain(s.phase.kind);
@@ -295,9 +312,14 @@ describe('ending the day', () => {
 });
 
 describe('palaceCommands', () => {
-  it('during the audience Zogu may only ask for advice; the commander may move and act', () => {
+  it('at the start Zogu has only his exits and the seal in the study; no endDay', () => {
     const s = newGame(albania, 4, undefined, { palace: true }).state;
-    expect(palaceCommands(albania, s, 'zogu')).toEqual([{ type: 'advice' }]);
+    expect(palaceCommands(albania, s, 'zogu')).toEqual([
+      { type: 'move', hero: 'zogu', dir: 'down' },
+      { type: 'move', hero: 'zogu', dir: 'left' },
+      { type: 'move', hero: 'zogu', dir: 'right' },
+      { type: 'takeSeal', hero: 'zogu' },
+    ]);
     expect(palaceCommands(albania, s, 'velitel')).toEqual([
       { type: 'move', hero: 'velitel', dir: 'up' },
       { type: 'move', hero: 'velitel', dir: 'left' },
@@ -325,11 +347,13 @@ describe('palaceCommands', () => {
     expect(cmds[cmds.length - 1]).toEqual({ type: 'endDay', hero: 'zogu' });
   });
 
-  it('validCommands in palace mode lists the answers plus both heroes\' commands', () => {
-    const s = newGame(albania, 4, undefined, { palace: true }).state;
+  it('validCommands in palace mode lists the answers, once Zogu stands in the throne room, plus both heroes\' commands', () => {
+    const start = newGame(albania, 4, undefined, { palace: true }).state;
+    expect(validCommands(albania, start).some((c) => c.type === 'answer')).toBe(false);
+    const s = palaceAudience();
     const cmds = validCommands(albania, s);
     expect(cmds.filter((c) => c.type === 'answer').length).toBeGreaterThanOrEqual(3);
-    expect(cmds).toContainEqual({ type: 'advice' });
+    expect(cmds).toContainEqual({ type: 'move', hero: 'zogu', dir: 'left' });
     expect(cmds).toContainEqual({ type: 'move', hero: 'velitel', dir: 'up' });
     expect(cmds).toContainEqual({ type: 'endDay', hero: 'velitel' });
     expect(cmds).not.toContainEqual({ type: 'endDay', hero: 'zogu' });

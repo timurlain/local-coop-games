@@ -122,6 +122,7 @@ describe('drawHalf and the new room details (canvas smoke test)', () => {
     (globalThis as { Path2D: unknown }).Path2D = FakePath2D;
     try {
       const audience = newGame(albania, 1, undefined, { palace: true }).state;
+      audience.palace!.at.zogu = 'trunni';
       const day = advance(albania, audience, { type: 'answer', answer: 'no' }).state;
       day.palace!.investigated.armada = { kind: 'revolution', ally: 'policie' };
       day.palace!.at.velitel = 'trunni';

@@ -5,9 +5,10 @@ import { albania } from '../../src/games/diktator/scenario/albania';
 import { roomView, stripView } from '../../src/games/diktator/ui/palace-view';
 import { petitionById } from '../../src/games/diktator/logic/audience';
 import { GROUP_LOOK } from '../../src/games/diktator/render/puppet/looks';
+import { palaceDay } from './helpers';
 
 function day(): GameState {
-  return advance(albania, newGame(albania, 4, undefined, { palace: true }).state, { type: 'answer', answer: 'no' }).state;
+  return palaceDay();
 }
 
 describe('roomView', () => {

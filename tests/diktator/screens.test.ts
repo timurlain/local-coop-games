@@ -4,12 +4,13 @@ import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import type { GameEvent, GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { cardsFor, phaseScreen } from '../../src/games/diktator/ui/screens';
+import { palaceDay } from './helpers';
 
 const T = cs.diktator;
 const P = T.palace;
 
 function day(): GameState {
-  return advance(albania, newGame(albania, 4, undefined, { palace: true }).state, { type: 'answer', answer: 'no' }).state;
+  return palaceDay();
 }
 
 describe('cardsFor', () => {

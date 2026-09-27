@@ -113,6 +113,7 @@ export function advance(sc: Scenario, input: GameState, cmd: Command): StepResul
   switch (phase.kind) {
     case 'audience': {
       if (cmd.type !== 'answer') throw invalid();
+      if (s.palace && s.palace.at.zogu !== sc.palace!.throne) throw new Error('answer: Zogu must stand in the throne room');
       if (cmd.answer === 'suggestOther') {
         if (phase.suggested) throw new Error('already suggested another petition');
         const id = suggestOther(sc, s, phase.petition, dice);
@@ -180,11 +181,16 @@ function audienceAnswers(sc: Scenario, s: GameState): Command[] {
  * Every command the UI may offer in the current phase (used by the text UI and the bot test).
  * `chooseAlly` lists every strength group, not only the eligible allies: spec §9 has the ally screen
  * list all six, and picking a hostile one (pop ≤ low) is a valid choice — it takes the "joking" branch.
- * In palace mode the audience and the day list the answers (audience only) and every command of both heroes (`palaceCommands`).
+ * In palace mode the audience and the day list every command of both heroes (`palaceCommands`); during
+ * the audience the answers are offered only once Zogu stands in the throne room.
  */
 export function validCommands(sc: Scenario, s: GameState): Command[] {
   if (s.palace && (s.phase.kind === 'audience' || s.phase.kind === 'day')) {
-    return [...audienceAnswers(sc, s), ...palaceCommands(sc, s, 'zogu'), ...palaceCommands(sc, s, 'velitel')];
+    return [
+      ...(s.palace.at.zogu === sc.palace!.throne ? audienceAnswers(sc, s) : []),
+      ...palaceCommands(sc, s, 'zogu'),
+      ...palaceCommands(sc, s, 'velitel'),
+    ];
   }
   switch (s.phase.kind) {
     case 'audience':

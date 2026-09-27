@@ -4,6 +4,7 @@ import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import type { Command, GameState } from '../../src/games/diktator/logic/state';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { heroLine, replyLines } from '../../src/games/diktator/ui/speech';
+import { palaceAudience, palaceDay } from './helpers';
 
 const T = cs.diktator;
 const S = T.speech;
@@ -13,7 +14,7 @@ function audience(): GameState {
   return newGame(albania, 4, undefined, { palace: true }).state;
 }
 function day(): GameState {
-  return advance(albania, audience(), { type: 'answer', answer: 'no' }).state;
+  return palaceDay();
 }
 function run(s: GameState, cmd: Command, actor: 'zogu' | 'velitel') {
   const r = advance(albania, s, cmd);
@@ -46,7 +47,7 @@ describe('heroLine', () => {
 describe('replyLines', () => {
   it('lets the petitioner answer "yes" with thanks, and captions the money', () => {
     const pet = albania.petitions.find((p) => (p.effects.cost ?? 0) > 0 && (p.effects.cost ?? 0) < 100)!;
-    const s = audience();
+    const s = palaceAudience();
     s.phase = { kind: 'audience', petition: pet.id, suggested: false };
     const { replies } = run(s, { type: 'answer', answer: 'yes' }, 'zogu');
     expect(replies.actor[0]).toEqual({ speaker: { kind: 'petitioner' }, text: S.thanks('Excelence') });
@@ -55,7 +56,7 @@ describe('replyLines', () => {
   });
 
   it('lets the petitioner complain on "no"', () => {
-    const { replies } = run(audience(), { type: 'answer', answer: 'no' }, 'zogu');
+    const { replies } = run(palaceAudience(), { type: 'answer', answer: 'no' }, 'zogu');
     expect(replies.actor[0]).toEqual({ speaker: { kind: 'petitioner' }, text: S.refused });
   });
 
@@ -90,18 +91,18 @@ describe('replyLines', () => {
     expect(replies.other).toEqual([P.heroDone('Vlček')]);
   });
 
-  it('sends Mother’s advice as a caption, without doubling "Matka"', () => {
-    const { replies } = run(audience(), { type: 'advice' }, 'zogu');
+  it("gives Mother's advice about the petition in person, since asking it now needs her room", () => {
+    const atMother = advance(albania, audience(), { type: 'move', hero: 'zogu', dir: 'left' }).state;
+    const { replies } = run(atMother, { type: 'advice' }, 'zogu');
     expect(replies.actor.length).toBeGreaterThan(0);
     for (const l of replies.actor) {
-      expect(l.speaker).toEqual({ kind: 'caption' });
-      expect(l.text.startsWith('Vzkaz od matky — ')).toBe(true);
-      expect(l.text).not.toContain('Matka vzkazuje');
+      expect(l.speaker).toEqual({ kind: 'resident' });
+      expect(l.text.startsWith('Matka o ')).toBe(true);
     }
   });
 
   it('captions a forced no (no money), then the petitioner complains as after a plain no', () => {
-    const s = audience();
+    const s = palaceAudience();
     s.phase = { kind: 'audience', petition: 'p08', suggested: false };
     s.treasury = 50;
     const { replies } = run(s, { type: 'answer', answer: 'yes' }, 'zogu');

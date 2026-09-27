@@ -66,10 +66,10 @@ describe('room lookups', () => {
 describe('newPalaceDay', () => {
   it('starts both heroes in their rooms with full hours, the seal in the study', () => {
     const p = newPalaceDay(L);
-    expect(p.at).toEqual({ zogu: 'trunni', velitel: 'straznice' });
+    expect(p.at).toEqual({ zogu: 'pracovna', velitel: 'straznice' });
     expect(p.hours).toEqual({ zogu: 3, velitel: 3 });
     expect(p.seal).toBeNull();
-    expect(p.seen).toEqual({ trunni: true, straznice: true });
+    expect(p.seen).toEqual({ pracovna: true, straznice: true });
     expect(p.seenPop).toEqual({});
     expect(p.investigated).toEqual({});
     expect(p.report).toBeNull();

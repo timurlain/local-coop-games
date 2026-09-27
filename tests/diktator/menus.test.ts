@@ -6,6 +6,7 @@ import type { GameState } from '../../src/games/diktator/logic/state';
 import { petitionById } from '../../src/games/diktator/logic/audience';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { heroMenu } from '../../src/games/diktator/ui/menus';
+import { palaceAudience, palaceDay } from './helpers';
 
 const T = cs.diktator;
 const P = T.palace;
@@ -14,7 +15,7 @@ function audience(): GameState {
   return newGame(albania, 4, undefined, { palace: true }).state;
 }
 function day(): GameState {
-  return advance(albania, audience(), { type: 'answer', answer: 'no' }).state;
+  return palaceDay();
 }
 function walk(s: GameState, hero: Hero, dirs: readonly Direction[]): GameState {
   for (const dir of dirs) s = advance(albania, s, { type: 'move', hero, dir }).state;
@@ -22,8 +23,8 @@ function walk(s: GameState, hero: Hero, dirs: readonly Direction[]): GameState {
 }
 
 describe('heroMenu — audience', () => {
-  it('keeps Zogu in a modal audience with the answers first, money on "Ano", advice last', () => {
-    const s = audience();
+  it('keeps Zogu in a modal audience with the answers first, money on "Ano", once he stands in the throne room', () => {
+    const s = palaceAudience();
     const m = heroMenu(albania, s, 'zogu');
     const pet = petitionById(albania, (s.phase as { petition: string }).petition);
     expect(m.modal).toBe(true);
@@ -31,7 +32,12 @@ describe('heroMenu — audience', () => {
     expect(m.body[0]).toContain(pet.title);
     expect(m.items.slice(0, 3).map((i) => i.label)).toEqual([T.yes, T.no, T.goAway]);
     expect(m.items[0].detail.startsWith('Peníze: ')).toBe(true);
-    expect(m.items[m.items.length - 1].label).toBe(P.adviceAudience);
+  });
+
+  it("offers advice about the petition once Zogu stands in Mother's room", () => {
+    const atMother = advance(albania, audience(), { type: 'move', hero: 'zogu', dir: 'left' }).state;
+    const m = heroMenu(albania, atMother, 'zogu');
+    expect(m.items.some((i) => i.label === P.adviceAudience)).toBe(true);
   });
 
   it('lets the commander act freely during the audience', () => {

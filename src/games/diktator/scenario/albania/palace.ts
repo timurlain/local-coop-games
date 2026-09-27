@@ -26,7 +26,7 @@ export const PALACE: PalaceLayout = {
     straznice: 'Strážnice',
     pokladna: 'Pokladna',
   },
-  start: { zogu: 'trunni', velitel: 'straznice' },
+  start: { zogu: 'pracovna', velitel: 'straznice' },
   throne: 'trunni',
   study: 'pracovna',
   mother: 'matka',

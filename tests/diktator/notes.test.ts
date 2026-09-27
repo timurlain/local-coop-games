@@ -5,6 +5,7 @@ import type { GameState, PoliceSnapshot } from '../../src/games/diktator/logic/s
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { notesFor } from '../../src/games/diktator/ui/notes';
 import { heroHud, topHud } from '../../src/games/diktator/ui/hud';
+import { palaceDay } from './helpers';
 
 const T = cs.diktator;
 const P = T.palace;
@@ -13,7 +14,7 @@ function audience(): GameState {
   return newGame(albania, 4, undefined, { palace: true }).state;
 }
 function day(): GameState {
-  return advance(albania, audience(), { type: 'answer', answer: 'no' }).state;
+  return palaceDay();
 }
 
 describe('notesFor', () => {

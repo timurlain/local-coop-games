@@ -6,6 +6,7 @@ import { roomView } from '../../src/games/diktator/ui/palace-view';
 import { heroMenu } from '../../src/games/diktator/ui/menus';
 import { anchorFor, bubblesFor, stageView } from '../../src/games/diktator/ui/bubbles';
 import { QUIET, say } from '../../src/games/diktator/ui/dialogue';
+import { palaceAudience, palaceDay } from './helpers';
 
 const P = cs.diktator.palace;
 
@@ -13,7 +14,7 @@ const audience = () => newGame(albania, 4, undefined, { palace: true }).state;
 
 describe('anchorFor', () => {
   it('puts a hero’s bubble above his head, own hero in front', () => {
-    const s = audience();
+    const s = palaceAudience();
     s.palace!.at.velitel = 'trunni';
     const v = roomView(albania, s, 'trunni');
     expect(anchorFor({ kind: 'hero', hero: 'zogu' }, v, 'zogu')).toEqual({ x: 90, y: 69 });
@@ -35,7 +36,7 @@ describe('anchorFor', () => {
 
 describe('stageView', () => {
   it('keeps the petitioner while one of his lines still waits, in the same room', () => {
-    const before = audience();
+    const before = palaceAudience();
     const after = advance(albania, before, { type: 'answer', answer: 'yes' }).state;
     const prev = roomView(albania, before, 'trunni');
     const view = roomView(albania, after, 'trunni');
@@ -44,7 +45,7 @@ describe('stageView', () => {
   });
 
   it('drops the petitioner once no line of his waits any more', () => {
-    const before = audience();
+    const before = palaceAudience();
     const after = advance(albania, before, { type: 'answer', answer: 'yes' }).state;
     const prev = roomView(albania, before, 'trunni');
     const view = roomView(albania, after, 'trunni');
@@ -52,7 +53,7 @@ describe('stageView', () => {
   });
 
   it('does not carry the petitioner into another room', () => {
-    const before = audience();
+    const before = palaceAudience();
     const after = advance(albania, before, { type: 'answer', answer: 'yes' }).state;
     const prev = roomView(albania, before, 'trunni');
     const view = roomView(albania, after, 'armada');
@@ -63,7 +64,7 @@ describe('stageView', () => {
 
 describe('bubblesFor', () => {
   it('shows Zogu’s audience as a choice bubble over him', () => {
-    const s = audience();
+    const s = palaceAudience();
     const b = bubblesFor(QUIET, [], heroMenu(albania, s, 'zogu'), roomView(albania, s, 'trunni'), 'zogu');
     expect(b).toHaveLength(1);
     expect(b[0].kind).toBe('choice');
@@ -75,7 +76,7 @@ describe('bubblesFor', () => {
   });
 
   it('gives the choice bubble the full width when there is no petitioner to clear', () => {
-    const s = advance(albania, audience(), { type: 'answer', answer: 'no' }).state;
+    const s = palaceDay();
     let s2 = s;
     for (const dir of ['down', 'left', 'left'] as const) s2 = advance(albania, s2, { type: 'move', hero: 'zogu', dir }).state;
     const room = s2.palace!.at.zogu;
@@ -92,7 +93,7 @@ describe('bubblesFor', () => {
   });
 
   it('shows the first waiting line instead of the choice, with a "more" mark, plus the captions', () => {
-    const s = audience();
+    const s = palaceAudience();
     const d = say(QUIET, [
       { speaker: { kind: 'hero', hero: 'zogu' }, text: 'Ano, svoluji.' },
       { speaker: { kind: 'caption' }, text: 'Peníze: stojí 10 tis.' },
@@ -104,7 +105,7 @@ describe('bubblesFor', () => {
   });
 
   it('shows no choice bubble for a closed, non-modal menu', () => {
-    const s = advance(albania, audience(), { type: 'answer', answer: 'no' }).state;
+    const s = palaceDay();
     expect(bubblesFor(QUIET, [], heroMenu(albania, s, 'zogu'), roomView(albania, s, 'trunni'), 'zogu')).toEqual([]);
   });
 });

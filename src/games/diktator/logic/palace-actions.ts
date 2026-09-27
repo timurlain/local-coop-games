@@ -69,7 +69,11 @@ function requireHero(cmd: Command, hero: Hero | undefined): Hero {
 
 /**
  * Applies one palace command in the audience or day phase (spec §5, rules 1–8 of plan 2a).
- * Throws on anything the rules do not allow. The caller starts the evening when both heroes are done.
+ * Zogu starts each quarter in his study and may move and act freely while the petitioner waits
+ * in the throne room; only answering the petition and ending his quarter need the audience to be over
+ * (answering also needs him standing in the throne room; enforced in `turn.ts`).
+ * Advice about the petition itself is asked in Mother's room. Throws on anything the rules do not
+ * allow. The caller starts the evening when both heroes are done.
  */
 export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dice: Dice, events: GameEvent[]): void {
   const p = s.palace;
@@ -79,7 +83,6 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
 
   switch (cmd.type) {
     case 'move': {
-      if (inAudience && cmd.hero === 'zogu') fail(cmd, 'the audience comes first');
       if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
       const from = p.at[cmd.hero];
       const to = neighbour(L, from, cmd.dir);
@@ -108,7 +111,6 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       return;
     }
     case 'talk': {
-      if (inAudience) fail(cmd, 'the audience comes first');
       const groups = groupsInRoom(L, p.at.zogu);
       if (groups.length === 0) fail(cmd, 'nobody to talk to here');
       spendHour(p, 'zogu', cmd);
@@ -121,12 +123,12 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
     case 'advice': {
       if (cmd.decision === undefined) {
         if (s.phase.kind !== 'audience') fail(cmd, 'advice without a decision is about the petition');
+        if (p.at.zogu !== L.mother) fail(cmd, "advice about the petition is asked in Mother's room");
         const petition = s.phase.petition;
         spendHour(p, 'zogu', cmd);
         events.push({ type: 'advised', subject: 'petition', id: petition });
         return;
       }
-      if (inAudience) fail(cmd, 'the audience comes first');
       if (p.at.zogu !== L.mother) fail(cmd, "advice is given in Mother's room");
       if (!availableDecisions(sc, s).some((d) => d.id === cmd.decision)) fail(cmd, 'no such decision on the menu');
       spendHour(p, 'zogu', cmd);
@@ -134,7 +136,6 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       return;
     }
     case 'envoys': {
-      if (inAudience) fail(cmd, 'the audience comes first');
       if (p.at.zogu !== L.envoys) fail(cmd, "the envoys wait in their salon");
       spendHour(p, 'zogu', cmd);
       const offers = {} as Record<LenderId, number | null>;
@@ -181,7 +182,6 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
       return;
     }
     case 'decide': {
-      if (inAudience) fail(cmd, 'the audience comes first');
       const hero = requireHero(cmd, cmd.hero);
       if (p.done[hero]) fail(cmd, `${hero} has ended the day`);
       if (p.seal !== hero) fail(cmd, `${hero} does not carry the seal`);
@@ -191,7 +191,7 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
     }
     case 'endDay': {
       const hero = requireHero(cmd, cmd.hero);
-      if (inAudience && hero !== 'velitel') fail(cmd, 'the audience comes first');
+      if (inAudience && hero === 'zogu') fail(cmd, 'the petitioner still waits in the throne room');
       if (p.done[hero]) fail(cmd, `${hero} has already ended the day`);
       p.done[hero] = true;
       if (p.seal === hero) {
@@ -206,7 +206,12 @@ export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dic
   }
 }
 
-/** Every palace command `hero` may give now (the UI's menus and the bot use it). */
+/**
+ * Every palace command `hero` may give now (the UI's menus and the bot use it). During the audience
+ * Zogu may move and act exactly as in the day, except he cannot end his quarter until the petitioner
+ * is answered (which needs him in the throne room, checked in `turn.ts`); the commander may end his
+ * quarter at any time.
+ */
 export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[] {
   const p = s.palace;
   const L = sc.palace;
@@ -215,15 +220,16 @@ export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[
   const room = p.at[hero];
   const hasHour = p.hours[hero] >= 1;
   const out: Command[] = [];
-  if (!(audience && hero === 'zogu')) for (const dir of exits(L, room)) out.push({ type: 'move', hero, dir });
+  for (const dir of exits(L, room)) out.push({ type: 'move', hero, dir });
   if (p.seal === null && room === L.study) out.push({ type: 'takeSeal', hero });
   if (p.seal === hero && p.at[other(hero)] === room && !p.done[other(hero)]) out.push({ type: 'giveSeal', hero });
   if (hero === 'zogu') {
-    if (audience) {
-      if (hasHour) out.push({ type: 'advice' });
-    } else if (hasHour) {
+    if (hasHour) {
       if (groupsInRoom(L, room).length > 0) out.push({ type: 'talk' });
-      if (room === L.mother) for (const d of availableDecisions(sc, s)) out.push({ type: 'advice', decision: d.id });
+      if (room === L.mother) {
+        if (audience) out.push({ type: 'advice' });
+        for (const d of availableDecisions(sc, s)) out.push({ type: 'advice', decision: d.id });
+      }
       if (room === L.envoys) out.push({ type: 'envoys' });
     }
   } else if (hasHour) {
@@ -231,13 +237,9 @@ export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[
     if (room === L.guardroom) out.push({ type: 'policeReport', hero });
     if (room === p.at.zogu) out.push({ type: 'guard' });
   }
-  if (!audience) {
-    if (p.seal === hero && !s.decisionTaken) {
-      for (const d of availableDecisions(sc, s)) if (decisionRoom(L, d.id) === room) out.push({ type: 'decide', hero, decision: d.id });
-    }
-    out.push({ type: 'endDay', hero });
-  } else if (hero === 'velitel') {
-    out.push({ type: 'endDay', hero });
+  if (p.seal === hero && !s.decisionTaken) {
+    for (const d of availableDecisions(sc, s)) if (decisionRoom(L, d.id) === room) out.push({ type: 'decide', hero, decision: d.id });
   }
+  if (!(audience && hero === 'zogu')) out.push({ type: 'endDay', hero });
   return out;
 }
