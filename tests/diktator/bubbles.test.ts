@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { cs } from '../../src/shared/i18n/cs';
 import { advance, newGame } from '../../src/games/diktator/logic/turn';
 import { albania } from '../../src/games/diktator/scenario/albania';
 import { roomView } from '../../src/games/diktator/ui/palace-view';
 import { heroMenu } from '../../src/games/diktator/ui/menus';
-import { anchorFor, bubblesFor } from '../../src/games/diktator/ui/bubbles';
+import { anchorFor, bubblesFor, stageView } from '../../src/games/diktator/ui/bubbles';
 import { QUIET, say } from '../../src/games/diktator/ui/dialogue';
+
+const P = cs.diktator.palace;
 
 const audience = () => newGame(albania, 4, undefined, { palace: true }).state;
 
@@ -30,6 +33,34 @@ describe('anchorFor', () => {
   });
 });
 
+describe('stageView', () => {
+  it('keeps the petitioner while one of his lines still waits, in the same room', () => {
+    const before = audience();
+    const after = advance(albania, before, { type: 'answer', answer: 'yes' }).state;
+    const prev = roomView(albania, before, 'trunni');
+    const view = roomView(albania, after, 'trunni');
+    const waiting = say(QUIET, [{ speaker: { kind: 'petitioner' }, text: 'Děkujeme!' }]);
+    expect(stageView(view, prev, waiting).petitioner).toBe(prev.petitioner);
+  });
+
+  it('drops the petitioner once no line of his waits any more', () => {
+    const before = audience();
+    const after = advance(albania, before, { type: 'answer', answer: 'yes' }).state;
+    const prev = roomView(albania, before, 'trunni');
+    const view = roomView(albania, after, 'trunni');
+    expect(stageView(view, prev, QUIET).petitioner).toBeNull();
+  });
+
+  it('does not carry the petitioner into another room', () => {
+    const before = audience();
+    const after = advance(albania, before, { type: 'answer', answer: 'yes' }).state;
+    const prev = roomView(albania, before, 'trunni');
+    const view = roomView(albania, after, 'armada');
+    const waiting = say(QUIET, [{ speaker: { kind: 'petitioner' }, text: 'Děkujeme!' }]);
+    expect(stageView(view, prev, waiting).petitioner).toBeNull();
+  });
+});
+
 describe('bubblesFor', () => {
   it('shows Zogu’s audience as a choice bubble over him', () => {
     const s = audience();
@@ -39,7 +70,25 @@ describe('bubblesFor', () => {
     if (b[0].kind === 'choice') {
       expect(b[0].anchor).toEqual({ x: 90, y: 69 });
       expect(b[0].items.length).toBeGreaterThan(2);
+      expect(b[0].right).toBe(312);
     }
+  });
+
+  it('gives the choice bubble the full width when there is no petitioner to clear', () => {
+    const s = advance(albania, audience(), { type: 'answer', answer: 'no' }).state;
+    let s2 = s;
+    for (const dir of ['down', 'left', 'left'] as const) s2 = advance(albania, s2, { type: 'move', hero: 'zogu', dir }).state;
+    const room = s2.palace!.at.zogu;
+    const open = { ui: { open: true, focus: 0 }, queue: [] };
+    const b = bubblesFor(open, [], heroMenu(albania, s2, 'zogu'), roomView(albania, s2, room), 'zogu');
+    expect(b).toHaveLength(1);
+    if (b[0].kind === 'choice') expect(b[0].right).toBe(470);
+  });
+
+  it('tells a hero who has ended his day that the other still plays', () => {
+    const s = advance(albania, audience(), { type: 'endDay', hero: 'velitel' }).state;
+    const b = bubblesFor(QUIET, [], heroMenu(albania, s, 'velitel'), roomView(albania, s, s.palace!.at.velitel), 'velitel');
+    expect(b.some((x) => x.kind === 'caption' && x.text === P.waiting('Zogu'))).toBe(true);
   });
 
   it('shows the first waiting line instead of the choice, with a "more" mark, plus the captions', () => {

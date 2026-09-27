@@ -8,6 +8,12 @@ import type { HeroMenu } from './menus';
 import type { RoomView } from './palace-view';
 import type { Speaker } from './speech';
 
+/** The view to draw and anchor bubbles on: the petitioner stays while a line of his still waits in this half. */
+export function stageView(view: RoomView, previous: RoomView | null, d: Dialogue): RoomView {
+  if (view.petitioner || !previous?.petitioner || previous.id !== view.id) return view;
+  return d.queue.some((l) => l.speaker.kind === 'petitioner') ? { ...view, petitioner: previous.petitioner } : view;
+}
+
 /** Puppet height on stage (render/rooms/scene.ts scales every figure to 95 units). */
 const FIGURE = 95;
 const GAP = 4;
@@ -22,6 +28,8 @@ export type Bubble =
   | {
       readonly kind: 'choice';
       readonly anchor: Anchor;
+      /** Stage x the bubble must not cross — clears the petitioner when he is on stage. */
+      readonly right: number;
       readonly title: string;
       readonly body: readonly string[];
       readonly items: readonly { readonly label: string; readonly detail: string }[];
@@ -68,11 +76,14 @@ export function bubblesFor(d: Dialogue, captions: readonly string[], menu: HeroM
     out.push({
       kind: 'choice',
       anchor: anchorFor({ kind: 'hero', hero: own }, view, own) ?? { x: 90, y: head() },
+      right: view.petitioner ? 312 : 470,
       title: menu.title,
       body: menu.body,
       items: menu.items.map((i) => ({ label: i.label, detail: i.detail })),
       focus: d.ui.focus,
     });
+  } else if (menu.items.length === 0 && menu.body.length > 0) {
+    out.push({ kind: 'caption', text: menu.body[0], more: false });
   }
   for (const text of captions) out.push({ kind: 'caption', text, more: false });
   return out;

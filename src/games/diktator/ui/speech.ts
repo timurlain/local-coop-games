@@ -71,7 +71,7 @@ function speakerOf(sc: Scenario, after: GameState, actor: Hero, e: GameEvent): S
     case 'advised': return after.palace && sc.palace && after.palace.at[actor] === sc.palace.mother ? { kind: 'resident' } : { kind: 'caption' };
     case 'policeReport':
     case 'policeReportRefused': return { kind: 'group', group: 'policie' };
-    case 'forcedNo': return { kind: 'petitioner' };
+    case 'forcedNo': return { kind: 'caption' };
     default: return { kind: 'caption' };
   }
 }
@@ -104,7 +104,10 @@ export function replyLines(sc: Scenario, before: GameState, after: GameState, ev
       continue;
     }
     if (e.type === 'policeReport') {
-      mine.push({ speaker: speakerOf(sc, after, actor, e), text: notes.map((n) => n.text).join('\n') });
+      const texts = notes.map((n) => n.text);
+      const limits = texts.pop()!;
+      mine.push({ speaker: { kind: 'group', group: 'policie' }, text: texts.join('\n') });
+      mine.push({ speaker: { kind: 'group', group: 'policie' }, text: limits });
       continue;
     }
     for (const n of notes) {

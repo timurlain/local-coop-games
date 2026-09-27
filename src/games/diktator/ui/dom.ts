@@ -79,6 +79,8 @@ export interface HalfModel {
   readonly hud: HeroHud;
   /** A line is waiting in this half. */
   readonly talking: boolean;
+  /** The choice bubble is open (menu open or modal). */
+  readonly open: boolean;
   /** Solo play: this half is not the one being steered. */
   readonly inactive: boolean;
   readonly solo: boolean;
@@ -90,7 +92,7 @@ export function renderHalf(hero: Hero, m: HalfModel): void {
   const hud = [m.hud.name, m.hud.room, `${P.hours} ${m.hud.hours}`];
   if (m.hud.seal) hud.push(`✉ ${P.sealMark}`);
   $('.hud', root).replaceChildren(...hud.map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
-  const hint = m.talking ? P.hintTalk : P.hintClosed;
+  const hint = m.talking ? P.hintTalk : m.open ? P.hintOpen : P.hintClosed;
   $('.hint', root).textContent = m.solo ? `${hint} · ${P.soloHint}` : hint;
 }
 
@@ -106,41 +108,54 @@ export function renderBubbles(hero: Hero, bubbles: readonly Bubble[], onChoose: 
   const px = (x: number) => ox + (x / STAGE_W) * cw;
   const py = (y: number) => oy + (y / STAGE_H) * ch;
   layer.style.fontSize = `${Math.max(13, Math.min(26, ch * 0.075))}px`;
-  layer.replaceChildren(
-    ...bubbles.map((b) => {
-      const el = document.createElement('div');
-      el.className = `bubble ${b.kind}`;
-      if (b.kind === 'caption') {
-        el.style.left = `${ox + cw * 0.01}px`;
-        el.style.top = `${oy + ch * 0.02}px`;
-        el.textContent = b.text;
-      } else if (b.kind === 'speech') {
-        const left = b.anchor.x < 140 ? -0.2 : b.anchor.x > 340 ? -0.8 : -0.5;
-        el.style.left = `${px(b.anchor.x)}px`;
-        el.style.bottom = `${box.clientHeight - py(b.anchor.y) + 12}px`;
-        el.style.transform = `translateX(${left * 100}%)`;
-        el.style.setProperty('--tail', `${-left * 100}%`);
-        el.textContent = b.text;
-      } else {
-        el.style.left = `${px(b.anchor.x + 26)}px`;
-        el.style.top = `${oy + ch * 0.03}px`;
-        el.style.maxHeight = `${ch * 0.94}px`;
-        const h = document.createElement('h3');
-        h.textContent = b.title;
-        el.append(h, ...b.body.map(para));
-        const ol = document.createElement('ol');
-        menuList(ol, b.items, b.focus, onChoose);
-        el.append(ol);
-      }
-      if (b.kind !== 'choice' && b.more) {
-        const m = document.createElement('span');
-        m.className = 'more';
-        m.textContent = T.speech.more;
-        el.prepend(m);
-      }
-      return el;
-    }),
-  );
+  layer.replaceChildren();
+  let capTop = oy + ch * 0.02;
+  for (const b of bubbles) {
+    const el = document.createElement('div');
+    el.className = `bubble ${b.kind}`;
+    if (b.kind === 'choice') {
+      el.style.left = `${px(b.anchor.x + 26)}px`;
+      el.style.top = `${oy + ch * 0.03}px`;
+      el.style.maxHeight = `${ch * 0.94}px`;
+      el.style.maxWidth = `${px(b.right) - px(b.anchor.x + 26)}px`;
+      const h = document.createElement('h3');
+      h.textContent = b.title;
+      el.append(h, ...b.body.map(para));
+      const ol = document.createElement('ol');
+      menuList(ol, b.items, b.focus, onChoose);
+      el.append(ol);
+      layer.append(el);
+      continue;
+    }
+    el.textContent = b.text;
+    if (b.more) {
+      const m = document.createElement('span');
+      m.className = 'more';
+      m.textContent = T.speech.more;
+      el.prepend(m);
+    }
+    if (b.kind === 'caption') {
+      el.style.left = `${ox + cw * 0.01}px`;
+      el.style.top = `${capTop}px`;
+      layer.append(el);
+      capTop += el.offsetHeight + 4;
+    } else {
+      el.style.left = '0';
+      el.style.top = '0';
+      el.style.maxWidth = `${cw * 0.6}px`;
+      const headY = py(b.anchor.y);
+      el.style.maxHeight = `${Math.max(40, headY - 14 - (oy + 4))}px`;
+      el.style.overflowY = 'auto';
+      layer.append(el);
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const ax = px(b.anchor.x);
+      const left = Math.min(Math.max(ax - w / 2, ox + 4), ox + cw - w - 4);
+      el.style.left = `${left}px`;
+      el.style.top = `${Math.max(oy + 4, headY - 14 - h)}px`;
+      el.style.setProperty('--tail', `${Math.min(Math.max(ax - left, 16), w - 16)}px`);
+    }
+  }
 }
 
 export interface OverlayModel {

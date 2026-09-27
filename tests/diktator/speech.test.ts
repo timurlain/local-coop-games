@@ -77,16 +77,36 @@ describe('replyLines', () => {
     ]);
   });
 
-  it('lets the gendarme read the whole police report in one bubble', () => {
+  it('lets the gendarme read the police report as two waiting lines', () => {
     const { replies } = run(day(), { type: 'policeReport', hero: 'velitel' }, 'velitel');
-    expect(replies.actor).toHaveLength(1);
+    expect(replies.actor).toHaveLength(2);
     expect(replies.actor[0].speaker).toEqual({ kind: 'group', group: 'policie' });
+    expect(replies.actor[1].speaker).toEqual({ kind: 'group', group: 'policie' });
   });
 
   it('tells the other half, as a caption, that a hero has finished; the actor said it himself', () => {
     const { replies } = run(audience(), { type: 'endDay', hero: 'velitel' }, 'velitel');
     expect(replies.actor).toEqual([]);
     expect(replies.other).toEqual([P.heroDone('Kovář')]);
+  });
+
+  it('sends Mother’s advice as a caption, without doubling "Matka"', () => {
+    const { replies } = run(audience(), { type: 'advice' }, 'zogu');
+    expect(replies.actor.length).toBeGreaterThan(0);
+    for (const l of replies.actor) {
+      expect(l.speaker).toEqual({ kind: 'caption' });
+      expect(l.text.startsWith('Vzkaz od matky — ')).toBe(true);
+      expect(l.text).not.toContain('Matka vzkazuje');
+    }
+  });
+
+  it('has the petitioner stay a caption for a forced no, not speak as himself', () => {
+    const s = audience();
+    s.phase = { kind: 'audience', petition: 'p08', suggested: false };
+    s.treasury = 50;
+    const { replies } = run(s, { type: 'answer', answer: 'yes' }, 'zogu');
+    expect(replies.actor.length).toBeGreaterThan(0);
+    expect(replies.actor.every((l) => l.speaker.kind === 'caption')).toBe(true);
   });
 
   it('shows the seal changing hands to both halves', () => {
