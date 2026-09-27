@@ -7,6 +7,7 @@ import type { Direction, Hero } from '../logic/palace';
 import type { Command } from '../logic/state';
 
 const P = cs.diktator.palace;
+const M = cs.diktator.pochod;
 
 export type Intent =
   | { readonly kind: 'dir'; readonly dir: Direction }
@@ -134,5 +135,13 @@ export function keysFor(d: DeviceId | null): string {
   if (d === 'kb-left') return P.keys['kb-left'];
   if (d === 'kb-right') return P.keys['kb-right'];
   if (d?.startsWith('pad-')) return P.keys.pad;
+  return '';
+}
+
+/** As `keysFor`, but the march's own keys (fix wave, item 1): F/Enter negotiate or strike, not the palace's seal. */
+export function marchKeysFor(d: DeviceId | null): string {
+  if (d === 'kb-left') return M.keys['kb-left'];
+  if (d === 'kb-right') return M.keys['kb-right'];
+  if (d?.startsWith('pad-')) return M.keys.pad;
   return '';
 }

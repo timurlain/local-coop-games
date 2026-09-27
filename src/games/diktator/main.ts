@@ -30,7 +30,7 @@ import type { MarchResult } from './minigames/march/state';
 import { marchCardLines } from './minigames/march/text';
 import { ALBANIA_MARCH } from './scenario/albania/march-map';
 import { bubblesFor, stageView } from './ui/bubbles';
-import { actionKeyOf, CLOSED, clampFocus, heroOf, isSolo, join, keysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
+import { actionKeyOf, CLOSED, clampFocus, heroOf, isSolo, join, keysFor, marchKeysFor, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
 import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
 import {
   arenaCanvas, fitArena, fitStage, renderArenaCard, renderBubbles, renderDossier, renderHalf, renderHourglasses, renderOverlay,
@@ -197,6 +197,14 @@ function holdAll(): void {
 
 // ---------- starting and leaving ----------
 
+/** Drops whatever palace `GameState` exists, without touching the title's seats (fix wave, item 6): shared by
+ * `toTitle` and `startMarch`, so a march started from the end screen leaves no dead game behind. */
+function leaveGame(): void {
+  file = null;
+  halves = null;
+  cards = [];
+}
+
 function begin(f: SaveFile, first: readonly GameEvent[]): void {
   file = f;
   saveJson(SAVE_KEY, file);
@@ -233,6 +241,7 @@ function startNew(seed = gameSeed(), regime?: StartingRegime): void {
 
 /** "Nová hra": the march in the arena, faded in over the title. DEV `?march=short` starts near Krujë on 22 December. */
 function startMarch(): void {
+  leaveGame();
   const seed = gameSeed();
   const dev = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('march') : null;
   const opts: MarchOptions = dev === 'short' ? { startAt: [22, 26], startT: 9 * 22 } : {};
@@ -322,8 +331,8 @@ function marchCardModel(m: MarchSession): ArenaCardModel | null {
           M.intro,
           M.howTo,
           ...(isSolo(seats)
-            ? [keysFor(seats.zogu ?? seats.velitel)]
-            : HEROES.map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`)),
+            ? [marchKeysFor(seats.zogu ?? seats.velitel), M.keys.solo]
+            : HEROES.map((h) => `${T.heroes[h]}: ${marchKeysFor(seats[h])}`)),
         ],
         note: { title: M.historyTitle, text: M.historyStart },
         button: M.start,
@@ -355,9 +364,7 @@ function retry(): void {
 
 function toTitle(): void {
   if (file) saveJson(SAVE_KEY, file);
-  file = null;
-  halves = null;
-  cards = [];
+  leaveGame();
   seats = NO_SEATS;
   overlayUi = CLOSED;
   screen = 'title';
@@ -810,7 +817,7 @@ function pauseOptions(): { label: string; run: () => void }[] {
         }
       },
     },
-    { label: P.pause.menu, run: toTitle },
+    { label: pausedFrom === 'march' || march !== null ? M.pauseMenu : P.pause.menu, run: toTitle },
     effectsVolumeOption(),
   ];
 }
@@ -886,9 +893,11 @@ function overlayModel(): OverlayModel | null {
     };
   }
   if (screen === 'pause') {
+    const fromMarch = pausedFrom === 'march' || march !== null;
+    const keysForSeat = fromMarch ? marchKeysFor : keysFor;
     const pauseLines = isSolo(seats)
-      ? HEROES.map((h) => `${T.heroes[h]}: ${keysFor(seats.zogu ?? seats.velitel)}`)
-      : HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`);
+      ? [...HEROES.map((h) => `${T.heroes[h]}: ${keysForSeat(seats.zogu ?? seats.velitel)}`), ...(fromMarch ? [M.keys.solo] : [])]
+      : HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysForSeat(seats[h])}`);
     return { title: pauseReason, lines: pauseLines, options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
   }
   if (screen === 'arena' || screen === 'march') return null;

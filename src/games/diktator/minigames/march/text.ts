@@ -35,7 +35,6 @@ export function marchToast(e: MarchEvent, s: MarchState): string | null {
   switch (e.type) {
     case 'won': return P.won[s.places[e.place].def.id];
     case 'refused': return e.reason === 'noGold' ? P.noGold : P.locked;
-    case 'caught': return P.caught;
     case 'cache': return P.cache;
     default: return null;
   }

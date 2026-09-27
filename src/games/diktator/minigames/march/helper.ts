@@ -4,6 +4,7 @@
 
 import { other, type Hero } from '../../logic/palace';
 import { targetable } from './foes';
+import { barracksLocked, zoguPlace } from './places';
 import { MARCH } from './rules';
 import { dist, type Foe, type MarchInput, type MarchState, type Point } from './state';
 
@@ -24,7 +25,20 @@ export function helperInput(s: MarchState, hero: Hero): MarchInput {
       threat = f;
     }
   }
-  const move = threat ? towards(me, threat) : follow;
-  const inReach = s.foes.some((f) => targetable(f) && f.mode !== 'leaving' && dist(f, me) <= MARCH.blowReach);
+  // Second priority (after intercepting a chaser): Zogu waiting at a locked barracks — knock its gate guards down.
+  let gate: Foe | null = null;
+  if (!threat) {
+    const i = zoguPlace(s);
+    if (i >= 0 && s.places[i].def.kind === 'barracks' && barracksLocked(s, i)) {
+      for (const f of s.foes) {
+        if (f.kind === 'guard' && f.place === i && (f.mode === 'post' || f.mode === 'stunned') && (!gate || dist(f, me) < dist(gate, me))) {
+          gate = f;
+        }
+      }
+    }
+  }
+  const target = threat ?? gate;
+  const move = target ? towards(me, target) : follow;
+  const inReach = s.foes.some((f) => targetable(f) && dist(f, me) <= MARCH.blowReach);
   return { ...move, action: inReach && s.now >= me.cooldownUntil, held: false };
 }

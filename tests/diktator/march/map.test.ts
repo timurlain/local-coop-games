@@ -2,9 +2,27 @@ import { describe, expect, it } from 'vitest';
 import {
   mapHeight, mapWidth, passable, reachableTiles, speedAt, terrainAt, tileCentre, TERRAINS, worldToAtlas, type TilePos,
 } from '../../../src/games/diktator/minigames/march/map';
+import { MARCH } from '../../../src/games/diktator/minigames/march/rules';
 import { ALBANIA_MARCH as M } from '../../../src/games/diktator/scenario/albania/march-map';
 
 const key = (at: TilePos) => at[1] * M.cols + at[0];
+
+/** Walking time (s) of a tile polyline at `speed`, sampled every 2 units and weighted by the terrain underfoot. */
+function walkSeconds(route: readonly TilePos[], speed: number): number {
+  let time = 0;
+  for (let i = 0; i + 1 < route.length; i++) {
+    const [ax, ay] = tileCentre(M, route[i]);
+    const [bx, by] = tileCentre(M, route[i + 1]);
+    const dist = Math.hypot(bx - ax, by - ay);
+    const n = Math.max(1, Math.ceil(dist / 2));
+    for (let k = 0; k < n; k++) {
+      const x = ax + ((bx - ax) * (k + 0.5)) / n;
+      const y = ay + ((by - ay) * (k + 0.5)) / n;
+      time += (dist / n) / (speed * speedAt(M, x, y));
+    }
+  }
+  return time;
+}
 
 /** Samples a tile polyline every 2 units and returns the first impassable point, or null. */
 function blockedOn(route: readonly TilePos[]): [number, number] | null {
@@ -67,6 +85,16 @@ describe('the march map data', () => {
   it('reaches Tirana, every place and every cache from the border (BFS)', () => {
     const reach = reachableTiles(M, M.start);
     for (const at of [M.goal, ...M.places.map((p) => p.at), ...M.caches]) expect(reach.has(key(at)), `tile ${at.join(',')}`).toBe(true);
+  });
+
+  it('makes the mountain pass the snowy shortcut: shorter than the Mat gorge (spec §4.2, fix wave item 7)', () => {
+    const PASS: readonly TilePos[] = [[41, 24], [37, 23], [33, 23], [27, 22], [23, 23], [20, 23]];
+    const GORGE: readonly TilePos[] = [[41, 24], [38, 24], [38, 28], [36, 31], [31, 32], [25, 29], [22, 26], [20, 23]];
+    const passSeconds = walkSeconds(PASS, MARCH.speed.zogu);
+    const gorgeSeconds = walkSeconds(GORGE, MARCH.speed.zogu);
+    expect(passSeconds).toBeLessThan(gorgeSeconds);
+    expect(passSeconds).toBeGreaterThan(8);
+    expect(passSeconds).toBeLessThan(13);
   });
 
   it('crosses the Mat only at the Burrel bridge and the Drin at the Maqellarë bridge and the ford', () => {

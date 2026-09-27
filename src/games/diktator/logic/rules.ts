@@ -68,7 +68,7 @@ export const RULES = {
     /** Treasury: 100 + gold left, within 200–400. */
     treasuryBase: 100, treasuryMin: 200, treasuryMax: 400,
     /** Police [popularity, strength] by the days to spare before Christmas Eve (24 − arrival day). */
-    christmasEve: 24, earlyFrom: 4, onTimeFrom: 2,
+    christmasEve: 24, earlyFrom: 7, onTimeFrom: 4,
     policeEarly: [8, 8], policeOnTime: [8, 7], policeLate: [7, 6], policeAfterChristmas: [5, 4],
     /** Optional benefits (§4.5): the Italian messenger +1 Itálie popularity; the Martanesh volunteers +1 bodyguard. */
     messengerItaly: 1, volunteersGuard: 1,

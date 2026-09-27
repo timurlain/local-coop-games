@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMarch, stepMarch } from '../../../src/games/diktator/minigames/march/logic';
+import { barracksLocked } from '../../../src/games/diktator/minigames/march/places';
 import { MARCH } from '../../../src/games/diktator/minigames/march/rules';
 import { dist, type Foe, type MarchState } from '../../../src/games/diktator/minigames/march/state';
 import { ALBANIA_MARCH } from '../../../src/games/diktator/scenario/albania/march-map';
@@ -58,6 +59,19 @@ describe('the solo helper', () => {
     run(s, 6, { velitel: HOLD }, 'velitel');
     expect(s.places[i].progress).toBe(0);
     expect(s.villages).toBe(0);
+  });
+
+  it('opens a barracks Zogu waits at, by the helper alone (fix wave, item 2)', () => {
+    const s = createMarch(ALBANIA_MARCH, 7, true);
+    s.nextSpawnAt = Infinity; // no patrols to distract Vlček
+    const i = s.places.findIndex((p) => p.def.id === 'burrel');
+    const p = s.places[i];
+    place(s, 'zogu', p.x, p.y);
+    place(s, 'velitel', p.x, p.y - 10);
+    expect(barracksLocked(s, i)).toBe(true);
+    run(s, 20, {}, 'zogu'); // Zogu stands idle; Vlček (the solo helper) acts alone
+    expect(barracksLocked(s, i)).toBe(false);
+    expect(s.places[i].won).toBe(false); // still needs Zogu to hold Action once it opens
   });
 
   it('is off in co-op: a hero without input stands still', () => {

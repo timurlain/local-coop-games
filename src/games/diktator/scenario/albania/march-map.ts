@@ -34,11 +34,11 @@ export const ALBANIA_MARCH: MarchMap = {
   '............f.........mmmmmmmmmmmmm.ww~www...==....m.ssmmmmmmmss=fff.~smmmmmmmmm', // 17
   '..........fffff.......mmmmmmmmmmmmm..w~~w.....==..mmmsmmmmmmmmms=fff.~smmmmmmmmm', // 18
   '.........fffffff......mmmmmmmmmmmmm....~.......=.mmmmmmmmmmmmmms=fff.~smmmmmmmmm', // 19
-  '........fffffffff.....mmmmmsssssmmm....~~.....==.mmmmmmmmmmmmmmm=.f..~smmmmmmmmm', // 20
-  '......f..fffffff..........ssssssss......~.....=..mmmmmmmmmmmmmms=....~smmmmmmmmm', // 21
-  '....fffff.fffff...........ssssssss......~....==...mmmsmmmmmmmmms=....~smmmmmmmmm', // 22
-  '....fffff...f......==.....ssssssss......~~.===.....m.ssmmmmmmmss=....~ssssssssss', // 23
-  '...fffffff.........===....ssssssss....===b==.====.....ssmmmmmss.==...~ssssssssss', // 24
+  '........fffffffff.....mmmmm.....mmm....~~.....==.mmmmmmmmmmmmmmm=.f..~smmmmmmmmm', // 20
+  '......f..fffffff..........========......~.....=..mmmmmmmmmmmmmms=....~smmmmmmmmm', // 21
+  '....fffff.fffff...........========......~....==...mmmsmmmmmmmmms=....~smmmmmmmmm', // 22
+  '....fffff...f......==.....========......~~.===.....m.ssmmmmmmmss=....~ssssssssss', // 23
+  '...fffffff.........===....ssss====....===b==.====.....ssmmmmmss.==...~ssssssssss', // 24
   '....fffff........===.==..mmmmmmmmmmmmm=..~~.....===....sssssss...=...~ssssssssss', // 25
   '....fffff........=....=..mmmmmmmmmmmmm=...~.......===.....s......=...~ssssssssss', // 26
   '......f..........=....==.mmmmmmmmmmmmm=...~~........===........====..~..........', // 27

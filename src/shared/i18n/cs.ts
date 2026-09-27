@@ -305,6 +305,16 @@ export const cs = {
       posterCaption: 'Tirana, prosinec 1924',
       toPalace: 'Do paláce',
       next: 'Dál',
+      /** The pause menu's second option while paused from the march (fix wave, item 1): no save exists yet. */
+      pauseMenu: 'Zpět do menu (pochod se neukládá)',
+      /** Control reminders on the march's intro and pause cards (fix wave, item 1): F holds to negotiate (Zogu),
+       * Enter strikes (Vlček) — different from the palace's keys, which mention the seal. */
+      keys: {
+        'kb-left': 'W A S D pohyb · F držet = vyjednávat · Esc pauza',
+        'kb-right': 'šipky pohyb · Enter úder · Esc pauza',
+        pad: 'páčka pohyb · A akce · Start pauza',
+        solo: 'Tab / Back přepíná postavu',
+      },
     },
     /** The library's historical map, 1921 (play-test wish, 2026-09-27). */
     map: {

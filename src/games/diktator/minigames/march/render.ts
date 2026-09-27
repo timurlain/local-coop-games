@@ -486,7 +486,9 @@ function drawOverlays(ctx: CanvasRenderingContext2D, scene: MarchScene, ox: numb
   // The day banner, the toasts, the catch caption and the ending.
   if (s.t >= MARCH.day && s.t % MARCH.day < 2 && !s.ending) bubble(ctx, P.date(dateOf(s.t)), ARENA_W / 2, 80);
   scene.toasts.forEach((tt, k) => bubble(ctx, tt.text, ARENA_W / 2, ARENA_H - 30 - k * 32));
-  if (s.now < s.heroes.zogu.frozenUntil) {
+  // A capture that ends the march (the timeout hits while Zogu is still frozen) shows only the ending caption
+  // (fix wave, item 5): no doubled "caught" + "timeout" bubbles.
+  if (s.now < s.heroes.zogu.frozenUntil && !s.ending) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, ARENA_W, ARENA_H);
     bubble(ctx, P.caught, ARENA_W / 2, ARENA_H / 2);

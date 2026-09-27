@@ -199,14 +199,14 @@ export function stepFoes(s: MarchState, dt: number, events: MarchEvent[]): void 
   if (gone.size > 0) s.foes = s.foes.filter((f) => !gone.has(f.id));
   if (s.now < z.immuneUntil || s.now < z.frozenUntil) return;
   const catcher = s.foes.find(
-    (f) => f.kind === 'gendarme' && (f.mode === 'patrol' || f.mode === 'chase' || f.mode === 'return') && dist(f, z) <= MARCH.catchRadius,
+    (f) => f.kind === 'gendarme' && (f.mode === 'patrol' || f.mode === 'chase') && dist(f, z) <= MARCH.catchRadius,
   );
   if (catcher) catchZogu(s, catcher, events);
 }
 
-/** Anyone Vlček can still hit: not knocked down, not surrendering, not waiting to set off. */
+/** Anyone Vlček can still hit: not knocked down, not surrendering, not waiting to set off, not already leaving. */
 export function targetable(f: Foe): boolean {
-  return f.mode !== 'down' && f.mode !== 'surrender' && f.mode !== 'wait';
+  return f.mode !== 'down' && f.mode !== 'surrender' && f.mode !== 'wait' && f.mode !== 'leaving';
 }
 
 /**

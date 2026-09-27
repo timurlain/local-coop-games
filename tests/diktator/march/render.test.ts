@@ -136,7 +136,8 @@ describe('drawing helpers', () => {
     const klos = s.places.findIndex((p) => p.def.id === 'klos');
     expect(marchToast({ type: 'won', place: klos }, s)).toBe('Selé z Klosu se přidávají!');
     expect(marchToast({ type: 'refused', place: 0, reason: 'noGold' }, s)).toBe('Bez zlata ani slovo.');
-    expect(marchToast({ type: 'caught' }, s)).toBe('Zogu strávil noc v zajetí a ráno se vykoupil.');
+    // The frozen "caught" caption already says this (render.ts): no doubled toast (fix wave, item 5).
+    expect(marchToast({ type: 'caught' }, s)).toBeNull();
     expect(marchToast({ type: 'tick' }, s)).toBeNull();
   });
 });

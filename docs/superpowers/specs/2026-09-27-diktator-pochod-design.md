@@ -406,13 +406,13 @@ export interface MarchResult {
 Benefit caps (§4.5): caches at most +45 gold (and the treasury clamp above), the messenger at most +1 Itálie
 popularity, the volunteers at most +1 bodyguard; the horses give no regime value at all.
 
-Police, by arrival (spare = 24 − arrivedDay):
+Police, by arrival (spare = 24 − arrivedDay; tuned in the final fix wave, item 8):
 
 | Arrival | `pop.policie` | `str.policie` |
 |---|---|---|
-| by 20 Dec (spare ≥ 4) | 8 | 8 |
-| 21–22 Dec (spare 2–3) | 8 | 7 |
-| 23–24 Dec (spare 0–1, as in history) | 7 | 6 |
+| by 17 Dec (spare ≥ 7, `earlyFrom`) | 8 | 8 |
+| 18–20 Dec (spare 4–6, `onTimeFrom`) | 8 | 7 |
+| 21–24 Dec (spare 0–3, as in history) | 7 | 6 |
 | after Christmas (timeout) | 5 | 4 |
 
 ### 8.2 Reconciliation with the current start values

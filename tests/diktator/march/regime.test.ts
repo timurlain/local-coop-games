@@ -26,7 +26,10 @@ describe('regimeFromMarch', () => {
   });
 
   it('follows the police table', () => {
-    expect([13, 20, 21, 22, 23, 24, null].map(policeFromArrival)).toEqual([[8, 8], [8, 8], [8, 7], [8, 7], [7, 6], [7, 6], [5, 4]]);
+    // 8/8 only by 17 Dec (earlyFrom: 7), 8/7 for 18–20 Dec (onTimeFrom: 4), 7/6 for 21–24 Dec (fix wave, item 8).
+    expect([13, 17, 18, 20, 21, 22, 23, 24, null].map(policeFromArrival)).toEqual([
+      [8, 8], [8, 8], [8, 7], [8, 7], [7, 6], [7, 6], [7, 6], [7, 6], [5, 4],
+    ]);
   });
 
   it('keeps every value in range for every tally, and no faction starts hostile', () => {
@@ -52,8 +55,8 @@ describe('regimeFromMarch', () => {
 
   it('maps each tally as in spec §8.1', () => {
     const g = regimeFromMarch({ ...HISTORICAL, villages: 4, towers: 0, barracks: 3, captured: 13, gold: 170, arrivedDay: 22 });
-    expect(g.pop).toEqual({ rolnici: 8, statkari: 5, armada: 8, policie: 8 });
-    expect(g.str).toEqual({ statkari: 4, armada: 7, povstalci: 5, policie: 7 });
+    expect(g.pop).toEqual({ rolnici: 8, statkari: 5, armada: 8, policie: 7 });
+    expect(g.str).toEqual({ statkari: 4, armada: 7, povstalci: 5, policie: 6 });
     expect(g.treasury).toBe(270);
     expect(regimeFromMarch({ ...HISTORICAL, captured: 40 }).str!.povstalci).toBe(4);
     expect(regimeFromMarch({ ...HISTORICAL, gold: 0 }).treasury).toBe(200);
@@ -78,7 +81,7 @@ describe('the result card', () => {
     expect(lines).toContain('Vesnice 3/4 → Rolníci: oblíbenost 8');
     expect(lines).toContain('Zajatí četníci 9 → Povstalci: síla 6');
     expect(lines).toContain('Zlato 170 → pokladna 270');
-    expect(lines).toContain('Příchod 22. prosince → Tajná policie: oblíbenost 8, síla 7');
+    expect(lines).toContain('Příchod 22. prosince → Tajná policie: oblíbenost 7, síla 6');
     expect(lines).toHaveLength(6);
   });
 
