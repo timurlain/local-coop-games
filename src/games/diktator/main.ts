@@ -16,30 +16,34 @@ import { advance, newGame, quarterLabel } from './logic/turn';
 import { STAGE_H, STAGE_W } from './render/rooms/crowd';
 import { drawHalf, type StageAnim } from './render/rooms/stage';
 import { albania } from './scenario/albania';
+import { bubblesFor } from './ui/bubbles';
 import { CLOSED, clampFocus, heroOf, isSolo, join, navigate, NO_SEATS, palaceAct, seatedDevices, type Intent, type MenuUi, type Seats } from './ui/controls';
-import { fitStage, renderHalf, renderOverlay, renderStrip, renderTop, stageCanvas, type OverlayModel } from './ui/dom';
+import { QUIET, say, speaking, steer, type Dialogue } from './ui/dialogue';
+import { fitStage, renderBubbles, renderHalf, renderOverlay, renderStrip, renderTop, stageCanvas, type OverlayModel } from './ui/dom';
 import { Flick } from './ui/flick';
 import { heroHud, topHud } from './ui/hud';
 import { heroMenu, type HeroMenu } from './ui/menus';
-import { notesFor } from './ui/notes';
 import { roomView, stripView, type RoomView } from './ui/palace-view';
 import { cardsFor, phaseScreen, type Card, type PhaseScreen } from './ui/screens';
+import { bumpSound, moveSounds, voiceOf } from './ui/sounds';
+import { heroLine, replyLines, type Line } from './ui/speech';
 
 const T = cs.diktator;
 const P = T.palace;
 const sc = albania;
 const SAVE_KEY = 'diktator/palace';
-const NOTES_KEPT = 6;
 const FLASH_SEC = 0.5;
+const CAPTION_SEC = 4;
 
 type Screen = 'title' | 'palace' | 'pause';
 
 interface Half {
-  ui: MenuUi;
+  dialogue: Dialogue;
+  /** The other half's news, fading on their own. */
+  captions: { text: string; until: number }[];
   anim: StageAnim | null;
   view: RoomView;
   menu: HeroMenu;
-  notes: string[];
 }
 
 const input = new InputManager(window);
@@ -81,11 +85,11 @@ function buildHalves(s: GameState, keep: Record<Hero, Half> | null): Record<Hero
     const menu = heroMenu(sc, s, h);
     const prev = keep?.[h];
     out[h] = {
-      ui: prev ? clampFocus(prev.ui, menu.items.length) : CLOSED,
+      dialogue: prev ? { ...prev.dialogue, ui: clampFocus(prev.dialogue.ui, menu.items.length) } : QUIET,
+      captions: prev?.captions ?? [],
       anim: prev?.anim ?? null,
       view: roomView(sc, s, s.palace!.at[h]),
       menu,
-      notes: prev?.notes ?? [],
     };
   }
   return out;
@@ -151,7 +155,7 @@ function toTitle(): void {
 
 // ---------- playing a command ----------
 
-function play(cmd: Command): void {
+function play(cmd: Command, actor: Hero | null = null): void {
   if (!file || !halves) return;
   const before = state();
   let result: { state: GameState; events: readonly GameEvent[] };
@@ -170,16 +174,22 @@ function play(cmd: Command): void {
   for (const e of events) {
     if (e.type === 'moved') {
       next[e.hero].anim = { kind: 'slide', from: oldViews[e.hero], dir: dirOf(e.from, e.to), start: t };
-      sfx.play('step');
-      sfx.play('door');
+      moveSounds(e.hero).forEach((n) => sfx.play(n));
     }
     if (e.type === 'decided') sfx.play('stamp');
     if (e.type === 'aidGranted' || e.type === 'swissTransfer') sfx.play('coins');
-    if (after.quarter === before.quarter) {
-      for (const n of notesFor(sc, after, e)) {
-        for (const h of n.to === 'both' ? HEROES : [n.to]) next[h].notes = [...next[h].notes, n.text].slice(-NOTES_KEPT);
-      }
+  }
+  if (actor && after.quarter === before.quarter) {
+    const said = heroLine(sc, before, cmd);
+    const replies = replyLines(sc, before, after, events, actor);
+    const lines: Line[] = [...(said ? [{ speaker: { kind: 'hero' as const, hero: actor }, text: said }] : []), ...replies.actor];
+    if (lines.length > 0) {
+      const wasQuiet = next[actor].dialogue.queue.length === 0;
+      next[actor].dialogue = say(next[actor].dialogue, lines);
+      if (wasQuiet) sfx.play(voiceOf(lines[0].speaker));
     }
+    const o = other(actor);
+    for (const text of replies.other) next[o].captions = [...next[o].captions, { text, until: t + CAPTION_SEC }].slice(-3);
   }
   halves = next;
   const newCards = cardsFor(sc, before, events, after);
@@ -204,7 +214,7 @@ function bump(hero: Hero, dir: 'up' | 'down' | 'left' | 'right'): void {
   const L = sc.palace!;
   const room = state().palace!.at[hero];
   flash = { rooms: new Set(exits(L, room).map((d) => neighbour(L, room, d)!)), until: t + FLASH_SEC };
-  sfx.play('bump');
+  sfx.play(bumpSound(hero));
   dirty = true;
 }
 
@@ -257,8 +267,14 @@ function updateTitle(): void {
   }
 }
 
+/** A line is still waiting in some half: shared cards and phase screens wait until it is read. */
+function someoneTalking(): boolean {
+  return !!halves && HEROES.some((h) => halves![h].dialogue.queue.length > 0);
+}
+
 /** A shared screen (card or phase screen) is up: any seated device steers it. */
 function updateShared(): boolean {
+  if (someoneTalking()) return false;
   const card = cards[0];
   const scr = card ? null : currentScreen();
   if (!card && !scr) return false;
@@ -306,8 +322,7 @@ function chooseShared(i: number): void {
 function choosePalace(hero: Hero, i: number): void {
   if (!halves) return;
   const item = halves[hero].menu.items[i];
-  halves[hero].ui = halves[hero].menu.modal ? halves[hero].ui : CLOSED;
-  if (item) play(item.command);
+  if (item) play(item.command, hero);
 }
 
 function updatePalace(): void {
@@ -327,11 +342,17 @@ function updatePalace(): void {
     if (!hero) continue;
     for (const intent of intentsOf(d)) {
       const half = halves![hero];
-      if (intent.kind === 'close' && !(half.ui.open && !half.menu.modal)) return pause(P.pause.title);
-      const r = navigate(half.ui, intent, half.menu.items.length, half.menu.modal);
-      if (r.ui.focus !== half.ui.focus && r.chosen === null) sfx.play('click');
-      half.ui = r.ui;
+      const talking = half.dialogue.queue.length > 0;
+      if (intent.kind === 'close' && !talking && !(half.dialogue.ui.open && !half.menu.modal)) return pause(P.pause.title);
+      const r = steer(half.dialogue, intent, half.menu.items.length, half.menu.modal);
+      if (r.d.ui.focus !== half.dialogue.ui.focus && r.chosen === null) sfx.play('click');
+      half.dialogue = r.d;
       dirty = true;
+      if (r.advanced) {
+        const next = speaking(half.dialogue);
+        if (next) sfx.play(voiceOf(next));
+        continue;
+      }
       if (r.chosen !== null) {
         choosePalace(hero, r.chosen);
         if (afterCommand()) return;
@@ -340,7 +361,7 @@ function updatePalace(): void {
       if (r.pass) {
         const act = palaceAct(palaceCommands(sc, state(), hero), r.pass);
         if (act?.kind === 'command') {
-          play(act.command);
+          play(act.command, hero);
           if (afterCommand()) return;
           continue devices;
         }
@@ -393,6 +414,16 @@ function update(dt: number): void {
     flash = { rooms: new Set(), until: 0 };
     dirty = true;
   }
+  if (halves) {
+    for (const h of HEROES) {
+      const half = halves[h];
+      const kept = half.captions.filter((c) => c.until > t);
+      if (kept.length !== half.captions.length) {
+        half.captions = kept;
+        dirty = true;
+      }
+    }
+  }
   if (screen === 'title') updateTitle();
   else if (screen === 'palace') updatePalace();
   else updatePause();
@@ -416,6 +447,7 @@ function overlayModel(): OverlayModel | null {
   if (screen === 'pause') {
     return { title: pauseReason, lines: [], options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
   }
+  if (someoneTalking()) return null;
   const card = cards[0];
   if (card) return { title: card.title, lines: card.lines, options: [card.button], focus: 0, hint: '' };
   const scr = currentScreen();
@@ -442,7 +474,12 @@ function renderDom(): void {
   renderTop(topHud(s));
   renderStrip(stripView(sc, s), flash.rooms);
   for (const h of HEROES) {
-    renderHalf(h, { hud: heroHud(sc, s, h), talking: false, inactive: isSolo(seats) && active !== h, solo: isSolo(seats) });
+    const half = halves[h];
+    renderHalf(h, { hud: heroHud(sc, s, h), talking: half.dialogue.queue.length > 0, inactive: isSolo(seats) && active !== h, solo: isSolo(seats) });
+    renderBubbles(h, bubblesFor(half.dialogue, half.captions.map((c) => c.text), half.menu, half.view, h), (i) => {
+      choosePalace(h, i);
+      dirty = true;
+    });
   }
 }
 
@@ -454,12 +491,15 @@ function render(): void {
   if (!halves) return;
   for (const h of HEROES) {
     const canvas = stageCanvas(h);
+    const before = canvas.width;
     const k = fitStage(canvas);
+    if (canvas.width !== before) dirty = true;
     const ctx = canvas.getContext('2d');
     if (!ctx) continue;
     ctx.setTransform(k, 0, 0, k, 0, 0);
     ctx.clearRect(0, 0, STAGE_W, STAGE_H);
-    drawHalf(ctx, halves[h].view, h, halves[h].anim, t);
+    const sp = speaking(halves[h].dialogue);
+    drawHalf(ctx, halves[h].view, h, halves[h].anim, t, sp?.kind === 'hero' ? sp.hero : null);
   }
 }
 
