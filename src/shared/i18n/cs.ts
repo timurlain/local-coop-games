@@ -285,7 +285,6 @@ export const cs = {
       refused: 'To je křivda!',
       leaving: 'Tak my zase půjdeme…',
       suggested: (title: string) => `Pak tedy: ${title}?`,
-      motherSends: (text: string) => `Vzkaz od matky — ${text}`,
       more: '▸',
     },
   },

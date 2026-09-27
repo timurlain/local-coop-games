@@ -181,6 +181,10 @@ function play(cmd: Command, actor: Hero | null = null): void {
     if (e.type === 'moved') {
       next[e.hero].anim = { kind: 'slide', from: oldViews[e.hero], dir: dirOf(e.from, e.to), start: t };
       moveSounds(e.hero).forEach((n) => sfx.play(n));
+      // Entering the throne room while the petitioner waits: his question pops up (not modal — Esc or an arrow leaves).
+      if (e.hero === 'zogu' && e.to === sc.palace!.throne && after.phase.kind === 'audience') {
+        next.zogu.dialogue = { ...next.zogu.dialogue, ui: { open: true, focus: 0 } };
+      }
     }
     if (e.type === 'decided') sfx.play('stamp');
     if (e.type === 'aidGranted' || e.type === 'swissTransfer') sfx.play('coins');
@@ -255,9 +259,12 @@ function updateTitle(): void {
     if (!seated) {
       if (intents.some((i) => i.kind === 'action')) {
         sfx.unlock();
-        seats = join(seats, d);
-        sfx.play('join');
-        dirty = true;
+        const joined = join(seats, d);
+        if (joined !== seats) {
+          seats = joined;
+          sfx.play('join');
+          dirty = true;
+        }
       }
       continue;
     }
@@ -477,7 +484,9 @@ function overlayModel(): OverlayModel | null {
     };
   }
   if (screen === 'pause') {
-    const pauseLines = HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`);
+    const pauseLines = isSolo(seats)
+      ? HEROES.map((h) => `${T.heroes[h]}: ${keysFor(seats.zogu ?? seats.velitel)}`)
+      : HEROES.filter((h) => seats[h] !== null).map((h) => `${T.heroes[h]}: ${keysFor(seats[h])}`);
     return { title: pauseReason, lines: pauseLines, options: pauseOptions().map((o) => o.label), focus: overlayUi.focus, hint: '' };
   }
   if (someoneTalking()) return null;

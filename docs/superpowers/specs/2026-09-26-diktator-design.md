@@ -259,7 +259,7 @@ the palace day is split. The rhythm is together → apart → together.
 
 ### 5.3 Hours and actions
 
-Zog has 3 hours and the commander has 3. The audience is free and comes first for Zog. Moving between rooms is free.
+Zog has 3 hours and the commander has 3. The audience is free; Zog answers it in the throne room whenever he comes, and must before the quarter ends (§4.1). Moving between rooms is free.
 
 | Who | Action | Effect |
 |---|---|---|
@@ -278,8 +278,8 @@ same time without covering each other.
 **Comic dialogue (play-test change, 2026-09-27).** Every conversation happens on the stage in comic speech
 bubbles, like an old RPG — nothing is picked from a side list and nothing vanishes the moment it is chosen:
 1. **Action opens the hero's choice bubble** above his head, listing what he can do here (the same items as the
-   rules allow, with their money). Up/down picks, Action says it, Esc closes. During the audience Zogu's choice
-   bubble opens by itself.
+   rules allow, with their money). Up/down picks, Action says it, Esc closes. When Zogu enters the throne room while
+   the petitioner waits, the question and the answers open by themselves (Esc or an arrow walks away).
 2. **The hero says the chosen line** in his own speech bubble ("Ano, svoluji.", "Co si přejete?", "Hlášení!").
 3. **The other party answers** in its bubble, from where it stands: the petitioner, the Queen Mother, the room's
    crowd, the gendarme with the police report, each envoy with his offer. Facts nobody in the room would say

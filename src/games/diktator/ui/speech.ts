@@ -121,7 +121,7 @@ export function replyLines(sc: Scenario, before: GameState, after: GameState, ev
       const ownDeed = (e.type === 'heroDone' || e.type === 'guarding') && (e.type === 'guarding' ? actor === 'velitel' : e.hero === actor);
       if (n.to === actor || (n.to === 'both' && !ownDeed)) {
         const sp = speakerOf(sc, after, actor, e);
-        mine.push({ speaker: sp, text: e.type === 'advised' && sp.kind === 'caption' ? S.motherSends(n.text) : n.text });
+        mine.push({ speaker: sp, text: n.text });
       }
       if (n.to === 'both' || n.to === other(actor)) theirs.push(n.text);
     }
