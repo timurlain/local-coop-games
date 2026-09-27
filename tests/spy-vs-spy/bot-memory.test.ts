@@ -62,14 +62,55 @@ describe('memory (spec bot §4)', () => {
     expect(mem.pieces.get(5)).toMatchObject({ note: { kind: 'remedy', remedy: 'voda' } });
   });
 
-  it('found with a secret marks it an item and bumps foundSinceMap', () => {
+  it('found with a secret: he took it, so the piece is empty now; bumps foundSinceMap', () => {
     const mem = createMemory();
     const events: GameEvent[] = [
       { type: 'found', spy: 0, thing: { kind: 'secret', secret: 'klic', lastHolder: null }, furniture: 5 },
     ];
     remember(mem, view(), events, NO_CTX);
-    expect(mem.pieces.get(5)).toMatchObject({ note: { kind: 'item', thing: 'secret', secret: 'klic' } });
+    expect(mem.pieces.get(5)).toMatchObject({ note: { kind: 'empty' } });
+    expect(mem.searchedCount).toBe(1);
     expect(mem.foundSinceMap).toBe(1);
+  });
+
+  it('stored: the piece is empty now (secret into his kufřík, or the kufřík taken); counts as a find', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{ type: 'stored', spy: 0, secret: 'pas', furniture: 5 }], NO_CTX);
+    expect(mem.pieces.get(5)).toMatchObject({ room: 1, note: { kind: 'empty' } });
+    expect(mem.searchedCount).toBe(1);
+    expect(mem.foundSinceMap).toBe(1);
+  });
+
+  it('swapped: the piece now holds what he gave', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{
+      type: 'swapped', spy: 0, furniture: 5,
+      gave: { kind: 'secret', secret: 'pas', lastHolder: 0 }, took: { kind: 'kufrik', contents: [], lastHolder: 0 },
+    }], NO_CTX);
+    expect(mem.pieces.get(5)).toMatchObject({ note: { kind: 'item', thing: 'secret', secret: 'pas' } });
+    expect(mem.searchedCount).toBe(1);
+    expect(mem.foundSinceMap).toBe(1);
+  });
+
+  it('hidden: the piece now holds what he put in', () => {
+    const mem = createMemory();
+    remember(mem, view(), [{ type: 'hidden', spy: 0, furniture: 5, thing: { kind: 'kufrik', contents: ['klic'], lastHolder: 0 } }], NO_CTX);
+    expect(mem.pieces.get(5)).toMatchObject({ note: { kind: 'item', thing: 'kufrik' } });
+    expect(mem.searchedCount).toBe(1);
+    expect(mem.foundSinceMap).toBe(0);
+  });
+
+  it('dropped on death into a piece he has seen: that piece holds it now', () => {
+    const mem = createMemory();
+    remember(mem, view({ self: { ...view().self, room: 4 }, pieces: [piece(8)] }), [], NO_CTX);
+    remember(mem, view(), [{ type: 'dropped', spy: 0, furniture: 8, thing: { kind: 'secret', secret: 'plany', lastHolder: 0 } }], NO_CTX);
+    expect(mem.pieces.get(8)).toMatchObject({ room: 4, note: { kind: 'item', thing: 'secret', secret: 'plany' } });
+  });
+
+  it('remembers which searchable pieces stand in each room he has been in (not fixtures, not the armoury)', () => {
+    const mem = createMemory();
+    remember(mem, view({ pieces: [piece(3), piece(4, { source: 'voda' }), piece(5, { armoury: true }), piece(6)] }), [], NO_CTX);
+    expect(mem.roomPieces.get(1)).toEqual([3, 6]);
   });
 
   it('alreadyHave marks the piece as an item he could not take (kind unknown)', () => {
@@ -164,6 +205,15 @@ describe('memory (spec bot §4)', () => {
     remember(mem, view({ itemRooms: [2, 5] }), [], NO_CTX);
     expect(mem.itemRoomsSeen.get(2)).toBe(10);
     expect(mem.itemRoomsSeen.get(5)).toBe(10);
+  });
+
+  it('the open map drops dots of visited rooms that no longer show one', () => {
+    const mem = createMemory();
+    remember(mem, view({ itemRooms: [2, 5] }), [], NO_CTX);
+    const known = [2, 5].map((id) => ({ id, doors: { N: false, S: false, E: false, W: false }, exit: null }));
+    remember(mem, view({ time: 20, itemRooms: [5], known }), [], NO_CTX);
+    expect(mem.itemRoomsSeen.has(2)).toBe(false);
+    expect(mem.itemRoomsSeen.get(5)).toBe(20);
   });
 
   it('mapOpened resets searchedCount and foundSinceMap', () => {

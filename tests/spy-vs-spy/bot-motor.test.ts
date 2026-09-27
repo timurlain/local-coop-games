@@ -81,6 +81,28 @@ describe('motor: legs and hands (spec bot §6)', () => {
     expect(mine(r.events, 'searchStart')).toHaveLength(1);
   });
 
+  it('a search (or a placing) at a piece not in his room — a stale intent after a room change — presses nothing', () => {
+    const s = openGame();
+    const elsewhere = pieceView(s, 0);
+    // He is in room 1 now; a piece of room 1 stands right where the room-0 piece's point would be.
+    const here = firstFurniture(s, 1);
+    here.x = elsewhere.x;
+    here.z = elsewhere.z;
+    s.spies[0].room = 1;
+    s.spies[0].visited[1] = true;
+    for (const intent of [
+      { kind: 'search', piece: elsewhere },
+      { kind: 'place', trap: 'bomba', at: elsewhere },
+    ] as Intent[]) {
+      const motor = createMotor(5, makeRng(15));
+      const r = run(s, motor, intent, 3);
+      expect(r.inputs.some((i) => i.action)).toBe(false);
+      expect(mine(r.events, 'searchStart')).toHaveLength(0);
+      expect(mine(r.events, 'trapSet')).toHaveLength(0);
+      expect(motor.done()).toBe(false);
+    }
+  });
+
   it('place bomba on a piece: taps skip a kind with no stock, then trapSet (stock −1)', () => {
     const s = openGame();
     const spy = s.spies[0];

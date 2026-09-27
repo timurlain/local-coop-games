@@ -1,9 +1,10 @@
 import { rand, type RngState } from '../../../shared/rng';
-import type { DeathCause, GameEvent, RemedyKind, SecretKind, TrapKind } from '../logic/state';
+import type { DeathCause, GameEvent, RemedyKind, SecretKind, Thing, TrapKind } from '../logic/state';
 import { type Iq, IQ_PARAMS } from './iq';
 import type { BotView, Glance } from './view';
 
-/** What the bot knows about one piece of furniture, from a search or from a fixture's look (spec bot §4). */
+/** What the bot knows one piece of furniture holds now, from a search, from what he put or dropped into it, or from a
+ *  fixture's look (spec bot §4). A piece he took an item from is `empty` — the item is in his hand. */
 export type PieceNote =
   | { kind: 'empty' }
   | { kind: 'remedy'; remedy: RemedyKind }
@@ -31,8 +32,11 @@ export interface RememberContext {
 
 /** The bot's notebook (spec bot §4): everything he has learned, decaying per `forget`. */
 export interface Memory {
-  /** piece id → what he found there, and when. */
+  /** piece id → what he believes it holds, and since when. */
   pieces: Map<number, { room: number; note: PieceNote; at: number }>;
+  /** room → the pieces worth searching he saw there (not fixtures, not the armoury), so he knows what is left.
+   *  The layout never fades; only what he learned about the pieces does. */
+  roomPieces: Map<number, number[]>;
   /** room → time seen as a dot on the paid map. */
   itemRoomsSeen: Map<number, number>;
   /** `p:<pieceId>` | `d:<doorKey>` | `f:<room>` → kind — his own traps, which he avoids. */
@@ -48,6 +52,7 @@ export interface Memory {
 export function createMemory(): Memory {
   return {
     pieces: new Map(),
+    roomPieces: new Map(),
     itemRoomsSeen: new Map(),
     ownTraps: new Map(),
     dangers: [],
@@ -61,6 +66,13 @@ export function createMemory(): Memory {
 const FURNITURE_TRAPS: readonly DeathCause[] = ['bomba', 'pruzina'];
 const DOOR_TRAPS: readonly DeathCause[] = ['elektrina', 'pistole'];
 
+/** The note for a piece that now holds `t`. */
+function holding(t: Thing): PieceNote {
+  if (t.kind === 'remedy') return { kind: 'remedy', remedy: t.remedy };
+  if (t.kind === 'secret') return { kind: 'item', thing: 'secret', secret: t.secret };
+  return { kind: 'item', thing: 'kufrik' };
+}
+
 /** Updates the notebook from this tick's view and the noticed events (search results, own traps set, deaths, disarms). */
 export function remember(mem: Memory, view: BotView, events: readonly GameEvent[], ctx: RememberContext): void {
   const time = view.time;
@@ -70,29 +82,49 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
   for (const p of view.pieces) {
     if (p.source !== null) mem.pieces.set(p.id, { room, note: { kind: 'fixture', remedy: p.source }, at: time });
   }
+  mem.roomPieces.set(room, view.pieces.filter((p) => p.source === null && !p.armoury).map((p) => p.id));
 
+  const note = (piece: number, n: PieceNote, at = room) => mem.pieces.set(piece, { room: at, note: n, at: time });
   for (const e of events) {
     if ('spy' in e && e.spy !== view.self.id) continue;
     switch (e.type) {
-      case 'found': {
-        let note: PieceNote;
-        if (e.thing === null) note = { kind: 'empty' };
-        else if (e.thing.kind === 'remedy') note = { kind: 'remedy', remedy: e.thing.remedy };
-        else if (e.thing.kind === 'secret') note = { kind: 'item', thing: 'secret', secret: e.thing.secret };
-        else note = { kind: 'item', thing: 'kufrik' };
-        mem.pieces.set(e.furniture, { room, note, at: time });
+      case 'found':
+        // Nothing, or a remedy (a fixture keeps giving it) — or he took a secret/the kufřík, leaving the piece empty.
+        note(e.furniture, e.thing?.kind === 'remedy' ? holding(e.thing) : { kind: 'empty' });
         mem.searchedCount++;
         if (e.thing !== null && e.thing.kind !== 'remedy') mem.foundSinceMap++;
+        break;
+      case 'stored':
+        // The found secret went into his kufřík, or he took the kufřík with his loose secret in it: empty either way.
+        note(e.furniture, { kind: 'empty' });
+        mem.searchedCount++;
+        mem.foundSinceMap++;
+        break;
+      case 'swapped':
+        note(e.furniture, holding(e.gave));
+        mem.searchedCount++;
+        if (e.took.kind !== 'remedy') mem.foundSinceMap++;
+        break;
+      case 'hidden':
+        note(e.furniture, holding(e.thing));
+        mem.searchedCount++;
+        break;
+      case 'dropped': {
+        // On his death the hand lands in the nearest free piece, maybe next door; noted if he knows that piece.
+        if (e.furniture === null || e.thing === null) break;
+        const id = e.furniture;
+        const at = [...mem.roomPieces].find(([, ids]) => ids.includes(id))?.[0];
+        if (at !== undefined) note(id, holding(e.thing), at);
         break;
       }
       case 'alreadyHave':
         // The event doesn't say which kind (round 6 §3: it stays hidden) — only that it was a loose secret.
-        mem.pieces.set(e.furniture, { room, note: { kind: 'item', thing: 'secret' }, at: time });
+        note(e.furniture, { kind: 'item', thing: 'secret' });
         mem.searchedCount++;
         mem.foundSinceMap++;
         break;
       case 'resupplied':
-        mem.pieces.set(e.furniture, { room, note: { kind: 'armoury' }, at: time });
+        note(e.furniture, { kind: 'armoury' });
         break;
       case 'trapSet':
         if (ctx.pendingTrapTarget !== null) mem.ownTraps.set(ctx.pendingTrapTarget, e.trap);
@@ -117,7 +149,11 @@ export function remember(mem: Memory, view: BotView, events: readonly GameEvent[
 
   if (view.opponent !== null) mem.lastSeenOpponent = { room, at: time };
   if (view.glance !== null) mem.lastGlance = { ...view.glance, at: time };
-  if (view.itemRooms !== null) for (const r of view.itemRooms) mem.itemRoomsSeen.set(r, time);
+  if (view.itemRooms !== null) {
+    // The open map shows every visited room's dot: a visited room without one has none any more.
+    for (const r of view.known) if (!view.itemRooms.includes(r.id)) mem.itemRoomsSeen.delete(r.id);
+    for (const r of view.itemRooms) mem.itemRoomsSeen.set(r, time);
+  }
 }
 
 /** Fades entries per IQ (`forgetPerMinute`, `forgetOwnTraps`) using the bot RNG. */

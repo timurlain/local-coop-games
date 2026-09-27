@@ -42,7 +42,7 @@ function steer(self: SelfView, x: number, z: number): SpyInput {
 }
 
 /** A point inside the door's standing zone (`doorAt` geometry), halfway between the wall and the zone's edge. */
-function doorPoint(dir: Dir): { x: number; z: number } {
+export function doorPoint(dir: Dir): { x: number; z: number } {
   const r = RULES.doorReach / 2;
   switch (dir) {
     case 'N': return { x: RULES.roomW / 2, z: r };
@@ -65,7 +65,10 @@ function atDoor(dir: Dir, x: number, z: number): boolean {
 }
 
 /** Where to stand to reach a piece: centred on it, halfway into its reach zone. */
-const piecePoint = (p: PieceView) => ({ x: p.x, z: p.z + RULES.furnitureReachZ / 2 });
+export const piecePoint = (p: PieceView) => ({ x: p.x, z: p.z + RULES.furnitureReachZ / 2 });
+
+/** Whether the piece stands in his current room. */
+const inRoom = (view: BotView, p: PieceView) => view.pieces.some((q) => q.id === p.id);
 
 /** The keys that walk into the wall at `dir` (through an open door). */
 function push(dir: Dir): Pick<SpyInput, 'moveX' | 'moveY'> {
@@ -214,12 +217,16 @@ export function createMotor(iq: Iq, rng: RngState): Motor {
       }
       case 'search': {
         const p = active.piece;
+        // A piece of another room (a stale intent after a room change) is never pressed at: like a door not in
+        // view, it never finishes, and the brain re-plans.
+        if (!inRoom(view, p)) return { ...NO_INPUT };
         return reachAndAct(self, null, inReach(p, self.x, self.z), piecePoint(p));
       }
       case 'place': {
         const at = active.at;
         if (at === 'here') return reachAndAct(self, active.trap, true, self);
         if (typeof at === 'string') return reachAndAct(self, active.trap, atDoor(at, self.x, self.z), doorPoint(at));
+        if (!inRoom(view, at)) return { ...NO_INPUT };
         return reachAndAct(self, active.trap, inReach(at, self.x, self.z), piecePoint(at));
       }
       case 'openMap':
