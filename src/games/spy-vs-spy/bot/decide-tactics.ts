@@ -295,8 +295,8 @@ export function tacticStillWorth(view: BotView, mem: Memory, goal: Goal): boolea
     case 'armoury':
       return view.armouryRoom !== null && self.armouryTimer === 0 && lowStock(view);
     case 'flee':
-      // Out of a ticking room, or away from a fight (fight.ts): spent once out of the room.
-      return ticking(view, mem, self.room) || view.opponent !== null;
+      // Out of a ticking room, or away from a fight (fight.ts), by a door of this room: spent once out of it.
+      return view.doors.some((d) => d.dir === goal.dir) && (ticking(view, mem, self.room) || view.opponent !== null);
     default:
       return undefined;
   }

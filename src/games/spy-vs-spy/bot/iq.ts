@@ -31,6 +31,10 @@ export interface IqParams {
   slipChance: number;
   /** chance to read a head bash and duck */
   duckChance: number;
+  /** chance to duck on a guess the moment the opponent stands in reach with his swing ready (held briefly, see
+   *  fight.ts): for the IQs whose reaction is too slow to read a bash's wind-up (`RULES.bashWindup`) and duck in time;
+   *  0 where he reads it */
+  guessDuck: number;
   /** chance to hold block when a jab is likely */
   preBlock: number;
   /** chance to bash after a blocked jab */
@@ -42,23 +46,28 @@ export interface IqParams {
 export const IQ_PARAMS: Readonly<Record<Iq, IqParams>> = {
   1: {
     reaction: 0.8, thinkEvery: 0.5, forgetPerMinute: 0.5, forgetOwnTraps: true, noise: 40, trapWill: 0.15,
-    smartTraps: false, glancePerSecond: 0, slipChance: 0.15, duckChance: 0.1, preBlock: 0, punish: 0, fleeAt: null,
+    smartTraps: false, glancePerSecond: 0, slipChance: 0.15, duckChance: 0.1,
+    guessDuck: 0.05, preBlock: 0, punish: 0, fleeAt: null,
   },
   2: {
     reaction: 0.65, thinkEvery: 0.4, forgetPerMinute: 0.3, forgetOwnTraps: true, noise: 25, trapWill: 0.3,
-    smartTraps: false, glancePerSecond: 0.02, slipChance: 0.08, duckChance: 0.3, preBlock: 0.1, punish: 0.1, fleeAt: 1,
+    smartTraps: false, glancePerSecond: 0.02, slipChance: 0.08, duckChance: 0.3,
+    guessDuck: 0.25, preBlock: 0.1, punish: 0.1, fleeAt: 1,
   },
   3: {
     reaction: 0.4, thinkEvery: 0.25, forgetPerMinute: 0.1, forgetOwnTraps: false, noise: 12, trapWill: 0.55,
-    smartTraps: true, glancePerSecond: 0.06, slipChance: 0.03, duckChance: 0.5, preBlock: 0.3, punish: 0.4, fleeAt: 2,
+    smartTraps: true, glancePerSecond: 0.06, slipChance: 0.03, duckChance: 0.5,
+    guessDuck: 0.5, preBlock: 0.3, punish: 0.4, fleeAt: 2,
   },
   4: {
     reaction: 0.3, thinkEvery: 0.22, forgetPerMinute: 0.03, forgetOwnTraps: false, noise: 5, trapWill: 0.75,
-    smartTraps: true, glancePerSecond: 0.12, slipChance: 0.01, duckChance: 0.75, preBlock: 0.5, punish: 0.7, fleeAt: 2,
+    smartTraps: true, glancePerSecond: 0.12, slipChance: 0.01, duckChance: 0.75,
+    guessDuck: 0.6, preBlock: 0.5, punish: 0.7, fleeAt: 2,
   },
   5: {
     reaction: 0.2, thinkEvery: 0.2, forgetPerMinute: 0, forgetOwnTraps: false, noise: 1, trapWill: 0.9,
-    smartTraps: true, glancePerSecond: 0.2, slipChance: 0, duckChance: 0.95, preBlock: 0.7, punish: 0.9, fleeAt: 3,
+    smartTraps: true, glancePerSecond: 0.2, slipChance: 0, duckChance: 0.95,
+    guessDuck: 0, preBlock: 0.7, punish: 0.9, fleeAt: 3,
   },
 };
 

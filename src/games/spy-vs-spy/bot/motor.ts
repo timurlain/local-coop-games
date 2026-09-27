@@ -53,7 +53,7 @@ export function doorPoint(dir: Dir): { x: number; z: number } {
 }
 
 /** Whether (x, z) stands at the door on `dir` — the same zone as `logic/places.ts` `doorAt`. */
-function atDoor(dir: Dir, x: number, z: number): boolean {
+export function atDoor(dir: Dir, x: number, z: number): boolean {
   const midX = Math.abs(x - RULES.roomW / 2) <= RULES.doorHalfX;
   const midZ = Math.abs(z - RULES.roomD / 2) <= RULES.doorHalfZ;
   switch (dir) {

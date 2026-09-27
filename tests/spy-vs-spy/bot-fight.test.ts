@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { createBot, type Bot } from '../../src/games/spy-vs-spy/bot/bot';
+import { stillWorth } from '../../src/games/spy-vs-spy/bot/decide';
+import { createFightMemo, fightInput } from '../../src/games/spy-vs-spy/bot/fight';
 import { botMaxHealth, IQ_PARAMS, type Iq } from '../../src/games/spy-vs-spy/bot/iq';
+import { createMemory } from '../../src/games/spy-vs-spy/bot/memory';
+import type { BotView, OpponentView, SelfView } from '../../src/games/spy-vs-spy/bot/view';
 import { inFightRange } from '../../src/games/spy-vs-spy/logic/fight';
 import { createGame } from '../../src/games/spy-vs-spy/logic/generator';
 import { RULES } from '../../src/games/spy-vs-spy/logic/rules';
 import { step } from '../../src/games/spy-vs-spy/logic/step';
-import { NO_INPUT, type GameEvent, type GameState, type PlayerId, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
+import { NO_INPUT, neighbor, type GameEvent, type GameState, type PlayerId, type SpyInput } from '../../src/games/spy-vs-spy/logic/state';
+import { makeRng } from '../../src/shared/rng';
 
 const DT = 1 / 60;
 const MID_Z = RULES.roomD / 2;
@@ -73,15 +78,17 @@ function bashesDucked(iq: Iq, seed: number): { bashes: number; ducked: number } 
 }
 
 describe('the bot fights (spec bot §7)', () => {
-  it('ducks a head bash: IQ 5 at least 32 of 40, IQ 1 at most 10', () => {
+  it('ducks a head bash: IQ 5 at least 32 of 40 (reads it), IQ 3 about half (guesses), IQ 1 at most 10', () => {
     const smart = bashesDucked(5, 3);
+    const middling = bashesDucked(3, 3);
     const clumsy = bashesDucked(1, 3);
-    expect(smart.bashes).toBe(40);
-    expect(clumsy.bashes).toBe(40);
+    expect([smart.bashes, middling.bashes, clumsy.bashes]).toEqual([40, 40, 40]);
     expect(smart.ducked).toBeGreaterThanOrEqual(32);
+    expect(middling.ducked).toBeGreaterThanOrEqual(12);
+    expect(middling.ducked).toBeLessThanOrEqual(28);
     expect(clumsy.ducked).toBeLessThanOrEqual(10);
     // Seeded exact numbers (recorded once; a change here means the fight behaviour changed).
-    expect([smart.ducked, clumsy.ducked]).toEqual([SMART_DUCKED, CLUMSY_DUCKED]);
+    expect([smart.ducked, middling.ducked, clumsy.ducked]).toEqual([SMART_DUCKED, MIDDLING_DUCKED, CLUMSY_DUCKED]);
   });
 
   it('cannot react to a jab: his keys stay what they would have been for a reaction, and an unguarded jab lands', () => {
@@ -184,5 +191,111 @@ describe('the bot fights (spec bot §7)', () => {
 
 // Seeded exact numbers, recorded once from the first green run.
 const SMART_DUCKED = 37;
+const MIDDLING_DUCKED = 21;
 const CLUMSY_DUCKED = 0;
-const SMART_WINS = 28;
+const SMART_WINS = 30;
+
+describe('fight details (spec bot §7, fix round 1)', () => {
+  it('never swings from a door\'s zone (Akce there would open the door): lined up with an opponent by the south door', () => {
+    for (const seed of [1, 2, 3]) {
+      const s = arena(seed, [RULES.health, RULES.health]);
+      const room = s.spies[0].room;
+      const below = neighbor(s, room, 'S')!;
+      s.rooms[room].doors.S = true;
+      s.rooms[below].doors.N = true;
+      // He stays parked (knockback undone) where the bot, at the edge of his reach in x, stands on the door's line.
+      const park = (st: GameState) => {
+        st.spies[1].x = 132;
+        st.spies[1].z = RULES.roomD - 5;
+      };
+      s.spies[0].x = 100;
+      park(s);
+      const bot = createBot(0, 5, seed);
+      let hits = 0;
+      let inLine = 0;
+      duel(s, bot, 8, () => NO_INPUT, (st, events) => {
+        st.spies[1].health = st.spies[1].maxHealth;
+        park(st);
+        if (Math.abs(st.spies[0].x - RULES.roomW / 2) <= RULES.doorHalfX) inLine++;
+        expect(st.spies[0].doorOpening, `seed ${seed} t=${st.time}`).toBeNull();
+        expect(st.spies[0].room).toBe(room);
+        hits += events.filter((e) => e.type === 'hit' && e.spy === 1).length;
+      });
+      expect(hits, `seed ${seed}`).toBeGreaterThan(0);
+      // Most of the time on the door's line (the case that matters).
+      expect(inLine, `seed ${seed}`).toBeGreaterThan(8 / DT / 2);
+    }
+  });
+
+  /** A hand-made view of a fight: the bot at x 100, the opponent 36 to the right (within `STRIKE_AT`). */
+  function fightView(time: number, self: Partial<SelfView> = {}, opp: Partial<OpponentView> = {}): BotView {
+    return {
+      time, cols: 3, rows: 3, hideAirport: false,
+      self: {
+        id: 0, room: 0, x: 100, z: MID_Z, facing: 1, mode: 'normal', health: 7, maxHealth: 7, hand: null,
+        stock: { bomba: 0, pruzina: 0, elektrina: 0, pistole: 0, casovana: 0 }, selected: null, trapPress: null,
+        mapOpen: false, clock: 200, armouryTimer: 0, swingCooldown: 0, attack: null, placing: false, placingAt: null,
+        doorOpening: false, ...self,
+      },
+      pieces: [], doors: [],
+      opponent: {
+        x: 136, z: MID_Z, facing: -1, health: 7, mode: 'normal', attack: null, strikeIn: 0, blocking: false,
+        ducking: false, carrying: false, ...opp,
+      },
+      known: [], armouryRoom: null, itemRooms: null, glance: null,
+    };
+  }
+
+  /** Share of seeds (200) where the bot's next swing after the opponent's jab (landed or not) is a head bash. */
+  function bashAfterJab(iq: Iq, failed: boolean): number {
+    let bashes = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const rng = makeRng(seed);
+      const memo = createFightMemo();
+      fightInput(fightView(1, {}, { attack: 'jab', strikeIn: RULES.swingWindup }), iq, rng, memo);
+      // He sees the strike and, his swing ready and the opponent in his opening, presses at once.
+      const keys = fightInput(fightView(1.15, { health: failed ? 7 : 6 }, { attack: 'jab', strikeIn: 0 }), iq, rng, memo);
+      expect(keys.action).toBe(true);
+      if (keys.moveY === -1) bashes++;
+    }
+    return bashes / 200;
+  }
+
+  it('punishes a failed jab with a head bash: IQ 5 nearly always, IQ 1 only by his usual mix', () => {
+    expect(bashAfterJab(5, true)).toBeGreaterThanOrEqual(0.85);
+    expect(bashAfterJab(5, false)).toBeLessThanOrEqual(0.65);
+    const clumsy = bashAfterJab(1, true);
+    expect(clumsy).toBeGreaterThanOrEqual(0.35);
+    expect(clumsy).toBeLessThanOrEqual(0.65);
+  });
+
+  /** Share of seeds (200) where the bot holds block (trap, no down) while recovering from his own swing. */
+  function guardRate(iq: Iq): number {
+    let guards = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const rng = makeRng(seed);
+      const memo = createFightMemo();
+      let t = 1;
+      // Until he presses (a guessed duck may come first).
+      while (!fightInput(fightView(t), iq, rng, memo).action) t += 1 / 60;
+      const keys = fightInput(fightView(t + 1, { attack: 'jab', swingCooldown: RULES.swingCooldown }), iq, rng, memo);
+      if (keys.trap && keys.moveY !== 1) guards++;
+    }
+    return guards / 200;
+  }
+
+  it('holds block while recovering: IQ 5 often (preBlock), IQ 1 never', () => {
+    const smart = guardRate(5);
+    expect(smart).toBeGreaterThanOrEqual(IQ_PARAMS[5].preBlock - 0.15);
+    expect(smart).toBeLessThanOrEqual(IQ_PARAMS[5].preBlock + 0.15);
+    expect(guardRate(1)).toBe(0);
+  });
+
+  it('fleeing from a fight is spent when its door is not in the room he stands in', () => {
+    const view: BotView = { ...fightView(1), doors: [{ dir: 'W', key: '0-1', to: 1, open: false, exit: false }] };
+    const mem = createMemory();
+    expect(stillWorth(view, mem, { kind: 'flee', dir: 'W' }, 0, null)).toBe(true);
+    expect(stillWorth(view, mem, { kind: 'flee', dir: 'E' }, 0, null)).toBe(false);
+    expect(stillWorth({ ...view, opponent: null }, mem, { kind: 'flee', dir: 'W' }, 0, null)).toBe(false);
+  });
+});

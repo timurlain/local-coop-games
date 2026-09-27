@@ -2,7 +2,7 @@ import { makeRng, rand } from '../../../shared/rng';
 import type { GameEvent, GameState, PlayerId, SpyInput } from '../logic/state';
 import { chooseGoal, exitOf, exploreFor, sameGoal, stillWorth, type ExploreTarget, type Goal } from './decide';
 import { pathTo } from './decide-tactics';
-import { createFightMemo, fightInput } from './fight';
+import { createFightMemo, fightInput, resetFightMemo, watchFight } from './fight';
 import { botRngSeed, type Iq, IQ_PARAMS } from './iq';
 import { createMemory, doorTrapKey, floorKey, forget, giveUp, pieceKey, placeKey, remember, type Memory } from './memory';
 import { createMotor, doorPoint, piecePoint, type Intent } from './motor';
@@ -121,6 +121,8 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
    *  plan may have moved on meanwhile) */
   let placingKey: string | null = null;
   const fightMemo = createFightMemo();
+  /** whether the opponent was in view last tick (a new sighting starts the fight memo afresh) */
+  let sawOpponent = false;
 
   function think(state: Readonly<GameState>, events: readonly GameEvent[], dt: number): SpyInput {
     time += dt;
@@ -139,6 +141,12 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
     });
     if (noticed.some((e) => SEARCH_ANSWERS.includes(e.type))) tries = 0;
     if (noticed.some((e) => e.type === 'trapSet' || e.type === 'refused' || e.type === 'died')) placingKey = null;
+    // The opponent in view is watched whatever he is doing himself (a bash begun while he is busy still counts).
+    if (view.opponent !== null) {
+      if (!sawOpponent) resetFightMemo(fightMemo);
+      watchFight(view, iq, rng, fightMemo);
+    }
+    sawOpponent = view.opponent !== null;
 
     // Choose again on the think beat, as soon as the goal is spent (the target vanished), or when the last intent
     // finished; the intent is worked out again then and on entering a room. An intent that can't be done from here
