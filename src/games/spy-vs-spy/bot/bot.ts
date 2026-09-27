@@ -2,6 +2,7 @@ import { makeRng, rand } from '../../../shared/rng';
 import type { GameEvent, GameState, PlayerId, SpyInput } from '../logic/state';
 import { chooseGoal, exitOf, exploreFor, sameGoal, stillWorth, type ExploreTarget, type Goal } from './decide';
 import { pathTo } from './decide-tactics';
+import { createFightMemo, fightInput } from './fight';
 import { botRngSeed, type Iq, IQ_PARAMS } from './iq';
 import { createMemory, doorTrapKey, floorKey, forget, giveUp, pieceKey, placeKey, remember, type Memory } from './memory';
 import { createMotor, doorPoint, piecePoint, type Intent } from './motor';
@@ -119,6 +120,7 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
   /** where the trap being put down goes, from the view while placing — latched until `trapSet`/`refused` files it (the
    *  plan may have moved on meanwhile) */
   let placingKey: string | null = null;
+  const fightMemo = createFightMemo();
 
   function think(state: Readonly<GameState>, events: readonly GameEvent[], dt: number): SpyInput {
     time += dt;
@@ -160,6 +162,11 @@ export function createBot(side: PlayerId, iq: Iq, gameSeed: number): Bot {
       }
     }
     wasDone = done;
+    // A fight is new keys every tick, worked out on what he sees now; the motor delays them by his reaction.
+    if (goal?.kind === 'fight' && self.mode === 'normal') {
+      intent = { kind: 'fight', input: fightInput(view, iq, rng, fightMemo) };
+      bridgeUntil = -1;
+    }
 
     // The legs finished this very intent and the plan wants it again (the next door on the same side, the piece he
     // just hid something in, a press that did nothing): they only act on a new intent, so first walk towards where it

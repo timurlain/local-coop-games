@@ -113,7 +113,7 @@ function leadsOn(view: BotView, room: number): boolean {
 
 /** The nearest way out of his room to a room without a bomb ticking: one that leads on (else he could sit out the
  *  fuse in a dead end, cut off), or — unless `onwardOnly` — any; null when there is none. */
-function fleeDoor(view: BotView, mem: Memory, onwardOnly: boolean): Dir | null {
+export function fleeDoor(view: BotView, mem: Memory, onwardOnly: boolean): Dir | null {
   let best: Dir | null = null;
   let bestCost = Infinity;
   for (const d of waysOut(mem, view)) {
@@ -295,7 +295,8 @@ export function tacticStillWorth(view: BotView, mem: Memory, goal: Goal): boolea
     case 'armoury':
       return view.armouryRoom !== null && self.armouryTimer === 0 && lowStock(view);
     case 'flee':
-      return ticking(view, mem, self.room);
+      // Out of a ticking room, or away from a fight (fight.ts): spent once out of the room.
+      return ticking(view, mem, self.room) || view.opponent !== null;
     default:
       return undefined;
   }

@@ -6,13 +6,14 @@ import { type Iq, IQ_PARAMS } from './iq';
 import {
   armouryGoal, bombGoal, hazard, hops, HOP, ownTrapped, remedyGoal, tacticStillWorth, trapGoals,
 } from './decide-tactics';
+import { fightGoal } from './fight';
 import { gaveUp, type Memory, type PieceNote } from './memory';
 import type { BotView } from './view';
 
 /**
  * The bot's decision (spec bot §5): every goal he could pursue gets a utility score, the best wins. Only what the view
  * and his notebook say goes in. Traps, remedies, the armoury and leaving a ticking room are scored in
- * `decide-tactics.ts`; fight and flee from a fight are not scored yet.
+ * `decide-tactics.ts`, fighting and fleeing from a fight in `fight.ts`.
  */
 export type Goal =
   | { kind: 'search'; piece: number } | { kind: 'fetch'; piece: number } | { kind: 'escape' }
@@ -190,11 +191,13 @@ function candidates(view: BotView, mem: Memory, iq: Iq): Scored[] {
   const out: Scored[] = [];
   const self = view.self;
 
-  // The escape before all; then a bomb ticking here: nothing else matters.
+  // The escape before all; then a bomb ticking here, then the opponent in his room: nothing else matters.
   const full = hasAllSecrets(self.hand);
   if (full && canEscape(view, mem)) return [{ goal: { kind: 'escape' }, score: ESCAPE }];
   const flee = bombGoal(view, mem);
   if (flee !== null) return [flee];
+  const fight = fightGoal(view, mem, iq);
+  if (fight !== null) return [fight];
 
   if (full) {
     if (exploreFor(view, mem) !== null) out.push({ goal: { kind: 'explore' }, score: EXPLORE_FOR_EXIT });
@@ -287,6 +290,8 @@ export function stillWorth(view: BotView, mem: Memory, goal: Goal, since: number
       return true;
     case 'map':
       return mem.searchedCount > 0 && view.self.clock > MAP_CLOCK;
+    case 'fight':
+      return view.opponent !== null;
     default:
       return false;
   }
