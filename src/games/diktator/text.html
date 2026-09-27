@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diktátor — textová verze</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Limelight&family=Poiret+One&display=swap" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 id="title"></h1>
+        <p id="date" class="date"></p>
+        <p id="money" class="money"></p>
+      </header>
+      <section id="log" aria-live="polite"></section>
+      <section id="prompt"></section>
+      <section id="choices"></section>
+      <section id="report"></section>
+      <a href="../../../index.html" id="back"></a>
+    </main>
+    <script type="module" src="./text.ts"></script>
+  </body>
+</html>

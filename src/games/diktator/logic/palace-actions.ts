@@ -1,0 +1,320 @@
+import { availableDecisions, takeDecision } from './decision';
+import type { Dice } from './dice';
+import { FACTIONS, GROUPS, LENDERS, type FactionId, type LenderId, type StrengthGroupId } from './groups';
+import { decisionRoom, exits, groupsInRoom, HEROES, neighbour, other, roomOfGroup, type Hero, type PalaceState } from './palace';
+import { policeReport } from './police';
+import { RULES } from './rules';
+import type { Scenario } from './scenario';
+import type { Command, GameEvent, GameState } from './state';
+
+/** Commands that act inside the palace (in palace mode they need a hero, a room and possibly an hour). */
+export const PALACE_COMMANDS: ReadonlySet<Command['type']> = new Set([
+  'move', 'takeSeal', 'giveSeal', 'talk', 'advice', 'envoys', 'investigate', 'guard', 'policeReport', 'decide', 'endDay',
+]);
+
+/** Commands that exist only in palace mode. */
+export const PALACE_ONLY: ReadonlySet<Command['type']> = new Set([
+  'move', 'takeSeal', 'giveSeal', 'talk', 'advice', 'envoys', 'investigate', 'guard',
+]);
+
+/** The decision that raises `group`'s popularity most (first on ties; aid and the Swiss account excluded). */
+export function wishFor(sc: Scenario, s: GameState, group: StrengthGroupId): string | null {
+  let best: { id: string; gain: number } | null = null;
+  for (const d of availableDecisions(sc, s)) {
+    if (d.special?.kind === 'aid' || d.special?.kind === 'swiss') continue;
+    const gain = d.effects.pop?.[group] ?? 0;
+    if (gain > 0 && (!best || gain > best.gain)) best = { id: d.id, gain };
+  }
+  return best?.id ?? null;
+}
+
+/**
+ * Refreshes `seenPop` for every group whose room each hero currently stands in, so the players'
+ * knowledge of a group's popularity survives a save even after it changes off-screen.
+ * Called after every palace command, after every audience answer in palace mode, and once a
+ * palace day is created.
+ */
+export function refreshSeen(sc: Scenario, s: GameState): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L) return;
+  for (const hero of HEROES) {
+    const room = p.at[hero];
+    for (const g of GROUPS) if (roomOfGroup(L, g) === room) p.seenPop[g] = s.pop[g];
+  }
+}
+
+function factionsIn(sc: Scenario, room: string): FactionId[] {
+  return groupsInRoom(sc.palace!, room).filter((g): g is FactionId => (FACTIONS as readonly string[]).includes(g));
+}
+
+function aidDecisionOf(sc: Scenario, lender: LenderId): string | null {
+  return sc.decisions.find((d) => d.special?.kind === 'aid' && d.special.lender === lender)?.id ?? null;
+}
+
+function fail(cmd: Command, why: string): never {
+  throw new Error(`${cmd.type}: ${why}`);
+}
+
+function spendHour(p: PalaceState, hero: Hero, cmd: Command): void {
+  if (p.done[hero]) fail(cmd, `${hero} has ended the day`);
+  if (p.hours[hero] < 1) fail(cmd, `${hero} has no hours left`);
+  p.hours[hero] -= 1;
+}
+
+function requireHero(cmd: Command, hero: Hero | undefined): Hero {
+  if (!hero) fail(cmd, 'palace mode needs a hero');
+  return hero;
+}
+
+/**
+ * Applies one palace command in the audience or day phase (spec §5, rules 1–8 of plan 2a).
+ * Zogu starts each quarter in his study and may move and act freely while the petitioner waits
+ * in the throne room; only answering the petition and ending his quarter need the audience to be over
+ * (answering also needs him standing in the throne room; enforced in `turn.ts`).
+ * Advice about the petition itself is asked in Mother's room. Throws on anything the rules do not
+ * allow. The caller starts the evening when both heroes are done.
+ */
+export function applyPalaceCommand(sc: Scenario, s: GameState, cmd: Command, dice: Dice, events: GameEvent[]): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L) fail(cmd, 'not in palace mode');
+  const inAudience = s.phase.kind === 'audience';
+
+  switch (cmd.type) {
+    case 'move': {
+      if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
+      if (p.hours[cmd.hero] < 1) fail(cmd, `${cmd.hero} has no hours left to walk`);
+      const from = p.at[cmd.hero];
+      const to = neighbour(L, from, cmd.dir);
+      if (!to) fail(cmd, `no door ${cmd.dir} from ${from}`);
+      p.at[cmd.hero] = to;
+      p.seen[to] = true;
+      events.push({ type: 'moved', hero: cmd.hero, from, to });
+      p.steps[cmd.hero] += 1;
+      if (p.steps[cmd.hero] >= RULES.palace.stepsPerHour) {
+        p.steps[cmd.hero] = 0;
+        p.hours[cmd.hero] -= 1;
+      }
+      if (cmd.hero === 'zogu' && p.guarded) {
+        const guardFrom = p.at.velitel;
+        p.at.velitel = to;
+        events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to });
+      }
+      return;
+    }
+    case 'takeSeal': {
+      if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
+      if (p.seal !== null) fail(cmd, 'the seal is already carried');
+      if (p.at[cmd.hero] !== L.study) fail(cmd, 'the seal lies in the study');
+      p.seal = cmd.hero;
+      events.push({ type: 'seal', holder: cmd.hero });
+      return;
+    }
+    case 'giveSeal': {
+      if (p.done[cmd.hero]) fail(cmd, `${cmd.hero} has ended the day`);
+      if (p.seal !== cmd.hero) fail(cmd, `${cmd.hero} does not carry the seal`);
+      const to = other(cmd.hero);
+      if (p.done[to]) fail(cmd, `${to} has ended the day`);
+      if (p.at[to] !== p.at[cmd.hero]) fail(cmd, 'both must stand in the same room');
+      p.seal = to;
+      events.push({ type: 'seal', holder: to });
+      return;
+    }
+    case 'talk': {
+      const groups = groupsInRoom(L, p.at.zogu);
+      if (groups.length === 0) fail(cmd, 'nobody to talk to here');
+      spendHour(p, 'zogu', cmd);
+      const group = groups[0];
+      events.push({ type: 'feeling', group, mood: s.pop[group] });
+      const decision = wishFor(sc, s, group);
+      p.wishes[group] = decision;
+      events.push({ type: 'wish', group, decision });
+      return;
+    }
+    case 'advice': {
+      if (cmd.decision === undefined) {
+        if (s.phase.kind !== 'audience') fail(cmd, 'advice without a decision is about the petition');
+        if (p.at.zogu !== L.mother) fail(cmd, "advice about the petition is asked in Mother's room");
+        const petition = s.phase.petition;
+        spendHour(p, 'zogu', cmd);
+        events.push({ type: 'advised', subject: 'petition', id: petition });
+        return;
+      }
+      if (p.at.zogu !== L.mother) fail(cmd, "advice is given in Mother's room");
+      if (!availableDecisions(sc, s).some((d) => d.id === cmd.decision)) fail(cmd, 'no such decision on the menu');
+      spendHour(p, 'zogu', cmd);
+      events.push({ type: 'advised', subject: 'decision', id: cmd.decision });
+      return;
+    }
+    case 'envoys': {
+      if (p.at.zogu !== L.envoys) fail(cmd, "the envoys wait in their salon");
+      spendHour(p, 'zogu', cmd);
+      const offers = {} as Record<LenderId, number | null>;
+      for (const lender of LENDERS) {
+        const id = aidDecisionOf(sc, lender);
+        offers[lender] = id && s.used[id] ? null : s.pop[lender] <= s.low ? 0 : s.pop[lender] * RULES.aidPerPop;
+      }
+      p.offers = offers;
+      events.push({ type: 'envoys', offers });
+      return;
+    }
+    case 'investigate': {
+      const factions = factionsIn(sc, p.at.velitel);
+      if (factions.length === 0) fail(cmd, 'no faction in this room');
+      spendHour(p, 'velitel', cmd);
+      const faction = factions[0];
+      const plot = s.plots[faction];
+      p.investigated[faction] = plot;
+      events.push({ type: 'investigated', faction, plot });
+      return;
+    }
+    case 'policeReport': {
+      if (requireHero(cmd, cmd.hero) !== 'velitel') fail(cmd, 'only the commander asks the police');
+      if (p.at.velitel !== L.guardroom) fail(cmd, 'the police report is read in the guardroom');
+      if (p.report !== null) {
+        // Already read this quarter (play-test round 6a, our addition): free to re-read, same snapshot.
+        events.push({ type: 'policeReport', report: p.report, again: true });
+        return;
+      }
+      spendHour(p, 'velitel', cmd);
+      policeReport(s, events);
+      const reported = events.find((e) => e.type === 'policeReport');
+      if (reported && reported.type === 'policeReport') p.report = reported.report;
+      return;
+    }
+    case 'guard': {
+      if (p.at.velitel !== p.at.zogu) fail(cmd, 'the commander must stand by the king');
+      spendHour(p, 'velitel', cmd);
+      p.guarded = true;
+      p.done.velitel = true;
+      events.push({ type: 'guarding' });
+      if (p.seal === 'velitel') {
+        p.seal = null;
+        events.push({ type: 'seal', holder: null });
+      }
+      events.push({ type: 'heroDone', hero: 'velitel' });
+      return;
+    }
+    case 'decide': {
+      const hero = requireHero(cmd, cmd.hero);
+      if (p.done[hero]) fail(cmd, `${hero} has ended the day`);
+      if (p.seal !== hero) fail(cmd, `${hero} does not carry the seal`);
+      if (p.at[hero] !== decisionRoom(L, cmd.decision)) fail(cmd, `${cmd.decision} is sealed in ${decisionRoom(L, cmd.decision)}`);
+      takeDecision(sc, s, cmd.decision, cmd.share ?? 2, dice, events);
+      return;
+    }
+    case 'endDay': {
+      const hero = requireHero(cmd, cmd.hero);
+      if (inAudience && hero === 'zogu') fail(cmd, 'the petitioner still waits in the throne room');
+      if (p.done[hero]) fail(cmd, `${hero} has already ended the day`);
+      p.done[hero] = true;
+      const from = p.at[hero];
+      p.at[hero] = L.bedroom;
+      events.push({ type: 'moved', hero, from, to: L.bedroom });
+      if (p.seal === hero) {
+        p.seal = null;
+        events.push({ type: 'seal', holder: null });
+      }
+      events.push({ type: 'heroDone', hero });
+      if (hero === 'zogu' && p.guarded) {
+        const guardFrom = p.at.velitel;
+        p.at.velitel = L.bedroom;
+        events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.bedroom });
+      }
+      return;
+    }
+    default:
+      fail(cmd, 'not a palace command');
+  }
+}
+
+/**
+ * Zogu without hours cannot walk; if the petitioner still waits elsewhere, the guards bring Zogu to the throne room
+ * (play-test change, our addition) so the quarter can never get stuck without its audience.
+ */
+export function summonToAudience(sc: Scenario, s: GameState, events: GameEvent[]): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L || s.phase.kind !== 'audience' || p.hours.zogu >= 1 || p.at.zogu === L.throne) return;
+  const from = p.at.zogu;
+  p.at.zogu = L.throne;
+  p.seen[L.throne] = true;
+  events.push({ type: 'moved', hero: 'zogu', from, to: L.throne });
+  if (p.guarded) {
+    const guardFrom = p.at.velitel;
+    p.at.velitel = L.throne;
+    events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.throne });
+  }
+  events.push({ type: 'summoned' });
+}
+
+/**
+ * A hero with no hours left goes to bed (play-test change, our addition): he is taken to the bedroom and his quarter
+ * ends there (as "Ukončit čtvrtletí": the seal he carries goes back to the study). Zogu while the petitioner waits is
+ * first summoned to the throne room (summonToAudience) and goes to bed after he has answered. A guarding Vlček
+ * follows Zogu to bed too (round 4 rule: he walks with him and, at night, stays awake by his bed).
+ */
+export function sendToBed(sc: Scenario, s: GameState, events: GameEvent[]): void {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L) return;
+  for (const h of HEROES) {
+    // A guarding Vlček is already done (the guard command ends his day) — skip him, he stays at the king's side.
+    if (p.done[h] || p.hours[h] >= 1) continue;
+    if (h === 'zogu' && s.phase.kind === 'audience') continue;
+    const from = p.at[h];
+    p.at[h] = L.bedroom;
+    events.push({ type: 'moved', hero: h, from, to: L.bedroom });
+    p.done[h] = true;
+    if (p.seal === h) {
+      p.seal = null;
+      events.push({ type: 'seal', holder: null });
+    }
+    events.push({ type: 'toBed', hero: h });
+    events.push({ type: 'heroDone', hero: h });
+    if (h === 'zogu' && p.guarded) {
+      const guardFrom = p.at.velitel;
+      p.at.velitel = L.bedroom;
+      events.push({ type: 'moved', hero: 'velitel', from: guardFrom, to: L.bedroom });
+    }
+  }
+}
+
+/**
+ * Every palace command `hero` may give now (the UI's menus and the bot use it). During the audience
+ * Zogu may move and act exactly as in the day, except he cannot end his quarter until the petitioner
+ * is answered (which needs him in the throne room, checked in `turn.ts`); the commander may end his
+ * quarter at any time.
+ */
+export function palaceCommands(sc: Scenario, s: GameState, hero: Hero): Command[] {
+  const p = s.palace;
+  const L = sc.palace;
+  if (!p || !L || (s.phase.kind !== 'audience' && s.phase.kind !== 'day') || p.done[hero]) return [];
+  const audience = s.phase.kind === 'audience';
+  const room = p.at[hero];
+  const hasHour = p.hours[hero] >= 1;
+  const out: Command[] = [];
+  if (hasHour) for (const dir of exits(L, room)) out.push({ type: 'move', hero, dir });
+  if (p.seal === null && room === L.study) out.push({ type: 'takeSeal', hero });
+  if (p.seal === hero && p.at[other(hero)] === room && !p.done[other(hero)]) out.push({ type: 'giveSeal', hero });
+  if (hero === 'zogu') {
+    if (hasHour) {
+      if (groupsInRoom(L, room).length > 0) out.push({ type: 'talk' });
+      if (room === L.mother) {
+        if (audience) out.push({ type: 'advice' });
+        for (const d of availableDecisions(sc, s)) out.push({ type: 'advice', decision: d.id });
+      }
+      if (room === L.envoys) out.push({ type: 'envoys' });
+    }
+  } else {
+    if (hasHour && factionsIn(sc, room).length > 0) out.push({ type: 'investigate' });
+    if (room === L.guardroom && (hasHour || p.report !== null)) out.push({ type: 'policeReport', hero });
+    if (hasHour && room === p.at.zogu) out.push({ type: 'guard' });
+  }
+  if (p.seal === hero && !s.decisionTaken) {
+    for (const d of availableDecisions(sc, s)) if (decisionRoom(L, d.id) === room) out.push({ type: 'decide', hero, decision: d.id });
+  }
+  if (!(audience && hero === 'zogu')) out.push({ type: 'endDay', hero });
+  return out;
+}

@@ -1,0 +1,42 @@
+:root {
+  --night: #120e0a;
+  --panel: #1c160f;
+  --gold: #d9b45a;
+  --gold-dark: #8a6a24;
+  --cream: #efe4c4;
+  --muted: #a8977a;
+  --red: #c8102e;
+}
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--cream);
+  font-family: 'Poiret One', Georgia, serif;
+  font-weight: 700;
+  font-size: 19px;
+}
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-family: 'Limelight', Georgia, serif; font-weight: 400; color: var(--gold); margin: 0; letter-spacing: 2px; }
+.date { color: var(--gold); margin: 4px 0; }
+.money { color: var(--muted); margin: 0 0 16px; white-space: pre-line; }
+#log p { margin: 4px 0; color: var(--muted); }
+#log p.big { color: var(--cream); }
+#prompt { margin: 16px 0 8px; font-size: 22px; }
+#choices { display: flex; flex-direction: column; gap: 8px; }
+#choices h2 { font-family: 'Limelight', Georgia, serif; font-weight: 400; font-size: 17px; color: var(--gold); margin: 12px 0 0; }
+button {
+  font: inherit;
+  text-align: left;
+  color: var(--cream);
+  background: var(--panel);
+  border: 1px solid var(--gold-dark);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+button:hover, button:focus-visible { border-color: var(--gold); outline: none; }
+button .key { color: var(--gold); margin-right: 8px; }
+#report table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+#report td { padding: 2px 6px; }
+#report .bar { display: inline-block; height: 10px; background: var(--gold); vertical-align: middle; }
+#report .plot { color: var(--red); }
+#back { display: inline-block; margin-top: 24px; color: var(--muted); }

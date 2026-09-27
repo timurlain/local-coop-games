@@ -1,0 +1,493 @@
+// DOM rendering of the palace page (plan 2c): the top HUD, the palace strip, each half's panel and the shared
+// overlay. Thin: it draws the pure models from menus/hud/notes/screens and reports clicks; no game logic here.
+
+import { cs } from '../../../shared/i18n/cs';
+import { ARENA_H, ARENA_W } from '../minigames/arena';
+import type { Hero, RoomId } from '../logic/palace';
+import { STAGE_H, STAGE_W } from '../render/rooms/crowd';
+import type { Bubble } from './bubbles';
+import type { DossierModel } from './dossier';
+import type { HeroHud } from './hud';
+import type { StripCell } from './palace-view';
+
+const T = cs.diktator;
+const P = T.palace;
+const $ = <E extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as E;
+
+function para(text: string): HTMLParagraphElement {
+  const p = document.createElement('p');
+  p.textContent = text;
+  return p;
+}
+
+function menuList(ol: HTMLOListElement, labels: readonly { label: string; detail: string }[], focus: number | null, onChoose: (i: number) => void): void {
+  ol.replaceChildren(
+    ...labels.map((it, i) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = it.label;
+      if (it.detail) {
+        const small = document.createElement('small');
+        small.textContent = it.detail;
+        b.append(small);
+      }
+      if (i === focus) b.classList.add('focus');
+      b.addEventListener('click', () => onChoose(i));
+      li.append(b);
+      return li;
+    }),
+  );
+  const focused = focus === null ? null : ol.children[focus];
+  focused?.scrollIntoView({ block: 'nearest' });
+}
+
+export function renderTop(lines: readonly string[]): void {
+  $('#top-hud').replaceChildren(
+    ...lines.map((l) => {
+      const s = document.createElement('span');
+      s.textContent = l;
+      return s;
+    }),
+  );
+}
+
+export function renderStrip(cells: readonly (readonly StripCell[])[], flash: ReadonlySet<RoomId>): void {
+  $('#strip').replaceChildren(
+    ...cells.flat().map((c) => {
+      const div = document.createElement('div');
+      div.className = 'cell';
+      if (flash.has(c.room)) div.classList.add('flash');
+      div.append(para(c.name));
+      const heroes = document.createElement('span');
+      heroes.className = 'heroes';
+      for (const h of c.heroes) {
+        const b = document.createElement('b');
+        b.textContent = T.heroes[h][0];
+        b.title = T.heroes[h];
+        heroes.append(b);
+      }
+      div.append(heroes);
+      return div;
+    }),
+  );
+}
+
+export interface HalfModel {
+  readonly hud: HeroHud;
+  /** A line is waiting in this half. */
+  readonly talking: boolean;
+  /** The choice bubble is open (menu open or modal). */
+  readonly open: boolean;
+  /** Solo play: this half is not the one being steered. */
+  readonly inactive: boolean;
+  readonly solo: boolean;
+  /** This half's device's control reminder (play-test wish: clear per-player controls). */
+  readonly keys: string;
+}
+
+export function renderHalf(hero: Hero, m: HalfModel): void {
+  const root = $(`#half-${hero}`);
+  root.classList.toggle('inactive', m.inactive);
+  // Hours and steps left now live on the stage as hourglasses (play-test round 6a); the side panel keeps
+  // name, room and the seal only.
+  const hud = [m.hud.name, m.hud.room];
+  if (m.hud.seal) hud.push(`✉ ${P.sealMark}`);
+  $('.hud', root).replaceChildren(...hud.map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
+  const hint = m.talking ? P.hintTalk : m.open ? P.hintOpen : P.hintClosed;
+  const line = m.solo ? `${hint} · ${P.soloHint}` : hint;
+  const context = document.createElement('span');
+  context.className = 'hint-context';
+  context.textContent = line;
+  const children: Node[] = [context];
+  if (m.keys) {
+    const keys = document.createElement('span');
+    keys.className = 'hint-keys';
+    keys.textContent = m.keys;
+    children.push(keys);
+  }
+  $('.hint', root).replaceChildren(...children);
+}
+
+/** Draws a half's comic bubbles over its canvas. Stage units are mapped onto the canvas' on-screen box. */
+export function renderBubbles(hero: Hero, bubbles: readonly Bubble[], onChoose: (i: number) => void): void {
+  const box = $(`#half-${hero} .stage-box`);
+  const canvas = $<HTMLCanvasElement>('.stage', box);
+  const layer = $('.bubbles', box);
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+  const ox = canvas.offsetLeft;
+  const oy = canvas.offsetTop;
+  const px = (x: number) => ox + (x / STAGE_W) * cw;
+  const py = (y: number) => oy + (y / STAGE_H) * ch;
+  layer.style.fontSize = `${Math.max(13, Math.min(26, ch * 0.075))}px`;
+  layer.replaceChildren();
+  let capTop = oy + ch * 0.02;
+  for (const b of bubbles) {
+    const el = document.createElement('div');
+    el.className = `bubble ${b.kind}`;
+    if (b.kind === 'choice') {
+      el.style.left = `${px(b.anchor.x + 26)}px`;
+      el.style.top = `${oy + ch * 0.03}px`;
+      el.style.maxWidth = `${px(b.right) - px(b.anchor.x + 26)}px`;
+      // The scrolling lives on an inner box: overflow on the bubble itself would clip its tail.
+      const inner = document.createElement('div');
+      inner.className = 'scroll';
+      inner.style.maxHeight = `${ch * 0.9}px`;
+      const h = document.createElement('h3');
+      h.textContent = b.title;
+      inner.append(h, ...b.body.map(para));
+      const ol = document.createElement('ol');
+      menuList(ol, b.items, b.focus, onChoose);
+      inner.append(ol);
+      el.append(inner);
+      layer.append(el);
+      continue;
+    }
+    const says = document.createElement('div');
+    says.className = 'scroll';
+    says.textContent = b.text;
+    el.append(says);
+    if (b.more) {
+      const m = document.createElement('span');
+      m.className = 'more';
+      m.textContent = T.speech.more;
+      el.prepend(m);
+    }
+    if (b.kind === 'caption') {
+      el.style.left = `${ox + cw * 0.01}px`;
+      el.style.top = `${capTop}px`;
+      layer.append(el);
+      capTop += el.offsetHeight + 4;
+    } else {
+      el.style.left = '0';
+      el.style.top = '0';
+      el.style.maxWidth = `${cw * 0.6}px`;
+      const headY = py(b.anchor.y);
+      says.style.maxHeight = `${Math.max(40, headY - 22 - (oy + 4))}px`;
+      layer.append(el);
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const ax = px(b.anchor.x);
+      const left = Math.min(Math.max(ax - w / 2, ox + 4), ox + cw - w - 4);
+      el.style.left = `${left}px`;
+      el.style.top = `${Math.max(oy + 4, headY - 14 - h)}px`;
+      el.style.setProperty('--tail', `${Math.min(Math.max(ax - left, 16), w - 16)}px`);
+    }
+  }
+}
+
+const HG_NS = 'http://www.w3.org/2000/svg';
+
+function hgEl<K extends keyof SVGElementTagNameMap>(name: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
+  const el = document.createElementNS(HG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el as SVGElementTagNameMap[K];
+}
+
+/** One hourglass, 24 × 36 viewBox: a full one has sand in the top bulb, an empty (spent) one only at the bottom,
+ * greyed. */
+function hourglassSvg(full: boolean, sizePx: number): SVGSVGElement {
+  const frame = full ? '#d9b45a' : '#8a8a8a';
+  const sand = full ? '#e8c56a' : '#9a9a90';
+  const svg = hgEl('svg', { viewBox: '0 0 24 36', width: sizePx, height: sizePx });
+  svg.append(
+    hgEl('rect', { x: 2, y: 1, width: 20, height: 3, fill: frame }),
+    hgEl('rect', { x: 2, y: 32, width: 20, height: 3, fill: frame }),
+    hgEl('path', { d: 'M4,4 L20,4 L12,18 Z M4,33 L20,33 L12,18 Z', fill: 'none', stroke: frame, 'stroke-width': 1.5 }),
+    hgEl('path', full ? { d: 'M6,6 L18,6 L12,17 Z', fill: sand } : { d: 'M6,32 L18,32 L12,21 Z', fill: sand }),
+  );
+  return svg;
+}
+
+/** Renders a half's remaining-hours hourglasses over its canvas' top-left corner (play-test round 6a: "make the
+ * hours remaining three hourglass figures... so he sees them immediately"), with the steps-left line under them. */
+export function renderHourglasses(hero: Hero, hud: HeroHud): void {
+  const box = $(`#half-${hero} .stage-box`);
+  const canvas = $<HTMLCanvasElement>('.stage', box);
+  const layer = $('.hourglasses', box);
+  const ch = canvas.clientHeight;
+  const ox = canvas.offsetLeft;
+  const oy = canvas.offsetTop;
+  const size = ch * 0.07;
+  layer.style.left = `${ox + ch * 0.02}px`;
+  layer.style.top = `${oy + ch * 0.06}px`;
+  layer.style.fontSize = `${Math.max(10, ch * 0.045)}px`;
+  const row = document.createElement('div');
+  row.className = 'hourglass-row';
+  for (let i = 0; i < hud.hoursTotal; i++) row.append(hourglassSvg(i < hud.hoursLeft, size));
+  const label = document.createElement('div');
+  label.className = 'hourglass-label';
+  label.textContent = hud.stepsLeft !== null ? P.steps(hud.stepsLeft) : hud.done ? '' : P.noWalking;
+  layer.replaceChildren(row, label);
+}
+
+/** The police report as a full dossier over the room (play-test round 6a, our addition): covers the canvas box
+ * exactly. `confirm` shows the "close, for free next time" prompt (`onPick(0)` = close, `onPick(1)` = keep
+ * reading); `focus` picks which of the two is highlighted. */
+export function renderDossier(hero: Hero, model: DossierModel | null, confirm: boolean, focus: number, onPick: (i: number) => void): void {
+  const box = $(`#half-${hero} .stage-box`);
+  const canvas = $<HTMLCanvasElement>('.stage', box);
+  const el = $('.dossier', box);
+  if (!model) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  el.hidden = false;
+  el.style.left = `${canvas.offsetLeft}px`;
+  el.style.top = `${canvas.offsetTop}px`;
+  el.style.width = `${canvas.clientWidth}px`;
+  el.style.height = `${canvas.clientHeight}px`;
+  const paper = document.createElement('div');
+  paper.className = 'dossier-paper';
+  const stamp = document.createElement('div');
+  stamp.className = 'dossier-stamp';
+  stamp.textContent = 'PŘÍSNĚ TAJNÉ';
+  const h = document.createElement('h3');
+  h.textContent = model.title;
+  const sub = document.createElement('p');
+  sub.className = 'dossier-subtitle';
+  sub.textContent = model.subtitle;
+  const table = document.createElement('div');
+  table.className = 'dossier-rows';
+  for (const r of model.rows) {
+    const row = document.createElement('div');
+    row.className = 'dossier-row';
+    const name = document.createElement('span');
+    name.className = 'dossier-name';
+    name.textContent = r.name;
+    const strength = document.createElement('span');
+    strength.className = 'dossier-strength';
+    strength.textContent = r.strength === null ? '—' : '■'.repeat(r.strength) + '□'.repeat(9 - r.strength);
+    const pop = document.createElement('span');
+    pop.className = 'dossier-pop';
+    pop.textContent = `${'■'.repeat(r.popularity)}${'□'.repeat(9 - r.popularity)} (${r.mood})`;
+    row.append(name, strength, pop);
+    if (r.plot !== null) {
+      const plot = document.createElement('span');
+      plot.className = 'dossier-plot';
+      plot.textContent = r.plot;
+      row.append(plot);
+    }
+    table.append(row);
+  }
+  const footer = document.createElement('div');
+  footer.className = 'dossier-footer';
+  footer.append(...model.footer.map(para));
+  paper.append(stamp, h, sub, table, footer);
+  if (confirm) {
+    const prompt = document.createElement('div');
+    prompt.className = 'dossier-confirm';
+    prompt.append(para(P.dossierClose));
+    const ol = document.createElement('ol');
+    ol.className = 'menu';
+    menuList(ol, [{ label: P.dossierCloseYes, detail: '' }, { label: P.dossierCloseNo, detail: '' }], focus, onPick);
+    prompt.append(ol);
+    paper.append(prompt);
+  }
+  el.replaceChildren(paper);
+}
+
+export interface OverlayModel {
+  readonly title: string;
+  readonly lines: readonly string[];
+  readonly options: readonly string[];
+  readonly focus: number;
+  readonly hint: string;
+  /** The evening's news as a gazette (plan 5): a masthead and one article per headline. */
+  readonly gazette?: { readonly date: string; readonly headlines: readonly string[] };
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function svgEl<K extends keyof SVGElementTagNameMap>(name: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
+  const el = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el as SVGElementTagNameMap[K];
+}
+
+/** A 120 × 90 sepia engraving-like placeholder: sky, sun, rooftops and a minaret silhouette of Tirana, hatch
+ * lines. The art plan (plan 5) replaces it with real illustrations. */
+function gazetteArt(): SVGSVGElement {
+  const svg = svgEl('svg', { viewBox: '0 0 120 90', width: 120, height: 90 });
+  svg.append(
+    svgEl('rect', { x: 0, y: 0, width: 120, height: 90, fill: '#e3d3a4' }),
+    svgEl('circle', { cx: 92, cy: 22, r: 12, fill: '#c9a44a' }),
+    svgEl('path', {
+      d: 'M0,90 L0,58 L14,44 L28,58 L40,50 L52,58 L52,34 L58,22 L64,34 L64,58 L78,46 L92,58 L104,50 L120,60 L120,90 Z',
+      fill: '#6a4a2a',
+    }),
+    svgEl('path', { d: 'M58,22 A6,6 0 0 1 64,34 L52,34 A6,6 0 0 1 58,22 Z', fill: '#5a3e22' }),
+  );
+  for (let i = -90; i < 120; i += 6) svg.append(svgEl('line', { x1: i, y1: 0, x2: i + 90, y2: 90, stroke: '#7a6a45', 'stroke-width': 0.4, opacity: 0.35 }));
+  return svg;
+}
+
+function renderGazette(gazette: { readonly date: string; readonly headlines: readonly string[] } | undefined): void {
+  const root = $('#overlay-gazette');
+  $('.card').classList.toggle('with-gazette', !!gazette && gazette.headlines.length > 0);
+  if (!gazette || gazette.headlines.length === 0) {
+    root.hidden = true;
+    root.replaceChildren();
+    return;
+  }
+  root.hidden = false;
+  const masthead = document.createElement('div');
+  masthead.className = 'gazette-masthead';
+  const name = document.createElement('h3');
+  name.textContent = P.gazette;
+  const rule = document.createElement('div');
+  rule.className = 'gazette-rule';
+  const dateline = document.createElement('p');
+  dateline.className = 'gazette-dateline';
+  dateline.textContent = `${P.gazetteDate(gazette.date)} · ${P.gazettePrice}`;
+  masthead.append(name, rule, dateline);
+  const articles = gazette.headlines.map((headline) => {
+    const article = document.createElement('div');
+    article.className = 'gazette-article';
+    const pic = document.createElement('div');
+    pic.className = 'gazette-pic';
+    pic.append(gazetteArt());
+    const h = document.createElement('h4');
+    h.textContent = headline;
+    article.append(pic, h);
+    return article;
+  });
+  root.replaceChildren(masthead, ...articles);
+}
+
+export function renderOverlay(m: OverlayModel | null, onChoose: (i: number) => void): void {
+  $('#overlay').classList.toggle('hidden', m === null);
+  if (!m) return;
+  $('#overlay-title').textContent = m.title;
+  $('#overlay-lines').replaceChildren(...m.lines.map(para));
+  renderGazette(m.gazette);
+  menuList($<HTMLOListElement>('#overlay-options'), m.options.map((label) => ({ label, detail: '' })), m.focus, onChoose);
+  $('#overlay-hint').textContent = m.hint;
+}
+
+/** Sizes the half's canvas to the largest 480 × 200 box that fits its container; returns the stage scale. */
+export function fitStage(canvas: HTMLCanvasElement): number {
+  const box = canvas.parentElement!;
+  const w = Math.max(1, Math.min(box.clientWidth, (box.clientHeight * STAGE_W) / STAGE_H));
+  const h = (w * STAGE_H) / STAGE_W;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = `${Math.floor(w)}px`;
+  canvas.style.height = `${Math.floor(h)}px`;
+  const bw = Math.round(w * dpr);
+  if (canvas.width !== bw) {
+    canvas.width = bw;
+    canvas.height = Math.round(h * dpr);
+  }
+  return canvas.width / STAGE_W;
+}
+
+export function stageCanvas(hero: Hero): HTMLCanvasElement {
+  return $<HTMLCanvasElement>(`#half-${hero} .stage`);
+}
+
+export function arenaCanvas(): HTMLCanvasElement {
+  return $<HTMLCanvasElement>('#arena .arena-stage');
+}
+
+/** Sizes the arena canvas to the largest 16:9 box that fits 90 % of `#arena` (spec §3: "covers 90 % of the
+ * viewport"); returns the scale for the 960-wide logical space. */
+export function fitArena(canvas: HTMLCanvasElement): number {
+  const box = canvas.parentElement!;
+  const maxW = box.clientWidth * 0.9;
+  const maxH = box.clientHeight * 0.9;
+  const w = Math.max(1, Math.min(maxW, (maxH * ARENA_W) / ARENA_H));
+  const h = (w * ARENA_H) / ARENA_W;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = `${Math.floor(w)}px`;
+  canvas.style.height = `${Math.floor(h)}px`;
+  const bw = Math.round(w * dpr);
+  if (canvas.width !== bw) {
+    canvas.width = bw;
+    canvas.height = Math.round(h * dpr);
+  }
+  return canvas.width / ARENA_W;
+}
+
+/** How long the halves take to merge into the arena (and the arena to fade in), or the reverse. */
+const ARENA_MERGE_MS = 500;
+
+/**
+ * Runs the merge/split transition (task 5, index.html/palace.css): `#app` gets `.merging` for
+ * `ARENA_MERGE_MS` (the two halves slide toward the centre and fade), then `#app` is hidden and `#arena` fades
+ * in; `on: false` plays the same thing in reverse. `mode`: 'merge' (default, the palace ⇄ arena split-screen
+ * transition) or 'fade' (Pochod na Tiranu, no halves to merge).
+ */
+export function showArena(on: boolean, mode: 'merge' | 'fade' = 'merge'): void {
+  const app = $('#app');
+  const arena = $('#arena');
+  if (mode === 'fade') {
+    // Pochod na Tiranu (spec 2026-09-27-diktator-pochod-design §3): no halves to merge — the arena fades in over the
+    // title and fades out into the palace. `#app` (still empty) is hidden underneath so nothing shows through.
+    if (on) {
+      app.hidden = true;
+      arena.hidden = false;
+      arena.classList.remove('shown');
+      requestAnimationFrame(() => requestAnimationFrame(() => arena.classList.add('shown')));
+    } else {
+      app.hidden = false;
+      arena.classList.remove('shown');
+      window.setTimeout(() => { arena.hidden = true; }, ARENA_MERGE_MS);
+    }
+    return;
+  }
+  if (on) {
+    app.classList.add('merging');
+    window.setTimeout(() => {
+      app.hidden = true;
+      app.classList.remove('merging');
+      arena.hidden = false;
+      arena.classList.remove('shown');
+      requestAnimationFrame(() => requestAnimationFrame(() => arena.classList.add('shown')));
+    }, ARENA_MERGE_MS);
+  } else {
+    arena.classList.remove('shown');
+    window.setTimeout(() => {
+      arena.hidden = true;
+      app.hidden = false;
+      app.classList.add('merging');
+      requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('merging')));
+    }, ARENA_MERGE_MS);
+  }
+}
+
+export interface ArenaCardModel {
+  readonly title: string;
+  readonly lines: readonly string[];
+  /** A small boxed note under the lines (the march's „Jak to bylo doopravdy“). */
+  readonly note?: { readonly title: string; readonly text: string };
+  readonly button: string;
+}
+
+/** The arena's intro/result card: a centred card inside `#arena`, styled like the shared `.card`. */
+export function renderArenaCard(model: ArenaCardModel | null, onChoose: () => void): void {
+  const el = $('#arena-card');
+  if (!model) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  el.hidden = false;
+  const h = document.createElement('h2');
+  h.textContent = model.title;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = model.button;
+  btn.addEventListener('click', onChoose);
+  const note: HTMLElement[] = [];
+  if (model.note) {
+    const aside = document.createElement('aside');
+    aside.className = 'arena-note';
+    const b = document.createElement('strong');
+    b.textContent = model.note.title;
+    aside.append(b, para(model.note.text));
+    note.push(aside);
+  }
+  el.replaceChildren(h, ...model.lines.map(para), ...note, btn);
+}

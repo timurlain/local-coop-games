@@ -2,7 +2,7 @@ import { IDLE, KEYBOARD_LEFT, KEYBOARD_RIGHT, gamepadActions, keyboardActions, t
 
 /** 'kb-left' | 'kb-right' | 'pad-<gamepad index>' */
 export type DeviceId = string;
-type Edge = 'action' | 'trap' | 'pause';
+type Edge = 'action' | 'trap' | 'pause' | 'back';
 
 /**
  * Collects keyboard and gamepad state. Call `update()` exactly once per logic tick,

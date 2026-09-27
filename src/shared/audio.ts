@@ -9,7 +9,9 @@ export type SfxName =
   | 'grumble'
   | 'umbrella' | 'hiss' | 'snip'
   | 'salvage' | 'resupply'
-  | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine';
+  | 'jingle' | 'click' | 'coins' | 'paper' | 'stamp' | 'engine'
+  | 'stepZogu' | 'stepVlcek' | 'doorZogu' | 'doorVlcek' | 'bumpZogu' | 'bumpVlcek'
+  | 'voiceZogu' | 'voiceVlcek' | 'voiceMother' | 'voiceCrowd' | 'voiceEnvoy';
 
 interface ToneOpts {
   freq: number;
@@ -29,7 +31,7 @@ function tone(c: AudioContext, { freq, to, dur, type = 'square', vol = 0.15, del
   if (to !== undefined) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
   gain.gain.setValueAtTime(vol, t0);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  osc.connect(gain).connect(c.destination);
+  osc.connect(gain).connect(effectsOut(c));
   osc.start(t0);
   osc.stop(t0 + dur);
 }
@@ -54,7 +56,7 @@ function noise(c: AudioContext, { dur, vol = 0.3, delay = 0, lowpass = 2000 }: N
   const gain = c.createGain();
   gain.gain.setValueAtTime(vol, t0);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  src.connect(filter).connect(gain).connect(c.destination);
+  src.connect(filter).connect(gain).connect(effectsOut(c));
   src.start(t0);
   src.stop(t0 + dur);
 }
@@ -65,6 +67,11 @@ function clickClack(c: AudioContext, delay: number): void {
   noise(c, { dur: 0.03, vol: 0.18, delay, lowpass: 7000 });
   tone(c, { freq: 1300, dur: 0.03, delay: delay + 0.09, type: 'square', vol: 0.12 });
   noise(c, { dur: 0.035, vol: 0.2, delay: delay + 0.09, lowpass: 6000 });
+}
+
+/** A short "voice": three syllable blips around `base` Hz, like the talking boxes of old RPGs. */
+function blips(c: AudioContext, base: number, type: OscillatorType, vol: number): void {
+  [1, 1.12, 0.94].forEach((k, i) => tone(c, { freq: base * k, dur: 0.06, delay: i * 0.08, type, vol }));
 }
 
 const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
@@ -182,9 +189,57 @@ const RECIPES: Record<SfxName, (c: AudioContext) => void> = {
     noise(c, { dur: 3, vol: 0.25, lowpass: 450 });
     for (let i = 0; i < 6; i++) tone(c, { freq: 140 + (i % 3) * 30, dur: 0.25, delay: 0.3 + i * 0.4, type: 'sawtooth', vol: 0.08 });
   },
+  /** Diktátor (plan 2d): Zogu's heavy, slow boots — two low thumps. */
+  stepZogu: (c) => [0, 0.22].forEach((delay) => {
+    tone(c, { freq: 90, to: 50, dur: 0.09, type: 'sine', vol: 0.3, delay });
+    noise(c, { dur: 0.05, vol: 0.1, delay, lowpass: 400 });
+  }),
+  /** Vlček's quick steps: three noise steps, each with a low heel tone (play-test: the old spur jingle sounded like birds). */
+  stepVlcek: (c) => [0, 0.1, 0.2].forEach((delay) => {
+    noise(c, { dur: 0.03, vol: 0.08, delay, lowpass: 1500 });
+    tone(c, { freq: 120, to: 80, dur: 0.05, type: 'sine', vol: 0.12, delay });
+  }),
+  /** Zogu's door: a slow, low creak. */
+  doorZogu: (c) => { tone(c, { freq: 150, to: 110, dur: 0.25, type: 'triangle', vol: 0.12, delay: 0.3 }); noise(c, { dur: 0.15, vol: 0.08, delay: 0.3, lowpass: 600 }); },
+  /** Vlček's door: a quick latch. */
+  doorVlcek: (c) => {
+    tone(c, { freq: 900, dur: 0.02, type: 'square', vol: 0.08, delay: 0.25 });
+    tone(c, { freq: 600, dur: 0.03, type: 'square', vol: 0.08, delay: 0.3 });
+    noise(c, { dur: 0.03, vol: 0.1, delay: 0.25, lowpass: 4000 });
+  },
+  bumpZogu: (c) => tone(c, { freq: 80, to: 50, dur: 0.1, type: 'sine', vol: 0.2 }),
+  bumpVlcek: (c) => tone(c, { freq: 160, to: 110, dur: 0.07, type: 'sine', vol: 0.15 }),
+  voiceZogu: (c) => blips(c, 150, 'square', 0.06),
+  voiceVlcek: (c) => blips(c, 230, 'square', 0.06),
+  voiceMother: (c) => blips(c, 420, 'triangle', 0.08),
+  voiceCrowd: (c) => { blips(c, 180, 'sawtooth', 0.04); blips(c, 260, 'sawtooth', 0.03); },
+  voiceEnvoy: (c) => blips(c, 300, 'sine', 0.08),
 };
 
 let shared: AudioContext | null = null;
+let effectsGain: GainNode | null = null;
+/** 0..1, applied to `effectsGain` whenever it exists. Default 1: Spy vs Spy (which never touches this) is unchanged. */
+let effectsVolume = 1;
+
+/**
+ * The master effects gain, connected to `c.destination`; every synth tone/noise and every recorded sample plays
+ * through it, so one gain change scales all of them. Created on demand (the same node every time, for a given
+ * context — there is only ever one shared context in practice).
+ */
+export function effectsOut(c: AudioContext): AudioNode {
+  if (effectsGain === null) {
+    effectsGain = c.createGain();
+    effectsGain.gain.value = effectsVolume;
+    effectsGain.connect(c.destination);
+  }
+  return effectsGain;
+}
+
+/** Sets the effects volume (round-6b play-test setting); clamped 0..1, applied immediately if the node exists. */
+export function setEffectsVolume(v: number): void {
+  effectsVolume = Math.max(0, Math.min(1, v));
+  if (effectsGain !== null) effectsGain.gain.value = effectsVolume;
+}
 
 /** The one AudioContext shared by effects and music; null until `unlockAudio()` ran (or without audio support). */
 export function getAudioContext(): AudioContext | null {
@@ -199,6 +254,7 @@ export function unlockAudio(): AudioContext | null {
     } catch {
       return null; // no audio support: everything stays silent
     }
+    effectsOut(shared); // create the gain node up front, alongside the context
   }
   void shared.resume();
   return shared;

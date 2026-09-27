@@ -9,12 +9,12 @@ const pad = (axes: number[], pressed: number[] = []) => ({
 describe('keyboardActions', () => {
   it('maps WASD + F + G for the left player', () => {
     const a = keyboardActions(new Set(['KeyA', 'KeyS', 'KeyF']), KEYBOARD_LEFT);
-    expect(a).toEqual({ moveX: -1, moveY: 1, action: true, trap: false, pause: false });
+    expect(a).toEqual({ moveX: -1, moveY: 1, action: true, trap: false, pause: false, back: false });
   });
 
   it('maps arrows + Enter + right Shift for the right player', () => {
     const a = keyboardActions(new Set(['ArrowRight', 'ArrowUp', 'ControlRight', 'Escape']), KEYBOARD_RIGHT);
-    expect(a).toEqual({ moveX: 1, moveY: -1, action: false, trap: true, pause: true });
+    expect(a).toEqual({ moveX: 1, moveY: -1, action: false, trap: true, pause: true, back: false });
   });
 
   it('cancels opposite directions', () => {
@@ -24,7 +24,11 @@ describe('keyboardActions', () => {
 
   it('ignores the other player keys', () => {
     const a = keyboardActions(new Set(['ArrowLeft', 'Enter']), KEYBOARD_LEFT);
-    expect(a).toEqual({ moveX: 0, moveY: 0, action: false, trap: false, pause: false });
+    expect(a).toEqual({ moveX: 0, moveY: 0, action: false, trap: false, pause: false, back: false });
+  });
+
+  it('never reports back for a keyboard (games read their own key, e.g. Tab)', () => {
+    expect(keyboardActions(new Set(['Tab']), KEYBOARD_LEFT).back).toBe(false);
   });
 });
 
@@ -37,10 +41,15 @@ describe('gamepadActions', () => {
 
   it('reads the D-pad and face buttons', () => {
     const a = gamepadActions(pad([0, 0], [12, 15, 0, 2, 9]));
-    expect(a).toEqual({ moveX: 1, moveY: -1, action: true, trap: true, pause: true });
+    expect(a).toEqual({ moveX: 1, moveY: -1, action: true, trap: true, pause: true, back: false });
   });
 
   it('survives pads with fewer buttons or axes', () => {
-    expect(gamepadActions({ axes: [], buttons: [] })).toEqual({ moveX: 0, moveY: 0, action: false, trap: false, pause: false });
+    expect(gamepadActions({ axes: [], buttons: [] })).toEqual({ moveX: 0, moveY: 0, action: false, trap: false, pause: false, back: false });
+  });
+
+  it('reads Back/Select (button 8)', () => {
+    expect(gamepadActions(pad([0, 0], [8])).back).toBe(true);
+    expect(gamepadActions(pad([0, 0])).back).toBe(false);
   });
 });
