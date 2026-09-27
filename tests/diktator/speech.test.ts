@@ -100,13 +100,16 @@ describe('replyLines', () => {
     }
   });
 
-  it('has the petitioner stay a caption for a forced no, not speak as himself', () => {
+  it('captions a forced no (no money), then the petitioner complains as after a plain no', () => {
     const s = audience();
     s.phase = { kind: 'audience', petition: 'p08', suggested: false };
     s.treasury = 50;
     const { replies } = run(s, { type: 'answer', answer: 'yes' }, 'zogu');
-    expect(replies.actor.length).toBeGreaterThan(0);
-    expect(replies.actor.every((l) => l.speaker.kind === 'caption')).toBe(true);
+    expect(replies.actor).toEqual([
+      { speaker: { kind: 'caption' }, text: T.events.forcedNo },
+      { speaker: { kind: 'petitioner' }, text: S.refused },
+    ]);
+    expect(replies.other).toEqual([T.events.forcedNo]);
   });
 
   it('shows the seal changing hands to both halves', () => {

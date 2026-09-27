@@ -94,6 +94,13 @@ export function replyLines(sc: Scenario, before: GameState, after: GameState, ev
       }
       continue;
     }
+    if (e.type === 'forcedNo') {
+      // No money: the treasury's caption, then the petitioner complains as after a plain "no".
+      mine.push({ speaker: { kind: 'caption' }, text: cs.diktator.events.forcedNo });
+      mine.push({ speaker: { kind: 'petitioner' }, text: S.refused });
+      theirs.push(cs.diktator.events.forcedNo);
+      continue;
+    }
     if (e.type === 'petition' && before.phase.kind === 'audience') {
       mine.push({ speaker: { kind: 'petitioner' }, text: S.suggested(petitionById(sc, e.id).title) });
       continue;
