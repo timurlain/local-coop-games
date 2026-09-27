@@ -123,6 +123,13 @@ export function heroOf(seats: Seats, d: DeviceId, active: Hero): Hero | null {
 }
 
 /** The control reminder for a device (play-test: "how am I supposed to control the two players?"); '' for none. */
+/** The Action key's short name on a device, for the march's „Drž F — vyjednávat“ bubble. */
+export function actionKeyOf(d: DeviceId | null): string {
+  if (d === 'kb-right') return 'Enter';
+  if (d?.startsWith('pad-')) return 'A';
+  return 'F';
+}
+
 export function keysFor(d: DeviceId | null): string {
   if (d === 'kb-left') return P.keys['kb-left'];
   if (d === 'kb-right') return P.keys['kb-right'];

@@ -414,6 +414,8 @@ export const cs = {
         /** Play-test wish: keyboard input needs a window click first (browser focus). */
         clickFirst: 'Nejdřív klikni myší do okna hry, pak hraj klávesnicí.',
         newGame: 'Nová hra',
+        /** Skip Pochod na Tiranu: the original start values (spec 2026-09-27-diktator-pochod-design §11). */
+        quickStart: 'Rychlý start',
         continueGame: 'Pokračovat',
         textMode: 'Textová verze',
       },

@@ -416,11 +416,27 @@ const ARENA_MERGE_MS = 500;
 /**
  * Runs the merge/split transition (task 5, index.html/palace.css): `#app` gets `.merging` for
  * `ARENA_MERGE_MS` (the two halves slide toward the centre and fade), then `#app` is hidden and `#arena` fades
- * in; `on: false` plays the same thing in reverse.
+ * in; `on: false` plays the same thing in reverse. `mode`: 'merge' (default, the palace ⇄ arena split-screen
+ * transition) or 'fade' (Pochod na Tiranu, no halves to merge).
  */
-export function showArena(on: boolean): void {
+export function showArena(on: boolean, mode: 'merge' | 'fade' = 'merge'): void {
   const app = $('#app');
   const arena = $('#arena');
+  if (mode === 'fade') {
+    // Pochod na Tiranu (spec 2026-09-27-diktator-pochod-design §3): no halves to merge — the arena fades in over the
+    // title and fades out into the palace. `#app` (still empty) is hidden underneath so nothing shows through.
+    if (on) {
+      app.hidden = true;
+      arena.hidden = false;
+      arena.classList.remove('shown');
+      requestAnimationFrame(() => requestAnimationFrame(() => arena.classList.add('shown')));
+    } else {
+      app.hidden = false;
+      arena.classList.remove('shown');
+      window.setTimeout(() => { arena.hidden = true; }, ARENA_MERGE_MS);
+    }
+    return;
+  }
   if (on) {
     app.classList.add('merging');
     window.setTimeout(() => {
@@ -444,6 +460,8 @@ export function showArena(on: boolean): void {
 export interface ArenaCardModel {
   readonly title: string;
   readonly lines: readonly string[];
+  /** A small boxed note under the lines (the march's „Jak to bylo doopravdy“). */
+  readonly note?: { readonly title: string; readonly text: string };
   readonly button: string;
 }
 
@@ -462,5 +480,14 @@ export function renderArenaCard(model: ArenaCardModel | null, onChoose: () => vo
   btn.type = 'button';
   btn.textContent = model.button;
   btn.addEventListener('click', onChoose);
-  el.replaceChildren(h, ...model.lines.map(para), btn);
+  const note: HTMLElement[] = [];
+  if (model.note) {
+    const aside = document.createElement('aside');
+    aside.className = 'arena-note';
+    const b = document.createElement('strong');
+    b.textContent = model.note.title;
+    aside.append(b, para(model.note.text));
+    note.push(aside);
+  }
+  el.replaceChildren(h, ...model.lines.map(para), ...note, btn);
 }
