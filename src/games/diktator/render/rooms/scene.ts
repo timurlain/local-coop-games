@@ -92,6 +92,30 @@ function drawFurniture(ctx: CanvasRenderingContext2D, f: Furniture, st: RoomStyl
       box(ctx, x - 28, y - 110, 56, 110, '#4a3020');
       for (let r = 0; r < 4; r++) for (let b = 0; b < 7; b++) { ctx.fillStyle = ['#7a2430', '#2f4a6a', '#6a5a2a', '#3a5a3a'][(r + b) % 4]; ctx.fillRect(x - 24 + b * 7, y - 104 + r * 26, 5, 20); }
       break;
+    case 'familyPhotos':
+      // Oval portraits and one family group in gold frames, sepia prints (Zog's mother keeps the family on her wall).
+      for (const [dx, dy, w, h, oval, heads] of [
+        [-34, 44, 18, 24, true, 1], [-10, 36, 24, 30, false, 1], [20, 46, 18, 22, true, 1], [-20, 82, 44, 24, false, 3],
+      ] as const) {
+        const cx = x + dx + w / 2;
+        const cy = dy + h / 2;
+        ctx.fillStyle = st.accent;
+        ctx.beginPath();
+        if (oval) ctx.ellipse(cx, cy, w / 2 + 2, h / 2 + 2, 0, 0, Math.PI * 2); else ctx.rect(x + dx - 2, dy - 2, w + 4, h + 4);
+        ctx.fill();
+        ctx.fillStyle = '#c8b48a';
+        ctx.beginPath();
+        if (oval) ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2); else ctx.rect(x + dx, dy, w, h);
+        ctx.fill();
+        ctx.fillStyle = '#5a4632';
+        for (let i = 0; i < heads; i++) {
+          const hx = x + dx + (w * (i + 1)) / (heads + 1);
+          const r = Math.min(w / (heads * 4), h / 6);
+          ctx.beginPath(); ctx.arc(hx, dy + h * 0.42, r, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(hx, dy + h, r * 1.9, r * 1.6, 0, Math.PI, 0); ctx.fill();
+        }
+      }
+      break;
     case 'toyChest': box(ctx, x - 22, y - 26, 44, 26, '#8a5a2a'); ctx.fillStyle = st.accent; ctx.fillRect(x - 22, y - 16, 44, 3); break;
     case 'rockingHorse':
       ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 4, 26, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
