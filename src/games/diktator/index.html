@@ -7,21 +7,46 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Limelight&family=Poiret+One&display=swap" />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./palace.css" />
   </head>
   <body>
-    <main>
-      <header>
-        <h1 id="title"></h1>
-        <p id="date" class="date"></p>
-        <p id="money" class="money"></p>
+    <div id="app">
+      <header id="top">
+        <h1 id="title">Diktátor</h1>
+        <div id="top-hud"></div>
       </header>
-      <section id="log" aria-live="polite"></section>
-      <section id="prompt"></section>
-      <section id="choices"></section>
-      <section id="report"></section>
-      <a href="../../../index.html" id="back"></a>
-    </main>
+      <div id="strip" class="strip"></div>
+      <section class="half" id="half-zogu">
+        <div class="stage-box"><canvas class="stage"></canvas></div>
+        <aside class="panel">
+          <div class="hud"></div>
+          <h2 class="menu-title"></h2>
+          <div class="menu-body"></div>
+          <ol class="menu"></ol>
+          <p class="hint"></p>
+          <div class="notes" aria-live="polite"></div>
+        </aside>
+      </section>
+      <section class="half" id="half-velitel">
+        <div class="stage-box"><canvas class="stage"></canvas></div>
+        <aside class="panel">
+          <div class="hud"></div>
+          <h2 class="menu-title"></h2>
+          <div class="menu-body"></div>
+          <ol class="menu"></ol>
+          <p class="hint"></p>
+          <div class="notes" aria-live="polite"></div>
+        </aside>
+      </section>
+    </div>
+    <div id="overlay" class="overlay hidden">
+      <div class="card">
+        <h2 id="overlay-title"></h2>
+        <div id="overlay-lines"></div>
+        <ol id="overlay-options" class="menu"></ol>
+        <p id="overlay-hint" class="hint"></p>
+      </div>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

@@ -8,7 +8,7 @@ Small browser games for 2+ players on one computer (keyboard and/or gamepads).
   - Spies carry the kufřík visibly as they walk it out of the embassy.
   - Escaping with all four secrets plays a victory scene (winner laughs on the runway, mob storms the loser's room) before the result screen.
 
-- **Diktátor** — a remake of Don Priestley's *Dictator* (1983) set in King Zog's Albania, 1925–1939.
+- **Diktátor** — a remake of Don Priestley's *Dictator* (1983) set in King Zog's Albania, 1925–1939. The palace game is at src/games/diktator/index.html; the classic text mode stays at text.html.
   - Plan 1: the original rules as a pure engine (one turn = one quarter) and a text mode. The palace, the newspaper and the march on Tirana follow (see `docs/superpowers/plans/`).
 
 ## Develop

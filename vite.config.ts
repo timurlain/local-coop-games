@@ -8,6 +8,7 @@ export default defineConfig({
         main: 'index.html',
         spy: 'src/games/spy-vs-spy/index.html',
         diktator: 'src/games/diktator/index.html',
+        'diktator-text': 'src/games/diktator/text.html',
         'diktator-rooms': 'src/games/diktator/dev/rooms.html',
       },
     },
