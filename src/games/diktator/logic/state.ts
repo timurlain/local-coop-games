@@ -36,11 +36,13 @@ export type Phase =
   | { readonly kind: 'punish'; readonly faction: FactionId; readonly chosen: StrengthGroupId | null }
   | { readonly kind: 'ended'; readonly ending: Ending };
 
-/** Starting values that differ from the original (the march in plan 4 produces these). */
+/** Starting values that differ from the original (Pochod na Tiranu produces these: `logic/march-regime.ts`). */
 export interface StartingRegime {
   readonly pop?: Readonly<Partial<Record<GroupId, number>>>;
   readonly str?: Readonly<Partial<Record<StrengthGroupId, number>>>;
   readonly treasury?: number;
+  /** The bodyguard (the original `st`); the march's Martanesh volunteers add 1 (spec 2026-09-27-diktator-pochod-design §4.5). */
+  readonly guard?: number;
 }
 
 export interface GameState {
@@ -180,7 +182,7 @@ export function initialState(seed: number, regime: StartingRegime = {}): GameSta
     treasury: regime.treasury ?? st.treasury,
     income: st.income,
     costs: st.costs,
-    guard: st.guard,
+    guard: regime.guard ?? st.guard,
     swiss: 0,
     low: RULES.lowBase,
     threshold: RULES.thresholdBase,
