@@ -138,7 +138,9 @@ crisis uses the original roll (modifier 0), and the UI shows a poster instead of
 
 - **Morning, the newspaper (§7).** A reading screen with no timer. Big-moment choices are made here.
 - **Audience.** The petitioner waits in the throne room.
-  - Zog must go there first. The audience costs no hour.
+  - Zog starts the quarter in his study and may walk and act first (play-test change, 2026-09-27); the petitioner
+    waits. Zog answers when he enters the throne room, and he cannot end the quarter before he has. The audience
+    costs no hour. Mother's advice about the petition is asked in her room (Zog walks there, 1 hour).
   - Answers:
     - *Ano* (yes).
     - *Ne* (no), with the original penalty.
@@ -262,7 +264,7 @@ Zog has 3 hours and the commander has 3. The audience is free and comes first fo
 | Who | Action | Effect |
 |---|---|---|
 | Zog | Talk to a faction (1 h) | The faction says what it wants: it names one petition or decision it would welcome. |
-| Zog | Ask for advice (1 h, Mother's room) | Opens the advice view for the current petition or a candidate decision, showing every effect. |
+| Zog | Ask for advice (1 h, Mother's room) | Mother says where the waiting petition or a candidate decision leads. |
 | Zog | Receive envoys (1 h) | The envoys say how much a loan could bring (the original formula shown as a hint). |
 | Commander | Investigate a room (1 h) | Reveals that room's plot and ally. Always possible, costs no money. |
 | Commander | Police report (1 h, guardroom) | Reveals **every** plot, ally, `low` and `str`, as the original report. Costs 1 unit of money and has the original preconditions: treasury > 0, police popularity > low, police strength > low. |
