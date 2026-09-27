@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { accuse, createSpot, matchesClues, redHerrings, spotResult, stepSpot, type SpotInput } from '../../src/games/diktator/minigames/spot/logic';
+import { accuse, carryOf, createSpot, matchesClues, redHerrings, spotResult, stepSpot, type SpotInput } from '../../src/games/diktator/minigames/spot/logic';
 import type { AttemptDifficulty } from '../../src/games/diktator/logic/state';
+import type { PlaceId } from '../../src/games/diktator/logic/state';
 
 const IDLE: SpotInput = { moveX: 0, moveY: 0 };
 const diff = (clues: number, crowd = 14, seconds = 40): AttemptDifficulty => ({ seconds, clues, crowd, maxWrong: 3 });
@@ -28,6 +29,51 @@ describe('the crowd generator', () => {
 
   it('is deterministic from the seed', () => {
     expect(createSpot(diff(2), 'trziste', 42)).toEqual(createSpot(diff(2), 'trziste', 42));
+  });
+});
+
+describe('hidden weapons and things people carry (§5a)', () => {
+  const places: readonly PlaceId[] = ['trziste', 'dustojnici'];
+
+  it('hides the attacker behind an everyday carry and never distinguishes him at a distance', () => {
+    for (const place of places) {
+      for (let seed = 1; seed <= 300; seed++) {
+        const s = createSpot(diff(2), place, seed);
+        const gun = s.people.find((p) => p.gunman)!;
+        const innocents = s.people.filter((p) => !p.gunman);
+
+        expect(gun.carry).toBe(carryOf(s.weapon));
+        expect(gun.handInCoat).toBe(s.weapon === 'coatRevolver');
+        if (place === 'dustojnici') {
+          expect(s.weapon).not.toBe('appleGrenade');
+          expect(s.weapon).not.toBe('bouquetBomb');
+        }
+        if (gun.carry !== 'none') {
+          expect(innocents.filter((p) => p.carry === gun.carry).length).toBeGreaterThanOrEqual(2);
+        }
+        expect(innocents.some((p) => p.handInCoat)).toBe(true);
+
+        const matching = s.people.filter((p) => matchesClues(p, s.clues));
+        expect(matching).toHaveLength(1);
+        expect(matching[0].gunman).toBe(true);
+      }
+    }
+  });
+
+  it('lets some innocent glance around over a minute, so a glance alone proves nothing', () => {
+    const s = createSpot(diff(1, 14, 60), 'trziste', 21);
+    const innocentIds = new Set(s.people.filter((p) => !p.gunman).map((p) => p.id));
+    let sawInnocentGlance = false;
+    for (let i = 0; i < 60 * 60; i++) {
+      stepSpot(s, 1 / 60, { moveX: 0, moveY: 0 });
+      if (s.people.some((p) => innocentIds.has(p.id) && p.glancing)) sawInnocentGlance = true;
+    }
+    expect(sawInnocentGlance).toBe(true);
+  });
+
+  it('is deterministic from the seed, weapon and carries included', () => {
+    expect(createSpot(diff(2), 'trziste', 42)).toEqual(createSpot(diff(2), 'trziste', 42));
+    expect(createSpot(diff(2), 'dustojnici', 8)).toEqual(createSpot(diff(2), 'dustojnici', 8));
   });
 });
 

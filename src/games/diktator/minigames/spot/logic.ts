@@ -8,6 +8,18 @@ import type { AttemptDifficulty, PlaceId } from '../../logic/state';
 
 export type SpotHat = 'none' | 'fez' | 'cap' | 'plis' | 'borsalino';
 export type SpotScarf = 'none' | 'red' | 'blue' | 'green' | 'yellow';
+export type SpotCarry = 'none' | 'newspaper' | 'basket' | 'bouquet';
+export type SpotWeapon = 'newspaperPistol' | 'appleGrenade' | 'bouquetBomb' | 'coatRevolver';
+
+/** What the weapon looks like from a distance: the everyday thing it hides inside. */
+export function carryOf(w: SpotWeapon): SpotCarry {
+  switch (w) {
+    case 'newspaperPistol': return 'newspaper';
+    case 'appleGrenade': return 'basket';
+    case 'bouquetBomb': return 'bouquet';
+    case 'coatRevolver': return 'none';
+  }
+}
 
 export interface SpotPerson {
   readonly id: number;
@@ -24,7 +36,13 @@ export interface SpotPerson {
   readonly glasses: boolean;
   readonly bag: boolean;
   readonly gunman: boolean;
-  /** The gunman glances around while this is true. */
+  /** The everyday thing this person carries — the gunman's hides his weapon. */
+  readonly carry: SpotCarry;
+  /** A hand kept in the coat — a cold day, or the gunman's grip on a `coatRevolver`. */
+  readonly handInCoat: boolean;
+  /** Non-null only for the gunman: which weapon he hides and how. */
+  readonly weapon: SpotWeapon | null;
+  /** Glances around while this is true — the gunman often, some innocents rarely. */
   glancing: boolean;
   /** Time (scene seconds) until the next glance toggle. */
   glanceIn: number;
@@ -44,6 +62,7 @@ export interface SpotInput { readonly moveX: number; readonly moveY: number }
 export interface SpotState {
   readonly place: PlaceId;
   readonly difficulty: AttemptDifficulty;
+  readonly weapon: SpotWeapon;
   rng: RngState;
   t: number;
   people: SpotPerson[];
@@ -160,8 +179,11 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
       glasses: d.int(5) === 0,
       bag: d.int(4) === 0,
       gunman,
+      carry: 'none',
+      handInCoat: false,
+      weapon: null,
       glancing: false,
-      glanceIn: 2 + d.float() * 2,
+      glanceIn: gunman ? 2 + d.float() * 2 : 5 + d.float() * 4,
       protestUntil: -1,
     };
   };
@@ -195,12 +217,40 @@ export function createSpot(difficulty: AttemptDifficulty, place: PlaceId, seed: 
       if (matchesClues(innocents[i], clues)) innocents[i] = breakClue(d, innocents[i], clues.find((o) => o.key !== c.key) ?? c);
     }
   }
+  // The attacker's hidden weapon — one per attempt, drawn from the same dice so it stays deterministic. The mess
+  // only stocks a pistol or a revolver; the market has all four.
+  const weapons: readonly SpotWeapon[] =
+    place === 'dustojnici' ? ['newspaperPistol', 'coatRevolver'] : ['newspaperPistol', 'appleGrenade', 'bouquetBomb', 'coatRevolver'];
+  const weapon = pick(d, weapons);
+  const carry = carryOf(weapon);
+  gunman = { ...gunman, weapon, carry, handInCoat: weapon === 'coatRevolver' };
+  // Everyone may carry an everyday thing, or keep a hand in the coat (a cold day) — nothing that touches a clue
+  // attribute, so the "exactly one person matches every clue" invariant is untouched.
+  const CARRIES: readonly SpotCarry[] = ['newspaper', 'basket', 'bouquet'];
+  innocents = innocents.map((p) => {
+    const carriesSomething = d.int(3) === 0;
+    const innocentCarry = carriesSomething ? pick(d, CARRIES) : 'none';
+    const handInCoat = d.int(8) === 0;
+    return { ...p, carry: innocentCarry, handInCoat };
+  });
+  // Guarantee: when the gunman carries something, at least two innocents carry the same kind — nothing distinguishes
+  // him at a distance.
+  if (carry !== 'none') {
+    let need = 2;
+    for (let i = 0; i < innocents.length && need > 0; i++) {
+      if (innocents[i].carry !== carry) { innocents[i] = { ...innocents[i], carry }; need--; }
+    }
+  }
+  // Guarantee: at least one innocent keeps a hand in the coat, so a hidden hand alone proves nothing either.
+  if (!innocents.some((p) => p.handInCoat) && innocents.length > 0) {
+    innocents[0] = { ...innocents[0], handInCoat: true };
+  }
   // Mix the gunman into the crowd at a random index (ids stay unique).
   const people = [...innocents];
   people.splice(d.int(people.length + 1), 0, gunman);
   const zoguX = (PLATFORM.left + PLATFORM.right) / 2;
   return {
-    place, difficulty, rng, t: 0, people, clues,
+    place, difficulty, weapon, rng, t: 0, people, clues,
     zoguX, zoguTarget: zoguX, zoguNextMove: 3,
     glass: { x: SPOT_W / 2, y: 200 },
     fuse: difficulty.seconds, wrong: 0, outcome: null, endAt: 0, lastAccused: -1,
@@ -274,10 +324,19 @@ export function stepSpot(s: SpotState, dt: number, input: SpotInput): void {
         p.glancing = !p.glancing;
         p.glanceIn = p.glancing ? 0.8 : 2 + d.float() * 2;
       }
-    } else if (!p.standing) {
-      p.x += p.dir * p.speed * dt;
-      if (p.x < 40) { p.x = 40; p.dir = 1; }
-      if (p.x > SPOT_W - 40) { p.x = SPOT_W - 40; p.dir = -1; }
+    } else {
+      // Some innocents glance around now and then too, so a glance alone proves nothing — much less often than the
+      // gunman, and briefer.
+      p.glanceIn -= dt;
+      if (p.glanceIn <= 0) {
+        p.glancing = !p.glancing;
+        p.glanceIn = p.glancing ? 0.6 : 5 + d.float() * 4;
+      }
+      if (!p.standing) {
+        p.x += p.dir * p.speed * dt;
+        if (p.x < 40) { p.x = 40; p.dir = 1; }
+        if (p.x > SPOT_W - 40) { p.x = SPOT_W - 40; p.dir = -1; }
+      }
     }
   }
 }
