@@ -442,12 +442,7 @@ function renderDom(): void {
   renderTop(topHud(s));
   renderStrip(stripView(sc, s), flash.rooms);
   for (const h of HEROES) {
-    const half = halves[h];
-    renderHalf(
-      h,
-      { hud: heroHud(sc, s, h), menu: half.menu, ui: half.ui, notes: half.notes, inactive: isSolo(seats) && active !== h, solo: isSolo(seats) },
-      (i) => { choosePalace(h, i); dirty = true; },
-    );
+    renderHalf(h, { hud: heroHud(sc, s, h), talking: false, inactive: isSolo(seats) && active !== h, solo: isSolo(seats) });
   }
 }
 

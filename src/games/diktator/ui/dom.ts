@@ -4,9 +4,8 @@
 import { cs } from '../../../shared/i18n/cs';
 import type { Hero, RoomId } from '../logic/palace';
 import { STAGE_H, STAGE_W } from '../render/rooms/crowd';
-import type { MenuUi } from './controls';
+import type { Bubble } from './bubbles';
 import type { HeroHud } from './hud';
-import type { HeroMenu } from './menus';
 import type { StripCell } from './palace-view';
 
 const T = cs.diktator;
@@ -78,29 +77,70 @@ export function renderStrip(cells: readonly (readonly StripCell[])[], flash: Rea
 
 export interface HalfModel {
   readonly hud: HeroHud;
-  readonly menu: HeroMenu;
-  readonly ui: MenuUi;
-  readonly notes: readonly string[];
+  /** A line is waiting in this half. */
+  readonly talking: boolean;
   /** Solo play: this half is not the one being steered. */
   readonly inactive: boolean;
   readonly solo: boolean;
 }
 
-export function renderHalf(hero: Hero, m: HalfModel, onChoose: (i: number) => void): void {
+export function renderHalf(hero: Hero, m: HalfModel): void {
   const root = $(`#half-${hero}`);
   root.classList.toggle('inactive', m.inactive);
   const hud = [m.hud.name, m.hud.room, `${P.hours} ${m.hud.hours}`];
   if (m.hud.seal) hud.push(`✉ ${P.sealMark}`);
   $('.hud', root).replaceChildren(...hud.map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
-  $('.menu-title', root).textContent = m.menu.title;
-  $('.menu-body', root).replaceChildren(...m.menu.body.map(para));
-  const open = m.ui.open || m.menu.modal;
-  const ol = $<HTMLOListElement>('.menu', root);
-  ol.classList.toggle('closed', !open);
-  menuList(ol, m.menu.items, open ? m.ui.focus : null, onChoose);
-  const hint = open ? P.hintOpen : P.hintClosed;
+  const hint = m.talking ? P.hintTalk : P.hintClosed;
   $('.hint', root).textContent = m.solo ? `${hint} · ${P.soloHint}` : hint;
-  $('.notes', root).replaceChildren(...m.notes.map(para));
+}
+
+/** Draws a half's comic bubbles over its canvas. Stage units are mapped onto the canvas' on-screen box. */
+export function renderBubbles(hero: Hero, bubbles: readonly Bubble[], onChoose: (i: number) => void): void {
+  const box = $(`#half-${hero} .stage-box`);
+  const canvas = $<HTMLCanvasElement>('.stage', box);
+  const layer = $('.bubbles', box);
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+  const ox = canvas.offsetLeft;
+  const oy = canvas.offsetTop;
+  const px = (x: number) => ox + (x / STAGE_W) * cw;
+  const py = (y: number) => oy + (y / STAGE_H) * ch;
+  layer.style.fontSize = `${Math.max(13, Math.min(26, ch * 0.075))}px`;
+  layer.replaceChildren(
+    ...bubbles.map((b) => {
+      const el = document.createElement('div');
+      el.className = `bubble ${b.kind}`;
+      if (b.kind === 'caption') {
+        el.style.left = `${ox + cw * 0.01}px`;
+        el.style.top = `${oy + ch * 0.02}px`;
+        el.textContent = b.text;
+      } else if (b.kind === 'speech') {
+        const left = b.anchor.x < 140 ? -0.2 : b.anchor.x > 340 ? -0.8 : -0.5;
+        el.style.left = `${px(b.anchor.x)}px`;
+        el.style.bottom = `${box.clientHeight - py(b.anchor.y) + 12}px`;
+        el.style.transform = `translateX(${left * 100}%)`;
+        el.style.setProperty('--tail', `${-left * 100}%`);
+        el.textContent = b.text;
+      } else {
+        el.style.left = `${px(b.anchor.x + 26)}px`;
+        el.style.top = `${oy + ch * 0.03}px`;
+        el.style.maxHeight = `${ch * 0.94}px`;
+        const h = document.createElement('h3');
+        h.textContent = b.title;
+        el.append(h, ...b.body.map(para));
+        const ol = document.createElement('ol');
+        menuList(ol, b.items, b.focus, onChoose);
+        el.append(ol);
+      }
+      if (b.kind !== 'choice' && b.more) {
+        const m = document.createElement('span');
+        m.className = 'more';
+        m.textContent = T.speech.more;
+        el.prepend(m);
+      }
+      return el;
+    }),
+  );
 }
 
 export interface OverlayModel {
